@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 2 completed.
+Session 3 completed.
 
-Current session: Session 3 — Game base rendering
+Current session: Session 4 — Collision and validation
 
 ---
 

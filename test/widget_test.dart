@@ -24,4 +24,16 @@ void main() {
 
     expect(customPaint.painter, isA<GameAreaPainter>());
   });
+
+  testWidgets('Tapping the game screen shows hit validation feedback', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const StoppyApp());
+
+    await tester.tap(find.byType(GameScreen));
+    await tester.pump();
+
+    expect(find.textContaining('SAFE ZONE'), findsOneWidget);
+    expect(find.textContaining('TARGET'), findsOneWidget);
+  });
 }

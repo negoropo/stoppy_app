@@ -2,49 +2,41 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../config/game_geometry_config.dart';
+
 class GameAreaPainter extends CustomPainter {
   const GameAreaPainter({
     required this.ballProgress,
-    this.safeZoneStartAngle = -math.pi / 3,
-    this.safeZoneSweepAngle = math.pi / 3,
-    this.targetAngle = math.pi / 4,
+    this.geometry = const GameGeometryConfig(),
   });
 
   final double ballProgress;
-  final double safeZoneStartAngle;
-  final double safeZoneSweepAngle;
-  final double targetAngle;
-
-  static const double _circleStrokeWidth = 10;
-  static const double _safeZoneStrokeWidth = 14;
-  static const double _targetStrokeWidth = 5;
-  static const double _ballRadius = 12;
+  final GameGeometryConfig geometry;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius =
-        math.min(size.width, size.height) / 2 -
-        _safeZoneStrokeWidth -
-        _ballRadius;
+    final radius = geometry.circleRadiusForDimension(
+      math.min(size.width, size.height),
+    );
     final circleRect = Rect.fromCircle(center: center, radius: radius);
 
     final circlePaint = Paint()
       ..color = const Color(0xFF3A424C)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _circleStrokeWidth
+      ..strokeWidth = geometry.circleStrokeWidth
       ..strokeCap = StrokeCap.round;
 
     final safeZonePaint = Paint()
       ..color = const Color(0xFF39D98A)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _safeZoneStrokeWidth
+      ..strokeWidth = geometry.safeZoneStrokeWidth
       ..strokeCap = StrokeCap.round;
 
     final targetPaint = Paint()
       ..color = const Color(0xFFFFD166)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _targetStrokeWidth
+      ..strokeWidth = geometry.targetStrokeWidth
       ..strokeCap = StrokeCap.round;
 
     final ballPaint = Paint()
@@ -54,16 +46,22 @@ class GameAreaPainter extends CustomPainter {
     canvas.drawCircle(center, radius, circlePaint);
     canvas.drawArc(
       circleRect,
-      safeZoneStartAngle,
-      safeZoneSweepAngle,
+      geometry.safeZoneStartAngle,
+      geometry.safeZoneSweepAngle,
       false,
       safeZonePaint,
     );
 
-    _drawTargetMarker(canvas, center, radius, targetAngle, targetPaint);
+    _drawTargetMarker(
+      canvas,
+      center,
+      radius,
+      geometry.targetAngle,
+      targetPaint,
+    );
     canvas.drawCircle(
       _pointOnCircle(center, radius, _angleFromProgress(ballProgress)),
-      _ballRadius,
+      geometry.ballRadius,
       ballPaint,
     );
   }
@@ -101,8 +99,6 @@ class GameAreaPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant GameAreaPainter oldDelegate) {
     return oldDelegate.ballProgress != ballProgress ||
-        oldDelegate.safeZoneStartAngle != safeZoneStartAngle ||
-        oldDelegate.safeZoneSweepAngle != safeZoneSweepAngle ||
-        oldDelegate.targetAngle != targetAngle;
+        oldDelegate.geometry != geometry;
   }
 }

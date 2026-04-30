@@ -545,3 +545,97 @@ Planned tasks:
 Current session: Session 4 — Collision and validation  
 Status: Ready ⏳
 
+---
+
+## 🔄 Session Update
+
+### Session: Session 4 — Collision and validation
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement collision detection and validation logic for ball interactions.
+
+---
+
+### 📦 Deliverables
+
+* [x] GameCollisionValidator implemented
+* [x] HitValidationResult model created
+* [x] Safe zone detection implemented
+* [x] Target detection implemented
+* [x] Edge-based collision detection (ball radius considered)
+* [x] Debug feedback UI implemented
+
+---
+
+### 🛠️ Work Done
+
+* Implemented GameCollisionValidator with full angular math
+* Added angle normalization and circular distance calculations
+* Introduced ballAngularRadius using asin(ballRadius / circleRadius)
+* Implemented edge-based collision:
+  * Safe zone expanded by ball angular radius
+  * Target tolerance expanded by ball angular radius
+* Created HitValidationResult model with detailed collision data
+* Refactored geometry into GameGeometryConfig
+* Ensured shared geometry between rendering and validation
+* Fixed layout consistency using SizedBox.square
+* Moved gameAreaPadding to UI layer (GameScreen)
+* Ensured rendering and validation use identical circle radius
+* Added debug overlay for validation feedback
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Collision is based on area overlap, not center point
+* Ball is treated as an angular interval
+* Geometry is centralized to avoid inconsistencies
+* UI and Game Engine remain strictly separated
+* Layout concerns removed from geometry config
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze (no issues)
+* [x] flutter test (passing)
+* [x] Visual behavior matches collision logic
+* [x] Edge contact correctly detected
+
+---
+
+### 📌 Next Session
+
+Session 5 — Level system
+
+Planned tasks:
+
+* [ ] Create GameLevelConfig
+* [ ] Implement LevelGenerator
+* [ ] Introduce controlled randomness
+* [ ] Define levels 0–10
+* [ ] Adjust speed, safe zone and target per level
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* 🔄 Session 5 — Level system (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 5 — Level system  
+Status: Ready ⏳
