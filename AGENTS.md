@@ -19,7 +19,7 @@ The project is currently in early development.
 
 Session 2 completed.
 
-Current session: Session 3 — Game base render
+Current session: Session 3 — Game base rendering
 
 ---
 

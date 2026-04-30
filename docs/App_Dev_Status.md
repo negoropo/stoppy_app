@@ -78,28 +78,7 @@ flutter test
 
 ---
 
-## 4. Estado Atual
-
-🚧 Projeto em fase inicial
-
-### Progresso:
-
-✅ Sessão 1 — Setup inicial (concluída)
-✅ Sessão 2 — Estrutura base + documentação (concluída)
-🔄 Sessão 3 — Render base do jogo (por iniciar)
-
----
-
-## 5. Próximos Passos
-
-Integrar corretamente o fluxo com Codex
-Criar estrutura profissional do projeto Flutter
-Organizar pastas (/core, /features, /shared)
-Preparar base para Game Engine
-
----
-
-## 6. Estrutura do Projeto
+## 4. Estrutura do Projeto
 
 Estrutura alvo:
 
@@ -128,7 +107,7 @@ App_Dev_Status.md
 
 ---
 
-## 7. Decisões Técnicas
+## 5. Decisões Técnicas
 
 ### Frontend
 
@@ -148,7 +127,7 @@ App_Dev_Status.md
 
 ---
 
-## 8. Notas Importantes
+## 6. Notas Importantes
 
 * O Game Engine será desenvolvido antes do backend
 * Toda a lógica crítica deve ser validada no backend (futuro)
@@ -157,7 +136,7 @@ App_Dev_Status.md
 
 ---
 
-## 9. Plano por Sessões
+## 7. Plano por Sessões
 
 ---
 
@@ -378,7 +357,7 @@ Sistema de pontuação competitivo
 
 ---
 
-## 10. Regras de Trabalho
+## 8. Regras de Trabalho
 
 * Cada sessão deve ser concluída antes de avançar
 * No final de cada sessão:
@@ -390,7 +369,7 @@ Sistema de pontuação competitivo
 
 ---
 
-## 11. Como Retomar o Projeto
+## 9. Como Retomar o Projeto
 
 Para continuar o desenvolvimento num novo chat:
 
@@ -402,7 +381,167 @@ Para continuar o desenvolvimento num novo chat:
 
 ---
 
-## 12. Estado Atual da Sessão
 
-Sessão atual: Sessão 3 — Render base do jogo
-Estado: Por iniciar ⏳
+## 🔄 Session Update
+
+### Session: Session 2 — Base structure and documentation
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Organize project structure and prepare development foundation.
+
+---
+
+### 📦 Deliverables
+
+* [x] Folder structure created (/core, /features, /shared)
+* [x] docs folder created
+* [x] Architecture.md created
+* [x] Game_Rules.md created
+* [x] App_Dev_Status.md initialized
+* [x] Base GameScreen created
+
+---
+
+### 🛠️ Work Done
+
+* Created base Flutter project structure
+* Added initial documentation
+* Prepared project for Game Engine development
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Game Engine will be developed before backend
+* Architecture enforces strict UI vs logic separation
+* Codex will be used from this phase forward
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze (no issues)
+* [x] flutter test (passing)
+* [x] App runs correctly
+
+---
+
+### 📌 Next Session
+
+Session 3 — Game base rendering
+
+Planned tasks:
+
+* [ ] Create CustomPainter
+* [ ] Render circle and ball
+* [ ] Add animation
+* [ ] Draw safe zone and target
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* 🔄 Session 3 — Game base rendering (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 3 — Game base rendering
+Status: Ready ⏳
+
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 3 — Game base rendering
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Render the core visual elements of the game.
+
+---
+
+### 📦 Deliverables
+
+* [x] GameScreen created
+* [x] CustomPainter implemented
+* [x] Circle rendered
+* [x] Ball rendered and animated
+* [x] Safe zone rendered
+* [x] Target marker rendered
+
+---
+
+### 🛠️ Work Done
+
+* Implemented GameScreen with AnimationController
+* Created GameAreaPainter using CustomPainter
+* Rendered circular game field
+* Implemented ball movement based on angular progress
+* Added safe zone arc and target marker
+* Ensured rendering logic is isolated from UI
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Ball movement is time-based using AnimationController
+* Rendering math uses polar coordinates
+* Angle system aligned with top-start (clock-like behavior)
+* Game Engine logic still not implemented (render-only phase)
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze (no issues)
+* [x] flutter test (passing)
+* [x] App runs correctly on iOS
+* [x] App runs correctly on Android
+
+---
+
+### 📌 Next Session
+
+Session 4 — Collision and validation
+
+Planned tasks:
+
+* [ ] Calculate angular position
+* [ ] Detect safe zone hit
+* [ ] Detect target hit
+* [ ] Validate precision (center vs edge)
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* 🔄 Session 4 — Collision and validation (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 4 — Collision and validation  
+Status: Ready ⏳
+
