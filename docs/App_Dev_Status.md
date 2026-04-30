@@ -615,14 +615,6 @@ Implement collision detection and validation logic for ball interactions.
 
 Session 5 — Level system
 
-Planned tasks:
-
-* [ ] Create GameLevelConfig
-* [ ] Implement LevelGenerator
-* [ ] Introduce controlled randomness
-* [ ] Define levels 0–10
-* [ ] Adjust speed, safe zone and target per level
-
 ---
 
 ### 📊 Progress Update
@@ -638,4 +630,117 @@ Planned tasks:
 ### 🧭 Current State
 
 Current session: Session 5 — Level system  
+Status: Ready ⏳
+
+
+---
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 5 — Level system
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the dynamic difficulty progression system.
+
+---
+
+### 📦 Deliverables
+
+* [x] DifficultyState model implemented
+* [x] GameLevelConfig model implemented
+* [x] LevelGenerator implemented
+* [x] 6 independent difficulty variables implemented
+* [x] Randomized level progression implemented
+* [x] Per-level random layout implemented
+* [x] Ball speed connected to gameplay
+* [x] Ball size connected to gameplay
+* [x] Stop time level configured
+* [x] Safe zone size connected to gameplay
+* [x] Safe zone speed connected to gameplay
+* [x] Target speed connected to gameplay
+* [x] Ball direction randomized
+* [x] Safe zone and target move opposite to ball direction
+* [x] Debug overlay protected by debug flag
+
+---
+
+### 🛠️ Work Done
+
+* Added full difficulty state with 6 variables from 0 to 10
+* Added level config generation from current difficulty state
+* Implemented rule where exactly one non-maxed variable increases after each successful level
+* Added random start angles for ball, safe zone and target
+* Added randomized ball direction per level
+* Derived safe zone and target direction as opposite to ball direction
+* Connected generated config to GameScreen
+* Connected ball speed, ball size and safe zone size to rendering
+* Added safe zone and target animations
+* Ensured rendering and collision use the same animated angles
+* Added temporary debug overlay for difficulty validation
+* Moved debug overlay visibility behind `kShowDebugOverlay`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* The target remains a fixed-size marker
+* No target tolerance or target sweep system was added
+* Target hit and safe zone hit both count as level success for now
+* Difficulty progression is independent from RP, PP, lives and economy
+* Debug overlay is kept for future balancing and validation
+* Debug overlay is hidden automatically in release builds
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Ball speed difficulty visible in emulator
+* [x] Ball size difficulty visible in emulator
+* [x] Safe zone size difficulty visible in emulator
+* [x] Safe zone speed difficulty visible in emulator
+* [x] Target speed difficulty visible in emulator
+* [x] Difficulty increases after safe zone hit
+* [x] Difficulty increases after target hit
+
+---
+
+### 📌 Next Session
+
+Session 6 — Run Points (RP)
+
+Planned tasks:
+
+* [ ] Define Gold/Silver/Bronze reward zones
+* [ ] Calculate RP rewards from hit result
+* [ ] Track RP during a run
+* [ ] Display RP feedback
+* [ ] Prepare reward choice system
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* 🔄 Session 6 — Run Points (RP) (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 6 — Run Points (RP)  
 Status: Ready ⏳

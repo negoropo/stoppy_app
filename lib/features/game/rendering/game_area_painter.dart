@@ -6,11 +6,11 @@ import '../config/game_geometry_config.dart';
 
 class GameAreaPainter extends CustomPainter {
   const GameAreaPainter({
-    required this.ballProgress,
+    required this.ballAngle,
     this.geometry = const GameGeometryConfig(),
   });
 
-  final double ballProgress;
+  final double ballAngle;
   final GameGeometryConfig geometry;
 
   @override
@@ -60,7 +60,7 @@ class GameAreaPainter extends CustomPainter {
       targetPaint,
     );
     canvas.drawCircle(
-      _pointOnCircle(center, radius, _angleFromProgress(ballProgress)),
+      _pointOnCircle(center, radius, ballAngle),
       geometry.ballRadius,
       ballPaint,
     );
@@ -80,13 +80,6 @@ class GameAreaPainter extends CustomPainter {
     canvas.drawLine(innerPoint, outerPoint, paint);
   }
 
-  double _angleFromProgress(double progress) {
-    // Flutter's canvas angle zero points to the right. Subtracting pi / 2 makes
-    // progress 0 start at the top of the circle, which matches the expected
-    // mental model for a clock-like competitive timing game.
-    return progress * math.pi * 2 - math.pi / 2;
-  }
-
   Offset _pointOnCircle(Offset center, double radius, double angle) {
     // Convert polar coordinates into canvas coordinates. This keeps all moving
     // elements on the same deterministic circle path as future engine logic.
@@ -98,7 +91,7 @@ class GameAreaPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant GameAreaPainter oldDelegate) {
-    return oldDelegate.ballProgress != ballProgress ||
+    return oldDelegate.ballAngle != ballAngle ||
         oldDelegate.geometry != geometry;
   }
 }

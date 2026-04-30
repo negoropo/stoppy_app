@@ -53,7 +53,7 @@ class GameCollisionValidator {
     );
   }
 
-  double normalizeAngle(double angle) {
+  static double normalizeAngle(double angle) {
     final normalized = angle % fullCircleRadians;
     return normalized < 0 ? normalized + fullCircleRadians : normalized;
   }

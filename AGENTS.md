@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 3 completed.
+Session 6 completed.
 
-Current session: Session 4 — Collision and validation
+Current session: Session 6 — Run Points (RP)
 
 ---
 

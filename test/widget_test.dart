@@ -36,4 +36,19 @@ void main() {
     expect(find.textContaining('SAFE ZONE'), findsOneWidget);
     expect(find.textContaining('TARGET'), findsOneWidget);
   });
+
+  testWidgets('Game screen shows the temporary difficulty debug overlay', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const StoppyApp());
+
+    expect(find.text('DEBUG ONLY - Difficulty'), findsOneWidget);
+    expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
+    expect(find.text('ballSizeLevel: 0'), findsOneWidget);
+    expect(find.text('stopTimeLevel: 0'), findsOneWidget);
+    expect(find.text('safeZoneSizeLevel: 0'), findsOneWidget);
+    expect(find.text('safeZoneSpeedLevel: 0'), findsOneWidget);
+    expect(find.text('targetSpeedLevel: 0'), findsOneWidget);
+    expect(find.text('last increased: none'), findsOneWidget);
+  });
 }

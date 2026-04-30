@@ -8,9 +8,12 @@ void main() {
     const validator = GameCollisionValidator(circleRadius: 100, ballRadius: 10);
 
     test('normalizes angles into one circle rotation', () {
-      expect(validator.normalizeAngle(-math.pi / 2), closeTo(math.pi * 1.5, 0));
       expect(
-        validator.normalizeAngle(math.pi * 2 + math.pi / 4),
+        GameCollisionValidator.normalizeAngle(-math.pi / 2),
+        closeTo(math.pi * 1.5, 0),
+      );
+      expect(
+        GameCollisionValidator.normalizeAngle(math.pi * 2 + math.pi / 4),
         closeTo(math.pi / 4, 0),
       );
     });
@@ -102,6 +105,22 @@ void main() {
 
       expect(contactResult.isTargetHit, isTrue);
       expect(missResult.isTargetHit, isFalse);
+    });
+
+    test('can report a target hit while missing the safe zone', () {
+      const targetOnlyValidator = GameCollisionValidator(
+        circleRadius: 100,
+        ballRadius: 10,
+        safeZoneStartAngle: 3,
+        safeZoneSweepAngle: 0.4,
+        targetAngle: 1,
+        targetToleranceAngle: 0.05,
+      );
+
+      final result = targetOnlyValidator.validateAngle(ballAngle: 1);
+
+      expect(result.isInsideSafeZone, isFalse);
+      expect(result.isTargetHit, isTrue);
     });
   });
 }

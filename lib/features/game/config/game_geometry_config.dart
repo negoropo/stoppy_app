@@ -21,6 +21,28 @@ class GameGeometryConfig {
   final double targetStrokeWidth;
   final double ballRadius;
 
+  GameGeometryConfig copyWith({
+    double? safeZoneStartAngle,
+    double? safeZoneSweepAngle,
+    double? targetAngle,
+    double? targetToleranceAngle,
+    double? circleStrokeWidth,
+    double? safeZoneStrokeWidth,
+    double? targetStrokeWidth,
+    double? ballRadius,
+  }) {
+    return GameGeometryConfig(
+      safeZoneStartAngle: safeZoneStartAngle ?? this.safeZoneStartAngle,
+      safeZoneSweepAngle: safeZoneSweepAngle ?? this.safeZoneSweepAngle,
+      targetAngle: targetAngle ?? this.targetAngle,
+      targetToleranceAngle: targetToleranceAngle ?? this.targetToleranceAngle,
+      circleStrokeWidth: circleStrokeWidth ?? this.circleStrokeWidth,
+      safeZoneStrokeWidth: safeZoneStrokeWidth ?? this.safeZoneStrokeWidth,
+      targetStrokeWidth: targetStrokeWidth ?? this.targetStrokeWidth,
+      ballRadius: ballRadius ?? this.ballRadius,
+    );
+  }
+
   double circleRadiusForDimension(double dimension) {
     return dimension / 2 - safeZoneStrokeWidth - ballRadius;
   }
