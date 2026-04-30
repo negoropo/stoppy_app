@@ -85,8 +85,8 @@ flutter test
 ### Progresso:
 
 ✅ Sessão 1 — Setup inicial (concluída)
-🔄 Sessão 2 — Estrutura base (por iniciar)
-⏳ Sessão 3+ — Não iniciado
+✅ Sessão 2 — Estrutura base + documentação (concluída)
+🔄 Sessão 3 — Render base do jogo (por iniciar)
 
 ---
 
@@ -404,5 +404,5 @@ Para continuar o desenvolvimento num novo chat:
 
 ## 12. Estado Atual da Sessão
 
-Sessão atual: Sessão 2 — Estrutura base + documentação
+Sessão atual: Sessão 3 — Render base do jogo
 Estado: Por iniciar ⏳
