@@ -27,12 +27,6 @@ class GameAreaPainter extends CustomPainter {
       ..strokeWidth = geometry.circleStrokeWidth
       ..strokeCap = StrokeCap.round;
 
-    final safeZonePaint = Paint()
-      ..color = const Color(0xFF39D98A)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = geometry.safeZoneStrokeWidth
-      ..strokeCap = StrokeCap.round;
-
     final targetPaint = Paint()
       ..color = const Color(0xFFFFD166)
       ..style = PaintingStyle.stroke
@@ -44,13 +38,7 @@ class GameAreaPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(center, radius, circlePaint);
-    canvas.drawArc(
-      circleRect,
-      geometry.safeZoneStartAngle,
-      geometry.safeZoneSweepAngle,
-      false,
-      safeZonePaint,
-    );
+    _drawSafeZoneRewardSegments(canvas, circleRect);
 
     _drawTargetMarker(
       canvas,
@@ -64,6 +52,40 @@ class GameAreaPainter extends CustomPainter {
       geometry.ballRadius,
       ballPaint,
     );
+  }
+
+  void _drawSafeZoneRewardSegments(Canvas canvas, Rect circleRect) {
+    const segments = [
+      _RewardZoneVisualSegment(percentage: 0.10, color: Color(0xFFFFD166)),
+      _RewardZoneVisualSegment(percentage: 0.15, color: Color(0xFFC9D1D9)),
+      _RewardZoneVisualSegment(percentage: 0.50, color: Color(0xFFB86B35)),
+      _RewardZoneVisualSegment(percentage: 0.15, color: Color(0xFFC9D1D9)),
+      _RewardZoneVisualSegment(percentage: 0.10, color: Color(0xFFFFD166)),
+    ];
+
+    var segmentStartAngle = geometry.safeZoneStartAngle;
+
+    for (final segment in segments) {
+      final segmentSweepAngle =
+          geometry.safeZoneSweepAngle * segment.percentage;
+      final segmentPaint = Paint()
+        ..color = segment.color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = geometry.safeZoneStrokeWidth
+        ..strokeCap = StrokeCap.butt;
+
+      // Each visual segment uses the same percentages as RP tiers. This is
+      // rendering only; collision and RP calculation remain in engine classes.
+      canvas.drawArc(
+        circleRect,
+        segmentStartAngle,
+        segmentSweepAngle,
+        false,
+        segmentPaint,
+      );
+
+      segmentStartAngle += segmentSweepAngle;
+    }
   }
 
   void _drawTargetMarker(
@@ -94,4 +116,14 @@ class GameAreaPainter extends CustomPainter {
     return oldDelegate.ballAngle != ballAngle ||
         oldDelegate.geometry != geometry;
   }
+}
+
+class _RewardZoneVisualSegment {
+  const _RewardZoneVisualSegment({
+    required this.percentage,
+    required this.color,
+  });
+
+  final double percentage;
+  final Color color;
 }

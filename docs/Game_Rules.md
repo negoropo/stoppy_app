@@ -59,7 +59,7 @@ RUN POINTS (RP) e MENU ENTRE NÍVEIS
 RP acumulam durante a run e podem ser gastos no menu que aparece após cada nível:
 
 Next level — sobe dificuldade numa variável aleatória, mantém RP (grátis)
-Aumentar dificuldade numa variável específica — 2 RP cada (6 opções)
+Aumentar dificuldade numa variável específica escolhida pelo jogador — 2 RP cada (6 opções)
 Não aumentar dificuldade — 5 RP
 Diminuir dificuldade numa variável aleatória — 10 RP
 Diminuir dificuldade numa variável à escolha — 15 RP (mostra nível atual de cada variável)

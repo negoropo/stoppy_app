@@ -7,6 +7,7 @@ class HitValidationResult {
     required this.isInsideSafeZone,
     required this.isTargetHit,
     required this.targetAngularDistance,
+    required this.relativePositionInSafeZone,
   });
 
   final double ballAngle;
@@ -16,4 +17,5 @@ class HitValidationResult {
   final bool isInsideSafeZone;
   final bool isTargetHit;
   final double targetAngularDistance;
+  final double? relativePositionInSafeZone;
 }

@@ -44,6 +44,15 @@ class DifficultyState {
         targetSpeedLevel == maxLevel;
   }
 
+  bool get isAtMinimum {
+    return ballSpeedLevel == minLevel &&
+        ballSizeLevel == minLevel &&
+        stopTimeLevel == minLevel &&
+        safeZoneSizeLevel == minLevel &&
+        safeZoneSpeedLevel == minLevel &&
+        targetSpeedLevel == minLevel;
+  }
+
   DifficultyState increaseRandomNonMaxed(Random random) {
     if (isMaxed) {
       return this;
@@ -75,6 +84,81 @@ class DifficultyState {
       DifficultyVariable.targetSpeed => copyWith(
         targetSpeedLevel: targetSpeedLevel + 1,
       ),
+    };
+  }
+
+  DifficultyState increaseVariable(DifficultyVariable variable) {
+    return switch (variable) {
+      DifficultyVariable.ballSpeed when ballSpeedLevel < maxLevel => copyWith(
+        ballSpeedLevel: ballSpeedLevel + 1,
+      ),
+      DifficultyVariable.ballSize when ballSizeLevel < maxLevel => copyWith(
+        ballSizeLevel: ballSizeLevel + 1,
+      ),
+      DifficultyVariable.stopTime when stopTimeLevel < maxLevel => copyWith(
+        stopTimeLevel: stopTimeLevel + 1,
+      ),
+      DifficultyVariable.safeZoneSize when safeZoneSizeLevel < maxLevel =>
+        copyWith(safeZoneSizeLevel: safeZoneSizeLevel + 1),
+      DifficultyVariable.safeZoneSpeed when safeZoneSpeedLevel < maxLevel =>
+        copyWith(safeZoneSpeedLevel: safeZoneSpeedLevel + 1),
+      DifficultyVariable.targetSpeed when targetSpeedLevel < maxLevel =>
+        copyWith(targetSpeedLevel: targetSpeedLevel + 1),
+      _ => this,
+    };
+  }
+
+  DifficultyState decreaseRandomPositive(Random random) {
+    if (isAtMinimum) {
+      return this;
+    }
+
+    // Only positive levels can be decreased. This keeps reward-menu choices
+    // deterministic to validate and prevents any variable from crossing below
+    // the minimum difficulty contract.
+    final availableVariables = <DifficultyVariable>[
+      if (ballSpeedLevel > minLevel) DifficultyVariable.ballSpeed,
+      if (ballSizeLevel > minLevel) DifficultyVariable.ballSize,
+      if (stopTimeLevel > minLevel) DifficultyVariable.stopTime,
+      if (safeZoneSizeLevel > minLevel) DifficultyVariable.safeZoneSize,
+      if (safeZoneSpeedLevel > minLevel) DifficultyVariable.safeZoneSpeed,
+      if (targetSpeedLevel > minLevel) DifficultyVariable.targetSpeed,
+    ];
+    final selectedVariable =
+        availableVariables[random.nextInt(availableVariables.length)];
+
+    return decreaseVariable(selectedVariable);
+  }
+
+  DifficultyState decreaseVariable(DifficultyVariable variable) {
+    return switch (variable) {
+      DifficultyVariable.ballSpeed when ballSpeedLevel > minLevel => copyWith(
+        ballSpeedLevel: ballSpeedLevel - 1,
+      ),
+      DifficultyVariable.ballSize when ballSizeLevel > minLevel => copyWith(
+        ballSizeLevel: ballSizeLevel - 1,
+      ),
+      DifficultyVariable.stopTime when stopTimeLevel > minLevel => copyWith(
+        stopTimeLevel: stopTimeLevel - 1,
+      ),
+      DifficultyVariable.safeZoneSize when safeZoneSizeLevel > minLevel =>
+        copyWith(safeZoneSizeLevel: safeZoneSizeLevel - 1),
+      DifficultyVariable.safeZoneSpeed when safeZoneSpeedLevel > minLevel =>
+        copyWith(safeZoneSpeedLevel: safeZoneSpeedLevel - 1),
+      DifficultyVariable.targetSpeed when targetSpeedLevel > minLevel =>
+        copyWith(targetSpeedLevel: targetSpeedLevel - 1),
+      _ => this,
+    };
+  }
+
+  int levelForVariable(DifficultyVariable variable) {
+    return switch (variable) {
+      DifficultyVariable.ballSpeed => ballSpeedLevel,
+      DifficultyVariable.ballSize => ballSizeLevel,
+      DifficultyVariable.stopTime => stopTimeLevel,
+      DifficultyVariable.safeZoneSize => safeZoneSizeLevel,
+      DifficultyVariable.safeZoneSpeed => safeZoneSpeedLevel,
+      DifficultyVariable.targetSpeed => targetSpeedLevel,
     };
   }
 

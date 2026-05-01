@@ -92,6 +92,38 @@ void main() {
       expect(edgeContactValidator.isAngleInsideSafeZone(missAngle), isFalse);
     });
 
+    test(
+      'returns relative position for the ball center inside the safe zone',
+      () {
+        const relativeValidator = GameCollisionValidator(
+          circleRadius: 100,
+          ballRadius: 10,
+          safeZoneStartAngle: 1,
+          safeZoneSweepAngle: 2,
+        );
+
+        final result = relativeValidator.validateAngle(ballAngle: 2);
+
+        expect(result.relativePositionInSafeZone, closeTo(0.5, 0.0001));
+      },
+    );
+
+    test(
+      'returns no relative position when ball center is outside safe zone',
+      () {
+        const relativeValidator = GameCollisionValidator(
+          circleRadius: 100,
+          ballRadius: 10,
+          safeZoneStartAngle: 1,
+          safeZoneSweepAngle: 1,
+        );
+
+        final result = relativeValidator.validateAngle(ballAngle: 2.5);
+
+        expect(result.relativePositionInSafeZone, isNull);
+      },
+    );
+
     test('counts target edge contact when ball overlaps the target marker', () {
       const targetValidator = GameCollisionValidator(
         circleRadius: 100,

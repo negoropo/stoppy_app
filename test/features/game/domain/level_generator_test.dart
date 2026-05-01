@@ -90,6 +90,47 @@ void main() {
       expect(result.difficultyState, same(state));
       expect(result.increasedVariable, isNull);
     });
+
+    test('decreaseRandomDifficulty keeps minimum state unchanged', () {
+      final generator = LevelGenerator(random: math.Random(1));
+      const state = DifficultyState.initial();
+
+      final result = generator.decreaseRandomDifficulty(state);
+
+      expect(result.difficultyState, same(state));
+      expect(result.decreasedVariable, isNull);
+      expect(result.difficultyState.levels, everyElement(0));
+    });
+
+    test(
+      'decreaseRandomDifficulty decreases exactly one positive variable',
+      () {
+        final generator = LevelGenerator(random: math.Random(1));
+        final state = DifficultyState(
+          ballSpeedLevel: 0,
+          ballSizeLevel: 0,
+          stopTimeLevel: 0,
+          safeZoneSizeLevel: 2,
+          safeZoneSpeedLevel: 0,
+          targetSpeedLevel: 0,
+        );
+
+        final result = generator.decreaseRandomDifficulty(state);
+        final changedLevels = List.generate(
+          state.levels.length,
+          (index) => result.difficultyState.levels[index] - state.levels[index],
+        );
+
+        expect(result.decreasedVariable, DifficultyVariable.safeZoneSize);
+        expect(changedLevels.where((change) => change == -1), hasLength(1));
+        expect(changedLevels.where((change) => change != 0), hasLength(1));
+        expect(result.difficultyState.safeZoneSizeLevel, 1);
+        expect(
+          result.difficultyState.levels,
+          everyElement(greaterThanOrEqualTo(0)),
+        );
+      },
+    );
   });
 
   group('LevelGenerator', () {

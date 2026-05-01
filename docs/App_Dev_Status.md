@@ -719,14 +719,6 @@ Implement the dynamic difficulty progression system.
 
 Session 6 — Run Points (RP)
 
-Planned tasks:
-
-* [ ] Define Gold/Silver/Bronze reward zones
-* [ ] Calculate RP rewards from hit result
-* [ ] Track RP during a run
-* [ ] Display RP feedback
-* [ ] Prepare reward choice system
-
 ---
 
 ### 📊 Progress Update
@@ -743,4 +735,108 @@ Planned tasks:
 ### 🧭 Current State
 
 Current session: Session 6 — Run Points (RP)  
+Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 6 — Run Points (RP)
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the RP (Run Points) economy system and player decision layer.
+
+---
+
+### 📦 Deliverables
+
+* [x] RP reward system (Gold / Silver / Bronze)
+* [x] Reward calculation based on safe zone position
+* [x] RP accumulation during run
+* [x] Debug feedback with RP details
+* [x] Reward overlay after successful hit
+* [x] Player decision system implemented
+* [x] Increase difficulty (random — free)
+* [x] Increase difficulty (chosen — 2 RP)
+* [x] Skip difficulty increase — 5 RP
+* [x] Decrease difficulty (random — 10 RP)
+* [x] Decrease difficulty (chosen — 15 RP)
+* [x] Buy life — 20 RP (state only, no usage yet)
+
+---
+
+### 🛠️ Work Done
+
+* Implemented RunPointRewardCalculator with deterministic tier mapping
+* Connected RP rewards to hit validation system
+* Added total RP tracking during gameplay
+* Implemented full reward menu overlay (PostHitRewardOverlay)
+* Integrated all actions defined in Game_Rules.md
+* Added difficulty increase/decrease logic (random and chosen)
+* Added life purchase system (state only)
+* Ensured correct flow separation:
+
+  * Buy life does NOT advance level
+  * All other actions advance level
+* Refactored overlay into separate widget for UI/logic separation
+
+---
+
+### ⚠️ Notes / Decisions
+
+* RP system is fully deterministic and based on ball center position
+* Safe zone visual segmentation matches RP tiers
+* Life system is partially implemented (purchase only)
+* Life consumption will be implemented in Session 7
+* Economy layer is now complete and stable
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze (no issues)
+* [x] flutter test (passing)
+* [x] RP correctly awarded based on hit position
+* [x] RP deducted correctly for all actions
+* [x] Buy life increases life count and does not advance level
+* [x] Difficulty changes correctly applied
+* [x] Overlay flow stable (no freezes)
+
+---
+
+### 📌 Next Session
+
+Session 7 — Lives system
+
+Planned tasks:
+
+* [ ] Implement life consumption on failure
+* [ ] Allow retry when player has lives
+* [ ] Prevent game over if lives > 0
+* [ ] Handle game over state when lives = 0
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* 🔄 Session 7 — Lives system (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 7 — Lives system
 Status: Ready ⏳

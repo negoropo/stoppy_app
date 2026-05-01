@@ -50,6 +50,9 @@ class GameCollisionValidator {
       // not reached the target marker itself.
       isTargetHit: targetDistance <= targetToleranceAngle + edgeContactAngle,
       targetAngularDistance: targetDistance,
+      relativePositionInSafeZone: relativePositionInSafeZone(
+        normalizedBallAngle,
+      ),
     );
   }
 
@@ -75,6 +78,44 @@ class GameCollisionValidator {
       startAngle: expandedStartAngle,
       sweepAngle: expandedSweepAngle,
     );
+  }
+
+  double? relativePositionInSafeZone(double angle) {
+    // RP uses the ball center only. This intentionally checks the original
+    // safe-zone arc, not the ball-radius-expanded collision arc.
+    return relativePositionInArc(
+      angle: angle,
+      startAngle: safeZoneStartAngle,
+      sweepAngle: safeZoneSweepAngle,
+    );
+  }
+
+  double? relativePositionInArc({
+    required double angle,
+    required double startAngle,
+    required double sweepAngle,
+  }) {
+    final normalizedSweep = sweepAngle.abs();
+
+    if (normalizedSweep == 0) {
+      return null;
+    }
+
+    if (normalizedSweep >= fullCircleRadians) {
+      return 0;
+    }
+
+    final normalizedAngle = normalizeAngle(angle);
+    final normalizedStart = normalizeAngle(startAngle);
+    final distanceFromStart = sweepAngle >= 0
+        ? _clockwiseDistance(normalizedStart, normalizedAngle)
+        : _clockwiseDistance(normalizedAngle, normalizedStart);
+
+    if (distanceFromStart > normalizedSweep) {
+      return null;
+    }
+
+    return distanceFromStart / normalizedSweep;
   }
 
   bool isAngleInsideArc({
@@ -112,6 +153,10 @@ class GameCollisionValidator {
     // The shortest path between two points on a circle may cross the 0-radian
     // boundary, so distances larger than half a circle must wrap backward.
     return math.min(distance, fullCircleRadians - distance);
+  }
+
+  static double _clockwiseDistance(double startAngle, double endAngle) {
+    return normalizeAngle(endAngle - startAngle);
   }
 
   double angleFromProgress(double progress) {

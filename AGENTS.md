@@ -19,7 +19,7 @@ The project is currently in early development.
 
 Session 6 completed.
 
-Current session: Session 6 — Run Points (RP)
+Current session: Session 7 — Lives system
 
 ---
 

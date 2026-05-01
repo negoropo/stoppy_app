@@ -89,6 +89,41 @@ class LevelGenerator {
     );
   }
 
+  DifficultyDecreaseResult decreaseRandomDifficulty(
+    DifficultyState difficultyState,
+  ) {
+    if (difficultyState.isAtMinimum) {
+      return DifficultyDecreaseResult(
+        difficultyState: difficultyState,
+        decreasedVariable: null,
+      );
+    }
+
+    // Only variables above zero can be selected. This guarantees the paid
+    // decrease option never crosses below the minimum difficulty contract.
+    final availableVariables = <DifficultyVariable>[
+      if (difficultyState.ballSpeedLevel > DifficultyState.minLevel)
+        DifficultyVariable.ballSpeed,
+      if (difficultyState.ballSizeLevel > DifficultyState.minLevel)
+        DifficultyVariable.ballSize,
+      if (difficultyState.stopTimeLevel > DifficultyState.minLevel)
+        DifficultyVariable.stopTime,
+      if (difficultyState.safeZoneSizeLevel > DifficultyState.minLevel)
+        DifficultyVariable.safeZoneSize,
+      if (difficultyState.safeZoneSpeedLevel > DifficultyState.minLevel)
+        DifficultyVariable.safeZoneSpeed,
+      if (difficultyState.targetSpeedLevel > DifficultyState.minLevel)
+        DifficultyVariable.targetSpeed,
+    ];
+    final selectedVariable =
+        availableVariables[_random.nextInt(availableVariables.length)];
+
+    return DifficultyDecreaseResult(
+      difficultyState: difficultyState.decreaseVariable(selectedVariable),
+      decreasedVariable: selectedVariable,
+    );
+  }
+
   static Duration ballRotationDurationForLevel(int level) {
     _validateLevel(level);
 
@@ -228,4 +263,14 @@ class DifficultyAdvanceResult {
 
   final DifficultyState difficultyState;
   final DifficultyVariable? increasedVariable;
+}
+
+class DifficultyDecreaseResult {
+  const DifficultyDecreaseResult({
+    required this.difficultyState,
+    required this.decreasedVariable,
+  });
+
+  final DifficultyState difficultyState;
+  final DifficultyVariable? decreasedVariable;
 }

@@ -4,17 +4,30 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'config/game_geometry_config.dart';
+import 'package:stoppy_app/core/constants/debug_constants.dart';
 import 'domain/level_generator.dart';
 import 'domain/models/difficulty_state.dart';
 import 'domain/models/game_level_config.dart';
+import 'domain/models/reward_menu_action.dart';
 import 'engine/game_collision_validator.dart';
-import 'engine/hit_validation_result.dart';
 import 'engine/game_motion_calculator.dart';
+import 'engine/hit_validation_result.dart';
+import 'engine/run_point_reward_calculator.dart';
+import 'engine/run_point_reward_result.dart';
 import 'rendering/game_area_painter.dart';
-import 'package:stoppy_app/core/constants/debug_constants.dart';
+import 'widgets/post_hit_reward_overlay.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  const GameScreen({
+    super.key,
+    this.levelGenerator,
+    this.initialDifficultyState,
+    this.initialLevelConfig,
+  });
+
+  final LevelGenerator? levelGenerator;
+  final DifficultyState? initialDifficultyState;
+  final GameLevelConfig? initialLevelConfig;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -25,6 +38,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const GameGeometryConfig _baseGeometry = GameGeometryConfig();
   static const double _gameAreaPadding = 24;
   static const GameMotionCalculator _motionCalculator = GameMotionCalculator();
+  static const RunPointRewardCalculator _rpRewardCalculator =
+      RunPointRewardCalculator();
 
   late final LevelGenerator _levelGenerator;
   late DifficultyState _difficultyState;
@@ -35,15 +50,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   AnimationController? _targetController;
 
   HitValidationResult? _lastHitResult;
-  DifficultyVariable? _lastIncreasedVariable;
+  RunPointRewardResult? _lastRpRewardResult;
+  DifficultyVariable? _lastChangedVariable;
+  bool _lastChangeWasIncrease = true;
+  int _totalRunPoints = 0;
+  int _lives = 0;
+  bool _isRewardOverlayVisible = false;
+  bool _isProcessingHit = false;
   Timer? _feedbackTimer;
 
   @override
   void initState() {
     super.initState();
-    _levelGenerator = LevelGenerator();
-    _difficultyState = _levelGenerator.createInitialDifficultyState();
-    _levelConfig = _levelGenerator.generateLevelConfig(_difficultyState);
+    _levelGenerator = widget.levelGenerator ?? LevelGenerator();
+    _difficultyState =
+        widget.initialDifficultyState ??
+        _levelGenerator.createInitialDifficultyState();
+    _levelConfig =
+        widget.initialLevelConfig ??
+        _levelGenerator.generateLevelConfig(_difficultyState);
     _geometry = _geometryForLevelConfig(_levelConfig);
     _ballController = AnimationController(
       vsync: this,
@@ -83,6 +108,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     updateController(_createRepeatingController(duration));
   }
 
+  void _stopAnimations() {
+    _ballController.stop();
+    _safeZoneController?.stop();
+    _targetController?.stop();
+  }
+
+  void _resumeAnimations() {
+    _ballController.repeat();
+    _safeZoneController?.repeat();
+    _targetController?.repeat();
+  }
+
   double _currentBallAngle() {
     return _motionCalculator.movingAngle(
       startAngle: _levelConfig.ballStartAngle,
@@ -111,12 +148,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return _baseGeometry.copyWith(
       ballRadius: levelConfig.ballRadius,
       safeZoneSweepAngle: levelConfig.safeZoneSweepAngle,
-      safeZoneStartAngle: _currentSafeZoneStartAngle(),
-      targetAngle: _currentTargetAngle(),
+      safeZoneStartAngle: levelConfig.safeZoneStartAngle,
+      targetAngle: levelConfig.targetStartAngle,
     );
   }
 
   void _validateCurrentBallPosition(double circleRadius) {
+    if (_isRewardOverlayVisible || _isProcessingHit) {
+      return;
+    }
+
+    _isProcessingHit = true;
     final validator = GameCollisionValidator(
       circleRadius: circleRadius,
       ballRadius: _geometry.ballRadius,
@@ -126,15 +168,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       targetToleranceAngle: _geometry.targetToleranceAngle,
     );
     final result = validator.validateAngle(ballAngle: _currentBallAngle());
+    final rpRewardResult = _rpRewardCalculator.calculate(result);
+    final isLevelSuccess = _isLevelSuccess(result);
+    final shouldShowRewardOverlay = isLevelSuccess && rpRewardResult.rewarded;
 
     setState(() {
       _lastHitResult = result;
-
-      if (_isLevelSuccess(result)) {
-        _advanceToNextDebugLevel();
-      }
+      _lastRpRewardResult = rpRewardResult;
+      _totalRunPoints += rpRewardResult.rpAmount;
+      _isRewardOverlayVisible = shouldShowRewardOverlay;
     });
 
+    if (shouldShowRewardOverlay) {
+      _stopAnimations();
+      return;
+    }
+
+    _startTemporaryHitFeedbackTimer();
+  }
+
+  void _startTemporaryHitFeedbackTimer() {
     _feedbackTimer?.cancel();
     _feedbackTimer = Timer(_feedbackDuration, () {
       if (!mounted) {
@@ -143,6 +196,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
       setState(() {
         _lastHitResult = null;
+        _lastRpRewardResult = null;
+        _isProcessingHit = false;
       });
     });
   }
@@ -151,14 +206,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return result.isInsideSafeZone || result.isTargetHit;
   }
 
-  void _advanceToNextDebugLevel() {
-    final advanceResult = _levelGenerator.advanceDifficulty(_difficultyState);
+  void _advanceToNextDebugLevel({required RewardMenuAction action}) {
+    final (nextDifficultyState, changedVariable) = _nextDifficultyForAction(
+      action,
+    );
     final nextLevelConfig = _levelGenerator.generateLevelConfig(
-      advanceResult.difficultyState,
+      nextDifficultyState,
     );
 
-    _difficultyState = advanceResult.difficultyState;
-    _lastIncreasedVariable = advanceResult.increasedVariable;
+    _difficultyState = nextDifficultyState;
+    _lastChangedVariable = changedVariable;
+    _lastChangeWasIncrease = !action.isDifficultyDecrease;
     _levelConfig = nextLevelConfig;
     _ballController.duration = nextLevelConfig.ballRotationDuration;
     _ballController
@@ -179,6 +237,59 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       },
     );
     _geometry = _geometryForLevelConfig(nextLevelConfig);
+  }
+
+  (DifficultyState, DifficultyVariable?) _nextDifficultyForAction(
+    RewardMenuAction action,
+  ) {
+    if (action == RewardMenuAction.nextLevel) {
+      final advanceResult = _levelGenerator.advanceDifficulty(_difficultyState);
+      return (advanceResult.difficultyState, advanceResult.increasedVariable);
+    }
+
+    if (action == RewardMenuAction.decreaseRandomDifficulty) {
+      final decreaseResult = _levelGenerator.decreaseRandomDifficulty(
+        _difficultyState,
+      );
+      return (decreaseResult.difficultyState, decreaseResult.decreasedVariable);
+    }
+
+    final variable = action.variable;
+    if (variable == null) {
+      return (_difficultyState, null);
+    }
+
+    if (action.isChosenDifficultyDecrease) {
+      return (_difficultyState.decreaseVariable(variable), variable);
+    }
+
+    return (_difficultyState.increaseVariable(variable), variable);
+  }
+
+  void _selectRewardOption(RewardMenuAction action) {
+    if (action == RewardMenuAction.buyLife) {
+
+      setState(() {
+        _totalRunPoints -= action.rpCost;
+        _lives += 1;
+        _isRewardOverlayVisible = false;
+        _lastHitResult = null;
+        _lastRpRewardResult = null;
+        _isProcessingHit = false;
+      });
+      _resumeAnimations();
+      return;
+    }
+
+    _advanceToNextDebugLevel(action: action);
+
+    setState(() {
+      _totalRunPoints -= action.rpCost;
+      _isRewardOverlayVisible = false;
+      _lastHitResult = null;
+      _lastRpRewardResult = null;
+      _isProcessingHit = false;
+    });
   }
 
   @override
@@ -230,19 +341,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    if (_lastHitResult != null)
-                      _DebugHitFeedback(result: _lastHitResult!),
+                    if (_lastHitResult != null && !_isRewardOverlayVisible)
+                      _DebugHitFeedback(
+                        result: _lastHitResult!,
+                        rpRewardResult: _lastRpRewardResult!,
+                        totalRunPoints: _totalRunPoints,
+                      ),
+                    if (_isRewardOverlayVisible && _lastRpRewardResult != null)
+                      PostHitRewardOverlay(
+                        difficultyState: _difficultyState,
+                        rpRewardResult: _lastRpRewardResult!,
+                        totalRunPoints: _totalRunPoints,
+                        onSelected: _selectRewardOption,
+                      ),
                     if (kShowDebugOverlay)
-                    Positioned(
-                      top: 16,
-                      left: 16,
-                      child: IgnorePointer(
-                        child: _DebugDifficultyOverlay(
-                          difficultyState: _difficultyState,
-                          lastIncreasedVariable: _lastIncreasedVariable,
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        child: IgnorePointer(
+                          child: _DebugDifficultyOverlay(
+                            difficultyState: _difficultyState,
+                            lives: _lives,
+                            lastChangedVariable: _lastChangedVariable,
+                            lastChangeWasIncrease: _lastChangeWasIncrease,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               );
@@ -257,11 +381,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 class _DebugDifficultyOverlay extends StatelessWidget {
   const _DebugDifficultyOverlay({
     required this.difficultyState,
-    required this.lastIncreasedVariable,
+    required this.lives,
+    required this.lastChangedVariable,
+    required this.lastChangeWasIncrease,
   });
 
   final DifficultyState difficultyState;
-  final DifficultyVariable? lastIncreasedVariable;
+  final int lives;
+  final DifficultyVariable? lastChangedVariable;
+  final bool lastChangeWasIncrease;
 
   @override
   Widget build(BuildContext context) {
@@ -298,10 +426,11 @@ class _DebugDifficultyOverlay extends StatelessWidget {
               Text('safeZoneSizeLevel: ${difficultyState.safeZoneSizeLevel}'),
               Text('safeZoneSpeedLevel: ${difficultyState.safeZoneSpeedLevel}'),
               Text('targetSpeedLevel: ${difficultyState.targetSpeedLevel}'),
+              Text('lives: $lives'),
               const SizedBox(height: 6),
               Text(
-                'last increased: '
-                '${lastIncreasedVariable?.debugLabel ?? 'none'}',
+                '${lastChangeWasIncrease ? 'last increased' : 'last decreased'}: '
+                '${lastChangedVariable?.debugLabel ?? 'none'}',
               ),
             ],
           ),
@@ -312,9 +441,15 @@ class _DebugDifficultyOverlay extends StatelessWidget {
 }
 
 class _DebugHitFeedback extends StatelessWidget {
-  const _DebugHitFeedback({required this.result});
+  const _DebugHitFeedback({
+    required this.result,
+    required this.rpRewardResult,
+    required this.totalRunPoints,
+  });
 
   final HitValidationResult result;
+  final RunPointRewardResult rpRewardResult;
+  final int totalRunPoints;
 
   @override
   Widget build(BuildContext context) {
@@ -345,6 +480,36 @@ class _DebugHitFeedback extends StatelessWidget {
                     ? const Color(0xFFFFD166)
                     : const Color(0xFFD6DEE8),
               ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              result.relativePositionInSafeZone == null
+                  ? 'CENTER OUTSIDE SAFE ZONE'
+                  : 'CENTER IN SAFE ZONE',
+              style: _feedbackTextStyle(
+                result.relativePositionInSafeZone == null
+                    ? const Color(0xFFD6DEE8)
+                    : const Color(0xFF39D98A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'RP tier: ${rpRewardResult.rewardTier.name}',
+              style: _feedbackTextStyle(const Color(0xFFD6DEE8)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'RP gained: ${rpRewardResult.rpAmount}',
+              style: _feedbackTextStyle(
+                rpRewardResult.rewarded
+                    ? const Color(0xFF39D98A)
+                    : const Color(0xFFD6DEE8),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'total RP: $totalRunPoints',
+              style: _feedbackTextStyle(const Color(0xFFFFD166)),
             ),
           ],
         ),
