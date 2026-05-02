@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/models/difficulty_state.dart';
 import '../domain/models/reward_menu_action.dart';
+import '../engine/precision_point_result.dart';
 import '../engine/run_point_reward_result.dart';
 
 class PostHitRewardOverlay extends StatelessWidget {
@@ -9,6 +10,7 @@ class PostHitRewardOverlay extends StatelessWidget {
     super.key,
     required this.difficultyState,
     required this.rpRewardResult,
+    required this.precisionPointResult,
     required this.totalRunPoints,
     required this.onSelected,
     this.warningMessage,
@@ -16,6 +18,7 @@ class PostHitRewardOverlay extends StatelessWidget {
 
   final DifficultyState difficultyState;
   final RunPointRewardResult rpRewardResult;
+  final PrecisionPointResult precisionPointResult;
   final int totalRunPoints;
   final ValueSetter<RewardMenuAction> onSelected;
   final String? warningMessage;
@@ -68,6 +71,26 @@ class PostHitRewardOverlay extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
+              Text(
+                '+${precisionPointResult.awardedPP} PP',
+                style: const TextStyle(
+                  color: Color(0xFF7CC7FF),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Precision Points',
+                style: TextStyle(
+                  color: Color(0xFFD6DEE8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 10),
               Text(
                 'total RP: $totalRunPoints',
                 style: const TextStyle(

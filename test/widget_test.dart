@@ -56,6 +56,8 @@ void main() {
 
     expect(find.text('Reward'), findsOneWidget);
     expect(find.textContaining('RP gained:'), findsOneWidget);
+    expect(find.textContaining('+'), findsOneWidget);
+    expect(find.text('Precision Points'), findsOneWidget);
     expect(find.textContaining('total RP:'), findsOneWidget);
     expect(find.text('Next level'), findsOneWidget);
     expect(find.text('Do not increase difficulty'), findsOneWidget);
@@ -93,6 +95,7 @@ void main() {
 
     expect(find.text('DEBUG ONLY - Difficulty'), findsOneWidget);
     expect(find.text('Level: 1'), findsOneWidget);
+    expect(find.text('PP: 0'), findsOneWidget);
     expect(find.text('Time: 30s'), findsOneWidget);
     expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
     expect(find.text('ballSizeLevel: 0'), findsOneWidget);
@@ -132,6 +135,8 @@ void main() {
 
     expect(find.text('Reward'), findsOneWidget);
     expect(find.text('RP gained: 0'), findsOneWidget);
+    expect(find.textContaining('+'), findsOneWidget);
+    expect(find.text('Precision Points'), findsOneWidget);
     expect(find.text('total RP: 0'), findsOneWidget);
     expect(
       find.text(
@@ -176,6 +181,8 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.text('+1000 PP'), findsOneWidget);
+    expect(find.text('Precision Points'), findsOneWidget);
     expect(find.text('Reward'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
 
@@ -185,6 +192,7 @@ void main() {
     expect(find.text('Reward'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
     expect(find.text('Level: 2'), findsOneWidget);
+    expect(find.text('PP: 1000'), findsOneWidget);
     expect(find.text('last increased: none'), findsOneWidget);
     expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
     expect(find.text('total RP: 5'), findsNothing);
@@ -269,5 +277,6 @@ void main() {
     expect(find.text('Game Over'), findsNothing);
     expect(find.text('Time: 30s'), findsOneWidget);
     expect(find.text('Level: 1'), findsOneWidget);
+    expect(find.text('PP: 0'), findsOneWidget);
   });
 }

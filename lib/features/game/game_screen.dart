@@ -12,6 +12,8 @@ import 'domain/models/reward_menu_action.dart';
 import 'engine/game_collision_validator.dart';
 import 'engine/game_motion_calculator.dart';
 import 'engine/hit_validation_result.dart';
+import 'engine/precision_point_calculator.dart';
+import 'engine/precision_point_result.dart';
 import 'engine/run_point_reward_calculator.dart';
 import 'engine/run_point_reward_result.dart';
 import 'engine/run_point_reward_tier.dart';
@@ -42,6 +44,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const GameMotionCalculator _motionCalculator = GameMotionCalculator();
   static const RunPointRewardCalculator _rpRewardCalculator =
       RunPointRewardCalculator();
+  static const PrecisionPointCalculator _precisionPointCalculator =
+      PrecisionPointCalculator();
   static const RunPointRewardResult _noRpRewardResult = RunPointRewardResult(
     rewardTier: RunPointRewardTier.none,
     rpAmount: 0,
@@ -64,11 +68,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   HitValidationResult? _lastHitResult;
   RunPointRewardResult? _lastRpRewardResult;
+  PrecisionPointResult? _pendingPrecisionPointResult;
   DifficultyVariable? _lastChangedVariable;
   bool _lastChangeWasIncrease = true;
   int _totalRunPoints = 0;
+  int _totalPrecisionPoints = 0;
   int _lives = 0;
   int _currentRunLevel = 1;
+  int _committedRunPoints = 0;
   bool _isRewardOverlayVisible = false;
   bool _isProcessingHit = false;
   bool _isGameOver = false;
@@ -217,15 +224,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
 
     _isProcessingHit = true;
+    final currentBallAngle = _currentBallAngle();
+    final currentTargetAngle = _currentTargetAngle();
     final validator = GameCollisionValidator(
       circleRadius: circleRadius,
       ballRadius: _geometry.ballRadius,
       safeZoneStartAngle: _currentSafeZoneStartAngle(),
       safeZoneSweepAngle: _geometry.safeZoneSweepAngle,
-      targetAngle: _currentTargetAngle(),
+      targetAngle: currentTargetAngle,
       targetToleranceAngle: _geometry.targetToleranceAngle,
     );
-    final result = validator.validateAngle(ballAngle: _currentBallAngle());
+    final result = validator.validateAngle(ballAngle: currentBallAngle);
     final isLevelSuccess = _isLevelSuccess(result);
 
     if (!isLevelSuccess) {
@@ -233,8 +242,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
+    final precisionPointResult = _precisionPointCalculator.calculate(
+      ballAngle: result.ballAngle,
+      targetAngle: currentTargetAngle,
+      // PP is awarded for every successful action that advances the run level.
+      // Failures and timeouts do not reach this branch and therefore award 0.
+      didAdvanceLevel: isLevelSuccess,
+    );
+
     if (result.isTargetHit && !result.isInsideSafeZone) {
-      _showTargetOutsideSafeZoneReward(result);
+      _showTargetOutsideSafeZoneReward(result, precisionPointResult);
       return;
     }
 
@@ -244,6 +261,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     setState(() {
       _lastHitResult = result;
       _lastRpRewardResult = rpRewardResult;
+      _pendingPrecisionPointResult = precisionPointResult;
       _totalRunPoints += rpRewardResult.rpAmount;
       _isRewardOverlayVisible = shouldShowRewardOverlay;
     });
@@ -283,6 +301,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     setState(() {
       _lastHitResult = null;
       _lastRpRewardResult = null;
+      _pendingPrecisionPointResult = null;
       _failureMessage = "Time's up! Using 1 life...";
     });
   }
@@ -295,6 +314,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _isGameOver = true;
       _lastHitResult = null;
       _lastRpRewardResult = null;
+      _pendingPrecisionPointResult = null;
       _failureMessage = null;
       _targetOutsideSafeZoneMessage = null;
       _isRewardOverlayVisible = false;
@@ -303,13 +323,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _showTargetOutsideSafeZoneReward(HitValidationResult result) {
+  void _showTargetOutsideSafeZoneReward(
+    HitValidationResult result,
+    PrecisionPointResult precisionPointResult,
+  ) {
     _stopAnimations();
     _feedbackTimer?.cancel();
 
     setState(() {
       _lastHitResult = result;
       _lastRpRewardResult = _targetOutsideSafeZoneRewardResult;
+      _pendingPrecisionPointResult = precisionPointResult;
       _totalRunPoints += _targetOutsideSafeZoneRpReward;
       _targetOutsideSafeZoneMessage =
           "You've hit the target outside the Safe Zone! Congratulations! "
@@ -348,9 +372,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     setState(() {
       _currentRunLevel += 1;
+      if (_pendingPrecisionPointResult != null) {
+        _totalPrecisionPoints += _pendingPrecisionPointResult!.awardedPP;
+      }
+      _committedRunPoints = _totalRunPoints;
       _targetOutsideSafeZoneMessage = null;
       _lastHitResult = null;
       _lastRpRewardResult = null;
+      _pendingPrecisionPointResult = null;
       _isProcessingHit = false;
     });
     _startStopTimeCountdown();
@@ -408,6 +437,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     setState(() {
       _lastHitResult = result;
       _lastRpRewardResult = _noRpRewardResult;
+      _pendingPrecisionPointResult = null;
       _failureMessage = 'Missed safe zone and target. Using 1 life.';
     });
   }
@@ -419,6 +449,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _lives -= 1;
       _lastHitResult = null;
       _lastRpRewardResult = null;
+      _pendingPrecisionPointResult = null;
       _failureMessage = null;
       _isRewardOverlayVisible = false;
       _isProcessingHit = false;
@@ -436,6 +467,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _isGameOver = true;
       _lastHitResult = result;
       _lastRpRewardResult = _noRpRewardResult;
+      _pendingPrecisionPointResult = null;
       _failureMessage = null;
       _targetOutsideSafeZoneMessage = null;
       _isRewardOverlayVisible = false;
@@ -496,10 +528,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     setState(() {
       _totalRunPoints = 0;
+      _totalPrecisionPoints = 0;
+      _committedRunPoints = 0;
       _lives = 0;
       _currentRunLevel = 1;
       _lastHitResult = null;
       _lastRpRewardResult = null;
+      _pendingPrecisionPointResult = null;
       _failureMessage = null;
       _targetOutsideSafeZoneMessage = null;
       _isRewardOverlayVisible = false;
@@ -548,8 +583,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   (DifficultyState, DifficultyVariable?) _nextDifficultyForAction(
     RewardMenuAction action,
   ) {
-    if (action == RewardMenuAction.nextLevel ||
-        action == RewardMenuAction.buyLife) {
+    if (action == RewardMenuAction.nextLevel) {
       final advanceResult = _levelGenerator.advanceDifficulty(_difficultyState);
       return (advanceResult.difficultyState, advanceResult.increasedVariable);
     }
@@ -574,17 +608,27 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _selectRewardOption(RewardMenuAction action) {
+    if (action == RewardMenuAction.buyLife) {
+      setState(() {
+        _totalRunPoints -= action.rpCost;
+        _lives += 1;
+      });
+      return;
+    }
+
     _advanceToNextDebugLevel(action: action);
 
     setState(() {
       _currentRunLevel += 1;
-      _totalRunPoints -= action.rpCost;
-      if (action == RewardMenuAction.buyLife) {
-        _lives += 1;
+      if (_pendingPrecisionPointResult != null) {
+        _totalPrecisionPoints += _pendingPrecisionPointResult!.awardedPP;
       }
+      _totalRunPoints -= action.rpCost;
+      _committedRunPoints = _totalRunPoints;
       _isRewardOverlayVisible = false;
       _lastHitResult = null;
       _lastRpRewardResult = null;
+      _pendingPrecisionPointResult = null;
       _targetOutsideSafeZoneMessage = null;
       _failureMessage = null;
       _isProcessingHit = false;
@@ -611,96 +655,107 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _validateCurrentBallPosition(circleRadius),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox.square(
-                      dimension: availableDimension,
-                      child: Padding(
-                        padding: EdgeInsets.all(_gameAreaPadding),
-                        child: AnimatedBuilder(
-                          animation: Listenable.merge([
-                            _ballController,
-                            ?_safeZoneController,
-                            ?_targetController,
-                          ]),
-                          builder: (context, child) {
-                            final animatedGeometry = _geometry.copyWith(
-                              safeZoneStartAngle: _currentSafeZoneStartAngle(),
-                              targetAngle: _currentTargetAngle(),
-                            );
+                child: SizedBox.expand(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox.square(
+                        dimension: availableDimension,
+                        child: Padding(
+                          padding: EdgeInsets.all(_gameAreaPadding),
+                          child: AnimatedBuilder(
+                            animation: Listenable.merge([
+                              _ballController,
+                              ?_safeZoneController,
+                              ?_targetController,
+                            ]),
+                            builder: (context, child) {
+                              final animatedGeometry = _geometry.copyWith(
+                                safeZoneStartAngle: _currentSafeZoneStartAngle(),
+                                targetAngle: _currentTargetAngle(),
+                              );
 
-                            return CustomPaint(
-                              painter: GameAreaPainter(
-                                ballAngle: _currentBallAngle(),
-                                geometry: animatedGeometry,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 16,
-                      right: 16,
-                      child: _RunStatusOverlay(
-                        runLevel: _currentRunLevel,
-                        remainingSeconds: _remainingStopTimeSeconds,
-                      ),
-                    ),
-                    if (_lastHitResult != null &&
-                        !_isRewardOverlayVisible &&
-                        !_isGameOver &&
-                        _targetOutsideSafeZoneMessage == null &&
-                        _failureMessage == null)
-                      _DebugHitFeedback(
-                        result: _lastHitResult!,
-                        rpRewardResult: _lastRpRewardResult!,
-                        totalRunPoints: _totalRunPoints,
-                      ),
-                    if (_failureMessage != null)
-                      _FailureFeedbackOverlay(
-                        message: _failureMessage!,
-                        result: _lastHitResult,
-                        rpRewardResult: _lastRpRewardResult,
-                        totalRunPoints: _totalRunPoints,
-                        onConfirm: _confirmLifeUsageAndRetry,
-                      ),
-                    if (_targetOutsideSafeZoneMessage != null)
-                      _TargetOutsideSafeZoneOverlay(
-                        message: _targetOutsideSafeZoneMessage!,
-                        onConfirm: _confirmTargetOutsideSafeZoneAdvance,
-                      ),
-                    if (_isRewardOverlayVisible && _lastRpRewardResult != null)
-                      PostHitRewardOverlay(
-                        difficultyState: _difficultyState,
-                        rpRewardResult: _lastRpRewardResult!,
-                        totalRunPoints: _totalRunPoints,
-                        warningMessage: _rewardOverlayWarningMessage(
-                          _lastHitResult!,
-                          _lastRpRewardResult!,
-                        ),
-                        onSelected: _selectRewardOption,
-                      ),
-                    if (_isGameOver)
-                      _GameOverOverlay(
-                        messages: _gameOverMessages,
-                        onRestart: _restartRun,
-                      ),
-                    if (kShowDebugOverlay)
-                      Positioned(
-                        top: 16,
-                        left: 16,
-                        child: IgnorePointer(
-                          child: _DebugDifficultyOverlay(
-                            difficultyState: _difficultyState,
-                            lives: _lives,
-                            lastChangedVariable: _lastChangedVariable,
-                            lastChangeWasIncrease: _lastChangeWasIncrease,
+                              return CustomPaint(
+                                painter: GameAreaPainter(
+                                  ballAngle: _currentBallAngle(),
+                                  geometry: animatedGeometry,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
-                  ],
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: _RunStatusOverlay(
+                          runLevel: _currentRunLevel,
+                          totalPrecisionPoints: _totalPrecisionPoints,
+                          totalRunPoints: _committedRunPoints,
+                          remainingSeconds: _remainingStopTimeSeconds,
+                        ),
+                      ),
+                      if (_lastHitResult != null &&
+                          !_isRewardOverlayVisible &&
+                          !_isGameOver &&
+                          _targetOutsideSafeZoneMessage == null &&
+                          _failureMessage == null)
+                        _DebugHitFeedback(
+                          result: _lastHitResult!,
+                          rpRewardResult: _lastRpRewardResult!,
+                          totalRunPoints: _totalRunPoints,
+                        ),
+                      if (_failureMessage != null)
+                        _FailureFeedbackOverlay(
+                          message: _failureMessage!,
+                          result: _lastHitResult,
+                          rpRewardResult: _lastRpRewardResult,
+                          totalRunPoints: _totalRunPoints,
+                          onConfirm: _confirmLifeUsageAndRetry,
+                        ),
+                      if (_targetOutsideSafeZoneMessage != null &&
+                          _pendingPrecisionPointResult != null)
+                        _TargetOutsideSafeZoneOverlay(
+                          message: _targetOutsideSafeZoneMessage!,
+                          precisionPointResult: _pendingPrecisionPointResult!,
+                          onConfirm: _confirmTargetOutsideSafeZoneAdvance,
+                        ),
+                      if (_isRewardOverlayVisible &&
+                          _lastRpRewardResult != null &&
+                          _pendingPrecisionPointResult != null)
+                        PostHitRewardOverlay(
+                          difficultyState: _difficultyState,
+                          rpRewardResult: _lastRpRewardResult!,
+                          precisionPointResult: _pendingPrecisionPointResult!,
+                          totalRunPoints: _totalRunPoints,
+                          warningMessage: _rewardOverlayWarningMessage(
+                            _lastHitResult!,
+                            _lastRpRewardResult!,
+                          ),
+                          onSelected: _selectRewardOption,
+                        ),
+                      if (_isGameOver)
+                        _GameOverOverlay(
+                          messages: _gameOverMessages,
+                          totalPrecisionPoints: _totalPrecisionPoints,
+                          runLevel: _currentRunLevel,
+                          onRestart: _restartRun,
+                        ),
+                      if (kShowDebugOverlay)
+                        Positioned(
+                          top: 16,
+                          left: 16,
+                          child: IgnorePointer(
+                            child: _DebugDifficultyOverlay(
+                              difficultyState: _difficultyState,
+                              lives: _lives,
+                              lastChangedVariable: _lastChangedVariable,
+                              lastChangeWasIncrease: _lastChangeWasIncrease,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -776,10 +831,14 @@ class _DebugDifficultyOverlay extends StatelessWidget {
 class _RunStatusOverlay extends StatelessWidget {
   const _RunStatusOverlay({
     required this.runLevel,
+    required this.totalPrecisionPoints,
+    required this.totalRunPoints,
     required this.remainingSeconds,
   });
 
   final int runLevel;
+  final int totalPrecisionPoints;
+  final int totalRunPoints;
   final int remainingSeconds;
 
   @override
@@ -805,6 +864,8 @@ class _RunStatusOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Level: $runLevel'),
+              Text('PP: $totalPrecisionPoints'),
+              Text('RP: $totalRunPoints'),
               Text('Time: ${remainingSeconds}s'),
             ],
           ),
@@ -815,13 +876,23 @@ class _RunStatusOverlay extends StatelessWidget {
 }
 
 class _GameOverOverlay extends StatelessWidget {
-  const _GameOverOverlay({required this.messages, required this.onRestart});
+  const _GameOverOverlay({
+    required this.messages,
+    required this.totalPrecisionPoints,
+    required this.runLevel,
+    required this.onRestart,
+  });
 
   final List<String> messages;
+  final int totalPrecisionPoints;
+  final int runLevel;
   final VoidCallback onRestart;
 
   @override
   Widget build(BuildContext context) {
+    final finalScore = totalPrecisionPoints + (runLevel * 100);
+    final bonusPoints = runLevel * 100;
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xEE101418),
@@ -843,8 +914,9 @@ class _GameOverOverlay extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
+
             ...messages.map(
-              (message) => Padding(
+                  (message) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
                   message,
@@ -858,7 +930,53 @@ class _GameOverOverlay extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+
+            const SizedBox(height: 16),
+
+            const Text(
+              'Final Score = PP + Bonus',
+              style: TextStyle(
+                color: Color(0xFFFFD166),
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            Text(
+              '$finalScore',
+              style: const TextStyle(
+                color: Color(0xFF7CC7FF),
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              'PP: $totalPrecisionPoints',
+              style: const TextStyle(
+                color: Color(0xFFD6DEE8),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              'Bonus (Level $runLevel × 100): $bonusPoints',
+              style: const TextStyle(
+                color: Color(0xFFFFD166),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             FilledButton(
               onPressed: onRestart,
               child: const Text('Restart run'),
@@ -873,10 +991,12 @@ class _GameOverOverlay extends StatelessWidget {
 class _TargetOutsideSafeZoneOverlay extends StatelessWidget {
   const _TargetOutsideSafeZoneOverlay({
     required this.message,
+    required this.precisionPointResult,
     required this.onConfirm,
   });
 
   final String message;
+  final PrecisionPointResult precisionPointResult;
   final VoidCallback onConfirm;
 
   @override
@@ -898,6 +1018,26 @@ class _TargetOutsideSafeZoneOverlay extends StatelessWidget {
               style: const TextStyle(
                 color: Color(0xFFFFD166),
                 fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '+${precisionPointResult.awardedPP} PP',
+              style: const TextStyle(
+                color: Color(0xFF7CC7FF),
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Precision Points',
+              style: TextStyle(
+                color: Color(0xFFD6DEE8),
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0,
               ),

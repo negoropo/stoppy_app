@@ -932,14 +932,6 @@ Implement lives usage, timeout failure, and full run-level flow.
 
 Session 8 — Precision Points (PP)
 
-Planned tasks:
-
-* [ ] Calculate distance to target
-* [ ] Convert precision distance into PP score
-* [ ] Accumulate PP during the run
-* [ ] Display PP to the player
-* [ ] Prepare PP for future leaderboard usage
-
 ---
 
 ### 📊 Progress Update
@@ -958,4 +950,125 @@ Planned tasks:
 ### 🧭 Current State
 
 Current session: Session 8 — Precision Points (PP)  
+Status: Ready ⏳
+
+
+---
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 8 — Precision Points (PP)
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement a precision-based scoring system independent of Safe Zone size, rewarding player accuracy based on angular distance to the target.
+
+---
+
+### 📦 Deliverables
+
+* [x] PrecisionPointCalculator implemented
+* [x] PrecisionPointResult model created
+* [x] Angular distance-based scoring implemented
+* [x] PP accumulation during run
+* [x] PP displayed to player
+* [x] Final Score system implemented
+* [x] Final Score breakdown displayed
+
+---
+
+### 🛠️ Work Done
+
+* Implemented PrecisionPointCalculator using circular angular distance
+* Normalized distance using shortest arc between ball and target
+* Mapped precision to score range [1, 1000]
+* Ensured:
+  * 1000 PP when perfectly aligned
+  * 1 PP at maximum distance (opposite side of circle)
+* Integrated PP calculation into GameScreen hit validation flow
+* Ensured PP is only awarded on successful level advancement
+* Added pending PP system before level confirmation
+* Added PP accumulation after reward selection
+* Added Final Score calculation:
+  * Final Score = Total PP + (Run Level × 100)
+* Displayed PP gain in:
+  * Reward overlay
+  * Target outside Safe Zone overlay
+* Displayed Final Score and breakdown in Game Over screen
+* Introduced committedRunPoints:
+  * RP only shown in HUD after level advancement decision
+* Updated reward system:
+  * Multiple life purchases allowed before level advancement
+* Expanded tap detection to full screen
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Precision scoring is fully independent from Safe Zone size
+* Circular shortest-path distance is used (handles angle wrapping)
+* PP is only committed after player confirms level advancement
+* Failed hits and timeouts award 0 PP
+* Target outside Safe Zone still awards PP and advances level
+* RP display is delayed using committedRunPoints for better UX clarity
+* Precision system is designed for future leaderboard integration
+
+---
+
+### 🧪 Validation
+
+* [x] PP correctly calculated based on angular distance
+* [x] 1000 PP achieved when perfectly aligned with target
+* [x] Minimum PP correctly awarded at maximum distance
+* [x] No PP awarded on failed hits or timeouts
+* [x] PP only added after level advancement
+* [x] Final Score correctly calculated and displayed
+* [x] Final Score breakdown matches formula
+* [x] RP display updates only after level decision
+* [x] Multiple life purchases work correctly before level advancement
+* [x] Tap detection works across full screen
+* [x] flutter analyze
+* [x] flutter test
+
+---
+
+### 📌 Next Session
+
+Session 9 — Registo/Login
+
+Planned tasks:
+
+* [ ] Create player account system
+* [ ] Implement registration flow
+* [ ] Implement login flow
+* [ ] Validate unique username
+* [ ] Prepare user data model for backend
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* 🔄 Session 9 — Registo/Login (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 9 — Registo/Login  
 Status: Ready ⏳
