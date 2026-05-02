@@ -14,6 +14,7 @@ import 'engine/game_motion_calculator.dart';
 import 'engine/hit_validation_result.dart';
 import 'engine/run_point_reward_calculator.dart';
 import 'engine/run_point_reward_result.dart';
+import 'engine/run_point_reward_tier.dart';
 import 'rendering/game_area_painter.dart';
 import 'widgets/post_hit_reward_overlay.dart';
 
@@ -37,9 +38,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const Duration _feedbackDuration = Duration(milliseconds: 900);
   static const GameGeometryConfig _baseGeometry = GameGeometryConfig();
   static const double _gameAreaPadding = 24;
+  static const int _targetOutsideSafeZoneRpReward = 5;
   static const GameMotionCalculator _motionCalculator = GameMotionCalculator();
   static const RunPointRewardCalculator _rpRewardCalculator =
       RunPointRewardCalculator();
+  static const RunPointRewardResult _noRpRewardResult = RunPointRewardResult(
+    rewardTier: RunPointRewardTier.none,
+    rpAmount: 0,
+    rewarded: false,
+  );
+  static const RunPointRewardResult _targetOutsideSafeZoneRewardResult =
+      RunPointRewardResult(
+        rewardTier: RunPointRewardTier.none,
+        rpAmount: _targetOutsideSafeZoneRpReward,
+        rewarded: true,
+      );
 
   late final LevelGenerator _levelGenerator;
   late DifficultyState _difficultyState;
@@ -55,9 +68,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _lastChangeWasIncrease = true;
   int _totalRunPoints = 0;
   int _lives = 0;
+  int _currentRunLevel = 1;
   bool _isRewardOverlayVisible = false;
   bool _isProcessingHit = false;
+  bool _isGameOver = false;
+  String? _failureMessage;
+  String? _targetOutsideSafeZoneMessage;
+  List<String> _gameOverMessages = const [];
+  int _remainingStopTimeSeconds = 0;
   Timer? _feedbackTimer;
+  Timer? _stopTimeTimer;
 
   @override
   void initState() {
@@ -80,11 +100,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _targetController = _createRepeatingController(
       _levelConfig.targetRotationDuration,
     );
+    _resetStopTimeCountdown();
+    _startStopTimeCountdown();
   }
 
   @override
   void dispose() {
     _feedbackTimer?.cancel();
+    _stopStopTimeCountdown();
     _ballController.dispose();
     _safeZoneController?.dispose();
     _targetController?.dispose();
@@ -109,15 +132,46 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _stopAnimations() {
+    _stopStopTimeCountdown();
     _ballController.stop();
     _safeZoneController?.stop();
     _targetController?.stop();
   }
 
-  void _resumeAnimations() {
-    _ballController.repeat();
-    _safeZoneController?.repeat();
-    _targetController?.repeat();
+  void _startStopTimeCountdown() {
+    _stopStopTimeCountdown();
+
+    if (_remainingStopTimeSeconds <= 0) {
+      return;
+    }
+
+    _stopTimeTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+
+      if (_remainingStopTimeSeconds <= 1) {
+        setState(() {
+          _remainingStopTimeSeconds = 0;
+        });
+        _handleStopTimeExpired();
+        return;
+      }
+
+      setState(() {
+        _remainingStopTimeSeconds -= 1;
+      });
+    });
+  }
+
+  void _stopStopTimeCountdown() {
+    _stopTimeTimer?.cancel();
+    _stopTimeTimer = null;
+  }
+
+  void _resetStopTimeCountdown() {
+    _stopStopTimeCountdown();
+    _remainingStopTimeSeconds = _levelConfig.stopTimeLimit.inSeconds;
   }
 
   double _currentBallAngle() {
@@ -154,7 +208,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _validateCurrentBallPosition(double circleRadius) {
-    if (_isRewardOverlayVisible || _isProcessingHit) {
+    if (_failureMessage != null ||
+        _targetOutsideSafeZoneMessage != null ||
+        _isGameOver ||
+        _isRewardOverlayVisible ||
+        _isProcessingHit) {
       return;
     }
 
@@ -168,9 +226,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       targetToleranceAngle: _geometry.targetToleranceAngle,
     );
     final result = validator.validateAngle(ballAngle: _currentBallAngle());
-    final rpRewardResult = _rpRewardCalculator.calculate(result);
     final isLevelSuccess = _isLevelSuccess(result);
-    final shouldShowRewardOverlay = isLevelSuccess && rpRewardResult.rewarded;
+
+    if (!isLevelSuccess) {
+      _handleFailedHit(result);
+      return;
+    }
+
+    if (result.isTargetHit && !result.isInsideSafeZone) {
+      _showTargetOutsideSafeZoneReward(result);
+      return;
+    }
+
+    final rpRewardResult = _rpRewardCalculator.calculate(result);
+    final shouldShowRewardOverlay = isLevelSuccess;
 
     setState(() {
       _lastHitResult = result;
@@ -185,6 +254,106 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
 
     _startTemporaryHitFeedbackTimer();
+  }
+
+  void _handleStopTimeExpired() {
+    _stopStopTimeCountdown();
+    if (_failureMessage != null ||
+        _targetOutsideSafeZoneMessage != null ||
+        _isGameOver ||
+        _isRewardOverlayVisible ||
+        _isProcessingHit) {
+      return;
+    }
+
+    _isProcessingHit = true;
+
+    if (_lives > 0) {
+      _showTimeoutWithLifeFeedback();
+      return;
+    }
+
+    _triggerTimeoutGameOver();
+  }
+
+  void _showTimeoutWithLifeFeedback() {
+    _stopAnimations();
+    _feedbackTimer?.cancel();
+
+    setState(() {
+      _lastHitResult = null;
+      _lastRpRewardResult = null;
+      _failureMessage = "Time's up! Using 1 life...";
+    });
+  }
+
+  void _triggerTimeoutGameOver() {
+    _stopAnimations();
+    _feedbackTimer?.cancel();
+
+    setState(() {
+      _isGameOver = true;
+      _lastHitResult = null;
+      _lastRpRewardResult = null;
+      _failureMessage = null;
+      _targetOutsideSafeZoneMessage = null;
+      _isRewardOverlayVisible = false;
+      _isProcessingHit = false;
+      _gameOverMessages = const ["Time's up! No lives left. Game Over!"];
+    });
+  }
+
+  void _showTargetOutsideSafeZoneReward(HitValidationResult result) {
+    _stopAnimations();
+    _feedbackTimer?.cancel();
+
+    setState(() {
+      _lastHitResult = result;
+      _lastRpRewardResult = _targetOutsideSafeZoneRewardResult;
+      _totalRunPoints += _targetOutsideSafeZoneRpReward;
+      _targetOutsideSafeZoneMessage =
+          "You've hit the target outside the Safe Zone! Congratulations! "
+          'You earned 5 RP and your reward is Level Advance with NO difficulty increase!';
+    });
+  }
+
+  void _confirmTargetOutsideSafeZoneAdvance() {
+    final nextLevelConfig = _levelGenerator.generateLevelConfig(
+      _difficultyState,
+    );
+
+    _levelConfig = nextLevelConfig;
+    _geometry = _geometryForLevelConfig(nextLevelConfig);
+    _lastChangedVariable = null;
+    _lastChangeWasIncrease = true;
+    _ballController.duration = nextLevelConfig.ballRotationDuration;
+    _resetStopTimeCountdown();
+    _ballController
+      ..reset()
+      ..repeat();
+    _replaceOptionalController(
+      currentController: _safeZoneController,
+      duration: nextLevelConfig.safeZoneRotationDuration,
+      updateController: (controller) {
+        _safeZoneController = controller;
+      },
+    );
+    _replaceOptionalController(
+      currentController: _targetController,
+      duration: nextLevelConfig.targetRotationDuration,
+      updateController: (controller) {
+        _targetController = controller;
+      },
+    );
+
+    setState(() {
+      _currentRunLevel += 1;
+      _targetOutsideSafeZoneMessage = null;
+      _lastHitResult = null;
+      _lastRpRewardResult = null;
+      _isProcessingHit = false;
+    });
+    _startStopTimeCountdown();
   }
 
   void _startTemporaryHitFeedbackTimer() {
@@ -204,6 +373,141 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   bool _isLevelSuccess(HitValidationResult result) {
     return result.isInsideSafeZone || result.isTargetHit;
+  }
+
+  String? _rewardOverlayWarningMessage(
+    HitValidationResult result,
+    RunPointRewardResult rpRewardResult,
+  ) {
+    final safeZoneEdgeOnlyHit =
+        result.isInsideSafeZone &&
+        result.relativePositionInSafeZone == null &&
+        rpRewardResult.rpAmount == 0;
+
+    if (!safeZoneEdgeOnlyHit) {
+      return null;
+    }
+
+    return 'Ball is touching the Safe Zone! No RP gained because the ball '
+        'center is outside the Safe Zone.';
+  }
+
+  void _handleFailedHit(HitValidationResult result) {
+    if (_lives > 0) {
+      _showFailureFeedback(result);
+      return;
+    }
+
+    _triggerGameOver(result);
+  }
+
+  void _showFailureFeedback(HitValidationResult result) {
+    _stopAnimations();
+    _feedbackTimer?.cancel();
+
+    setState(() {
+      _lastHitResult = result;
+      _lastRpRewardResult = _noRpRewardResult;
+      _failureMessage = 'Missed safe zone and target. Using 1 life.';
+    });
+  }
+
+  void _confirmLifeUsageAndRetry() {
+    _resetStopTimeCountdown();
+
+    setState(() {
+      _lives -= 1;
+      _lastHitResult = null;
+      _lastRpRewardResult = null;
+      _failureMessage = null;
+      _isRewardOverlayVisible = false;
+      _isProcessingHit = false;
+    });
+
+    _restartCurrentLevelAnimations();
+    _startStopTimeCountdown();
+  }
+
+  void _triggerGameOver(HitValidationResult result) {
+    _stopAnimations();
+    _feedbackTimer?.cancel();
+
+    setState(() {
+      _isGameOver = true;
+      _lastHitResult = result;
+      _lastRpRewardResult = _noRpRewardResult;
+      _failureMessage = null;
+      _targetOutsideSafeZoneMessage = null;
+      _isRewardOverlayVisible = false;
+      _isProcessingHit = false;
+      _gameOverMessages = const [
+        'Missed safe zone and target.',
+        'No lives left. Game Over!',
+      ];
+    });
+  }
+
+  void _restartCurrentLevelAnimations() {
+    _ballController
+      ..reset()
+      ..repeat();
+    _safeZoneController
+      ?..reset()
+      ..repeat();
+    _targetController
+      ?..reset()
+      ..repeat();
+  }
+
+  void _restartRun() {
+    _feedbackTimer?.cancel();
+    _stopStopTimeCountdown();
+
+    final initialDifficultyState = _levelGenerator
+        .createInitialDifficultyState();
+    final initialLevelConfig = _levelGenerator.generateLevelConfig(
+      initialDifficultyState,
+    );
+
+    _difficultyState = initialDifficultyState;
+    _levelConfig = initialLevelConfig;
+    _lastChangedVariable = null;
+    _lastChangeWasIncrease = true;
+    _geometry = _geometryForLevelConfig(initialLevelConfig);
+    _ballController.duration = initialLevelConfig.ballRotationDuration;
+    _resetStopTimeCountdown();
+    _ballController
+      ..reset()
+      ..repeat();
+    _replaceOptionalController(
+      currentController: _safeZoneController,
+      duration: initialLevelConfig.safeZoneRotationDuration,
+      updateController: (controller) {
+        _safeZoneController = controller;
+      },
+    );
+    _replaceOptionalController(
+      currentController: _targetController,
+      duration: initialLevelConfig.targetRotationDuration,
+      updateController: (controller) {
+        _targetController = controller;
+      },
+    );
+
+    setState(() {
+      _totalRunPoints = 0;
+      _lives = 0;
+      _currentRunLevel = 1;
+      _lastHitResult = null;
+      _lastRpRewardResult = null;
+      _failureMessage = null;
+      _targetOutsideSafeZoneMessage = null;
+      _isRewardOverlayVisible = false;
+      _isProcessingHit = false;
+      _isGameOver = false;
+      _gameOverMessages = const [];
+    });
+    _startStopTimeCountdown();
   }
 
   void _advanceToNextDebugLevel({required RewardMenuAction action}) {
@@ -237,12 +541,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       },
     );
     _geometry = _geometryForLevelConfig(nextLevelConfig);
+    _resetStopTimeCountdown();
+    _startStopTimeCountdown();
   }
 
   (DifficultyState, DifficultyVariable?) _nextDifficultyForAction(
     RewardMenuAction action,
   ) {
-    if (action == RewardMenuAction.nextLevel) {
+    if (action == RewardMenuAction.nextLevel ||
+        action == RewardMenuAction.buyLife) {
       final advanceResult = _levelGenerator.advanceDifficulty(_difficultyState);
       return (advanceResult.difficultyState, advanceResult.increasedVariable);
     }
@@ -267,27 +574,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _selectRewardOption(RewardMenuAction action) {
-    if (action == RewardMenuAction.buyLife) {
-
-      setState(() {
-        _totalRunPoints -= action.rpCost;
-        _lives += 1;
-        _isRewardOverlayVisible = false;
-        _lastHitResult = null;
-        _lastRpRewardResult = null;
-        _isProcessingHit = false;
-      });
-      _resumeAnimations();
-      return;
-    }
-
     _advanceToNextDebugLevel(action: action);
 
     setState(() {
+      _currentRunLevel += 1;
       _totalRunPoints -= action.rpCost;
+      if (action == RewardMenuAction.buyLife) {
+        _lives += 1;
+      }
       _isRewardOverlayVisible = false;
       _lastHitResult = null;
       _lastRpRewardResult = null;
+      _targetOutsideSafeZoneMessage = null;
+      _failureMessage = null;
       _isProcessingHit = false;
     });
   }
@@ -341,18 +640,52 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    if (_lastHitResult != null && !_isRewardOverlayVisible)
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: _RunStatusOverlay(
+                        runLevel: _currentRunLevel,
+                        remainingSeconds: _remainingStopTimeSeconds,
+                      ),
+                    ),
+                    if (_lastHitResult != null &&
+                        !_isRewardOverlayVisible &&
+                        !_isGameOver &&
+                        _targetOutsideSafeZoneMessage == null &&
+                        _failureMessage == null)
                       _DebugHitFeedback(
                         result: _lastHitResult!,
                         rpRewardResult: _lastRpRewardResult!,
                         totalRunPoints: _totalRunPoints,
+                      ),
+                    if (_failureMessage != null)
+                      _FailureFeedbackOverlay(
+                        message: _failureMessage!,
+                        result: _lastHitResult,
+                        rpRewardResult: _lastRpRewardResult,
+                        totalRunPoints: _totalRunPoints,
+                        onConfirm: _confirmLifeUsageAndRetry,
+                      ),
+                    if (_targetOutsideSafeZoneMessage != null)
+                      _TargetOutsideSafeZoneOverlay(
+                        message: _targetOutsideSafeZoneMessage!,
+                        onConfirm: _confirmTargetOutsideSafeZoneAdvance,
                       ),
                     if (_isRewardOverlayVisible && _lastRpRewardResult != null)
                       PostHitRewardOverlay(
                         difficultyState: _difficultyState,
                         rpRewardResult: _lastRpRewardResult!,
                         totalRunPoints: _totalRunPoints,
+                        warningMessage: _rewardOverlayWarningMessage(
+                          _lastHitResult!,
+                          _lastRpRewardResult!,
+                        ),
                         onSelected: _selectRewardOption,
+                      ),
+                    if (_isGameOver)
+                      _GameOverOverlay(
+                        messages: _gameOverMessages,
+                        onRestart: _restartRun,
                       ),
                     if (kShowDebugOverlay)
                       Positioned(
@@ -434,6 +767,199 @@ class _DebugDifficultyOverlay extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RunStatusOverlay extends StatelessWidget {
+  const _RunStatusOverlay({
+    required this.runLevel,
+    required this.remainingSeconds,
+  });
+
+  final int runLevel;
+  final int remainingSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xCC101418),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF3A424C)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: DefaultTextStyle(
+          style: const TextStyle(
+            color: Color(0xFFD6DEE8),
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            height: 1.25,
+            letterSpacing: 0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Level: $runLevel'),
+              Text('Time: ${remainingSeconds}s'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GameOverOverlay extends StatelessWidget {
+  const _GameOverOverlay({required this.messages, required this.onRestart});
+
+  final List<String> messages;
+  final VoidCallback onRestart;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xEE101418),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFF6B6B)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Game Over',
+              style: TextStyle(
+                color: Color(0xFFFF6B6B),
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...messages.map(
+              (message) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFD6DEE8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onRestart,
+              child: const Text('Restart run'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TargetOutsideSafeZoneOverlay extends StatelessWidget {
+  const _TargetOutsideSafeZoneOverlay({
+    required this.message,
+    required this.onConfirm,
+  });
+
+  final String message;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xEE101418),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFFD166)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFFFD166),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: onConfirm, child: const Text('OK')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FailureFeedbackOverlay extends StatelessWidget {
+  const _FailureFeedbackOverlay({
+    required this.message,
+    required this.result,
+    required this.rpRewardResult,
+    required this.totalRunPoints,
+    required this.onConfirm,
+  });
+
+  final String message;
+  final HitValidationResult? result;
+  final RunPointRewardResult? rpRewardResult;
+  final int totalRunPoints;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xCC101418),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFFD166)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFFFD166),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (result != null && rpRewardResult != null) ...[
+              _DebugHitFeedback(
+                result: result!,
+                rpRewardResult: rpRewardResult!,
+                totalRunPoints: totalRunPoints,
+              ),
+              const SizedBox(height: 12),
+            ],
+            FilledButton(onPressed: onConfirm, child: const Text('OK')),
+          ],
         ),
       ),
     );

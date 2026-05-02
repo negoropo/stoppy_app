@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 6 completed.
+Session 7 completed.
 
-Current session: Session 7 — Lives system
+Current session: Session 8 — Precision Points (PP)
 
 ---
 

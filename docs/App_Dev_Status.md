@@ -815,13 +815,6 @@ Implement the RP (Run Points) economy system and player decision layer.
 
 Session 7 — Lives system
 
-Planned tasks:
-
-* [ ] Implement life consumption on failure
-* [ ] Allow retry when player has lives
-* [ ] Prevent game over if lives > 0
-* [ ] Handle game over state when lives = 0
-
 ---
 
 ### 📊 Progress Update
@@ -839,4 +832,130 @@ Planned tasks:
 ### 🧭 Current State
 
 Current session: Session 7 — Lives system
+Status: Ready ⏳
+
+---
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 7 — Lives system
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement lives usage, timeout failure, and full run-level flow.
+
+---
+
+### 📦 Deliverables
+
+* [x] Life consumption after failed hit
+* [x] Retry same level when lives are available
+* [x] Game Over when no lives remain
+* [x] Failure feedback overlay with OK confirmation
+* [x] Stop-time countdown visible to player
+* [x] Timeout failure handling
+* [x] Run level counter visible to player
+* [x] Run level progression independent from difficulty
+* [x] Target outside Safe Zone special reward flow
+* [x] Safe Zone edge hit handled as success with 0 RP
+* [x] Restart run flow
+
+---
+
+### 🛠️ Work Done
+
+* Added lives consumption after failed safe zone and target miss
+* Added retry flow using one life without advancing level or difficulty
+* Added Game Over state and restart option
+* Added player-facing failure messages
+* Added OK confirmation before consuming a life
+* Added visible stop-time countdown
+* Added timeout failure behavior:
+  * With lives: use one life and retry
+  * Without lives: Game Over
+* Added visible run level tracking
+* Separated run level from difficulty level
+* Added target-outside-safe-zone reward:
+  * Grants 5 RP
+  * Advances level
+  * Does not increase difficulty
+  * Does not show reward menu
+* Updated Safe Zone edge hit behavior:
+  * Counts as success
+  * Grants 0 RP when ball center is outside Safe Zone
+  * Shows reward menu
+* Ensured timer resets on new level, retry, and restart
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Run level starts at 1
+* Run level increases on every successful level completion
+* Run level does not increase on retry after life usage
+* Difficulty progression remains independent from run level
+* Timeout is treated as failure, not as hit validation
+* Target hit means any part of the ball touches the target
+* Target outside Safe Zone grants 5 RP and free level advance with no difficulty increase
+* Safe Zone edge hit remains a valid success but grants 0 RP if the ball center is outside the Safe Zone
+
+---
+
+### 🧪 Validation
+
+* [x] Failed hit with lives consumes one life after OK
+* [x] Failed hit without lives triggers Game Over
+* [x] Timeout with lives consumes one life after OK
+* [x] Timeout without lives triggers Game Over
+* [x] Retry keeps same level and difficulty
+* [x] Successful hit advances run level
+* [x] Reward menu advances run level after selection
+* [x] Target outside Safe Zone grants 5 RP and advances level without difficulty increase
+* [x] Safe Zone edge hit opens reward menu with 0 RP
+* [x] Restart resets RP, lives, run level, timer and difficulty
+* [x] Timer visible and resets correctly
+* [x] Run level visible and updates correctly
+* [x] flutter analyze
+* [x] flutter test
+
+---
+
+### 📌 Next Session
+
+Session 8 — Precision Points (PP)
+
+Planned tasks:
+
+* [ ] Calculate distance to target
+* [ ] Convert precision distance into PP score
+* [ ] Accumulate PP during the run
+* [ ] Display PP to the player
+* [ ] Prepare PP for future leaderboard usage
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* 🔄 Session 8 — Precision Points (PP) (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 8 — Precision Points (PP)  
 Status: Ready ⏳

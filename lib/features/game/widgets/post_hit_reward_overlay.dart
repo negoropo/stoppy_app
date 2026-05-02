@@ -11,12 +11,14 @@ class PostHitRewardOverlay extends StatelessWidget {
     required this.rpRewardResult,
     required this.totalRunPoints,
     required this.onSelected,
+    this.warningMessage,
   });
 
   final DifficultyState difficultyState;
   final RunPointRewardResult rpRewardResult;
   final int totalRunPoints;
   final ValueSetter<RewardMenuAction> onSelected;
+  final String? warningMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +45,19 @@ class PostHitRewardOverlay extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              if (warningMessage != null) ...[
+                Text(
+                  warningMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFFFD166),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Text(
                 'RP gained: ${rpRewardResult.rpAmount}',
                 style: const TextStyle(
