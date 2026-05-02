@@ -90,6 +90,16 @@ class PostHitRewardOverlay extends StatelessWidget {
                   letterSpacing: 0,
                 ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                _precisionPointBreakdown(precisionPointResult),
+                style: const TextStyle(
+                  color: Color(0xFFB8C5D4),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
               const SizedBox(height: 10),
               Text(
                 'total RP: $totalRunPoints',
@@ -184,6 +194,10 @@ class PostHitRewardOverlay extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _precisionPointBreakdown(PrecisionPointResult result) {
+    return '${result.basePP} PP × Level Multiplier ${result.levelMultiplier.toStringAsFixed(2)} = ${result.awardedPP} PP';
   }
 }
 

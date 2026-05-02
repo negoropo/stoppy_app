@@ -955,8 +955,6 @@ Status: Ready ⏳
 
 ---
 
----
-
 ## 🔄 Session Update
 
 ### Session: Session 8 — Precision Points (PP)
@@ -969,7 +967,7 @@ Status: Ready ⏳
 
 ### 🎯 Objective
 
-Implement a precision-based scoring system independent of Safe Zone size, rewarding player accuracy based on angular distance to the target.
+Implement a precision-based competitive scoring system based on angular distance to the target.
 
 ---
 
@@ -977,64 +975,70 @@ Implement a precision-based scoring system independent of Safe Zone size, reward
 
 * [x] PrecisionPointCalculator implemented
 * [x] PrecisionPointResult model created
-* [x] Angular distance-based scoring implemented
+* [x] Angular distance-based PP scoring implemented
+* [x] Level multiplier applied to PP rewards
 * [x] PP accumulation during run
-* [x] PP displayed to player
+* [x] PP displayed to player before level advancement
 * [x] Final Score system implemented
 * [x] Final Score breakdown displayed
+* [x] RP HUD display refined
 
 ---
 
 ### 🛠️ Work Done
 
 * Implemented PrecisionPointCalculator using circular angular distance
-* Normalized distance using shortest arc between ball and target
-* Mapped precision to score range [1, 1000]
-* Ensured:
-  * 1000 PP when perfectly aligned
-  * 1 PP at maximum distance (opposite side of circle)
-* Integrated PP calculation into GameScreen hit validation flow
-* Ensured PP is only awarded on successful level advancement
-* Added pending PP system before level confirmation
-* Added PP accumulation after reward selection
+* Used shortest arc distance between ball center and target
+* Mapped base PP to score range [1, 1000]
+* Added run level multiplier:
+  * Level 1 = ×1.01
+  * Level 2 = ×1.02
+  * Each run level adds +0.01 multiplier
+* Added PP breakdown:
+  * Base PP × Level Multiplier = Awarded PP
+* Integrated PP into GameScreen hit validation flow
+* Ensured PP is only committed after level advancement
+* Displayed PP rewards in:
+  * PostHitRewardOverlay
+  * Target outside Safe Zone overlay
 * Added Final Score calculation:
   * Final Score = Total PP + (Run Level × 100)
-* Displayed PP gain in:
-  * Reward overlay
-  * Target outside Safe Zone overlay
-* Displayed Final Score and breakdown in Game Over screen
-* Introduced committedRunPoints:
-  * RP only shown in HUD after level advancement decision
-* Updated reward system:
-  * Multiple life purchases allowed before level advancement
-* Expanded tap detection to full screen
+* Added Final Score breakdown in Game Over screen
+* Added committedRunPoints so RP HUD updates only after level advancement decision
+* Allowed multiple life purchases before selecting level advancement
+* Expanded tap detection area to full screen
+* Tuned target hit tolerance
+* Increased initial ball size while preserving final hardest ball size
 
 ---
 
 ### ⚠️ Notes / Decisions
 
-* Precision scoring is fully independent from Safe Zone size
-* Circular shortest-path distance is used (handles angle wrapping)
-* PP is only committed after player confirms level advancement
+* PP is independent from RP and Safe Zone reward tiers
+* PP is based on distance to target, even when advancing through Safe Zone
 * Failed hits and timeouts award 0 PP
-* Target outside Safe Zone still awards PP and advances level
-* RP display is delayed using committedRunPoints for better UX clarity
-* Precision system is designed for future leaderboard integration
+* Target outside Safe Zone grants RP, PP and advances level without difficulty increase
+* PP uses awardedPP after multiplier for total scoring
+* basePP is preserved for player-facing breakdown
+* RP shown in HUD represents committed RP only
+* Reward overlay still uses total RP for purchases and decisions
 
 ---
 
 ### 🧪 Validation
 
-* [x] PP correctly calculated based on angular distance
-* [x] 1000 PP achieved when perfectly aligned with target
-* [x] Minimum PP correctly awarded at maximum distance
-* [x] No PP awarded on failed hits or timeouts
-* [x] PP only added after level advancement
+* [x] PP correctly calculated from circular angular distance
+* [x] PP multiplier correctly increases with run level
+* [x] PP breakdown visible before level advancement
+* [x] PP only added after level advancement confirmation
+* [x] Failed hits and timeouts award 0 PP
 * [x] Final Score correctly calculated and displayed
 * [x] Final Score breakdown matches formula
-* [x] RP display updates only after level decision
-* [x] Multiple life purchases work correctly before level advancement
-* [x] Tap detection works across full screen
+* [x] RP HUD updates only after level decision
+* [x] Multiple life purchases work before level advancement
+* [x] Target tolerance feels stricter after adjustment
+* [x] Initial ball size increased while final size preserved
+* [x] Full-screen tap detection works
 * [x] flutter analyze
 * [x] flutter test
 

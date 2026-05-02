@@ -5,7 +5,7 @@ class GameGeometryConfig {
     this.safeZoneStartAngle = -math.pi / 3,
     this.safeZoneSweepAngle = math.pi / 3,
     this.targetAngle = math.pi / 4,
-    this.targetToleranceAngle = 0.08,
+    this.targetToleranceAngle = 0.01,
     this.circleStrokeWidth = 10,
     this.safeZoneStrokeWidth = 14,
     this.targetStrokeWidth = 5,

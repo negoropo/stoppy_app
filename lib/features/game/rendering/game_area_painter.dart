@@ -40,6 +40,12 @@ class GameAreaPainter extends CustomPainter {
     canvas.drawCircle(center, radius, circlePaint);
     _drawSafeZoneRewardSegments(canvas, circleRect);
 
+    _drawTargetHitZone(
+      canvas,
+      circleRect,
+      geometry.targetAngle,
+    );
+
     _drawTargetMarker(
       canvas,
       center,
@@ -51,6 +57,26 @@ class GameAreaPainter extends CustomPainter {
       _pointOnCircle(center, radius, ballAngle),
       geometry.ballRadius,
       ballPaint,
+    );
+  }
+
+  void _drawTargetHitZone(
+      Canvas canvas,
+      Rect circleRect,
+      double angle,
+      ) {
+    final hitZonePaint = Paint()
+      ..color = const Color(0x66FFD166)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = geometry.safeZoneStrokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      circleRect,
+      angle - geometry.targetToleranceAngle,
+      geometry.targetToleranceAngle * 2,
+      false,
+      hitZonePaint,
     );
   }
 

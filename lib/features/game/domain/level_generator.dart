@@ -139,7 +139,7 @@ class LevelGenerator {
 
     // Ball size is deterministic and monotonic: easier levels have a larger
     // contact area, while higher levels shrink it to demand more precision.
-    return _lerpDouble(start: 18, end: 8, level: level);
+    return _lerpDouble(start: 24, end: 8, level: level);
   }
 
   static Duration stopTimeLimitForLevel(int level) {

@@ -15,6 +15,8 @@ void main() {
       );
 
       expect(result.awardedPP, 1000);
+      expect(result.basePP, 1000);
+      expect(result.levelMultiplier, 1);
       expect(result.angularDistance, 0);
       expect(result.normalizedPrecision, 1);
     });

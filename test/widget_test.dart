@@ -181,8 +181,9 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('+1000 PP'), findsOneWidget);
+    expect(find.text('+1010 PP'), findsOneWidget);
     expect(find.text('Precision Points'), findsOneWidget);
+    expect(find.text('1000 PP × 1.01 = 1010 PP'), findsOneWidget);
     expect(find.text('Reward'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
 
@@ -192,7 +193,7 @@ void main() {
     expect(find.text('Reward'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
     expect(find.text('Level: 2'), findsOneWidget);
-    expect(find.text('PP: 1000'), findsOneWidget);
+    expect(find.text('PP: 1010'), findsOneWidget);
     expect(find.text('last increased: none'), findsOneWidget);
     expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
     expect(find.text('total RP: 5'), findsNothing);

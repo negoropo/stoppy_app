@@ -242,12 +242,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
-    final precisionPointResult = _precisionPointCalculator.calculate(
-      ballAngle: result.ballAngle,
-      targetAngle: currentTargetAngle,
-      // PP is awarded for every successful action that advances the run level.
-      // Failures and timeouts do not reach this branch and therefore award 0.
-      didAdvanceLevel: isLevelSuccess,
+    final precisionPointResult = _precisionPointResultForCurrentRunLevel(
+      _precisionPointCalculator.calculate(
+        ballAngle: result.ballAngle,
+        targetAngle: currentTargetAngle,
+        // PP is awarded for every successful action that advances the run
+        // level. Failures and timeouts do not reach this branch and therefore
+        // award 0.
+        didAdvanceLevel: isLevelSuccess,
+      ),
     );
 
     if (result.isTargetHit && !result.isInsideSafeZone) {
@@ -402,6 +405,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   bool _isLevelSuccess(HitValidationResult result) {
     return result.isInsideSafeZone || result.isTargetHit;
+  }
+
+  PrecisionPointResult _precisionPointResultForCurrentRunLevel(
+    PrecisionPointResult baseResult,
+  ) {
+    final levelMultiplier = 1 + (_currentRunLevel * 0.01);
+
+    // The engine calculator remains responsible for circular precision. The
+    // run-level multiplier is applied here because it depends on UI/controller
+    // run state and should only affect the pending reward for this level.
+    return PrecisionPointResult(
+      basePP: baseResult.awardedPP,
+      levelMultiplier: levelMultiplier,
+      awardedPP: (baseResult.awardedPP * levelMultiplier).round(),
+      angularDistance: baseResult.angularDistance,
+      normalizedPrecision: baseResult.normalizedPrecision,
+    );
   }
 
   String? _rewardOverlayWarningMessage(
@@ -671,7 +691,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             ]),
                             builder: (context, child) {
                               final animatedGeometry = _geometry.copyWith(
-                                safeZoneStartAngle: _currentSafeZoneStartAngle(),
+                                safeZoneStartAngle:
+                                    _currentSafeZoneStartAngle(),
                                 targetAngle: _currentTargetAngle(),
                               );
 
@@ -916,7 +937,7 @@ class _GameOverOverlay extends StatelessWidget {
             const SizedBox(height: 10),
 
             ...messages.map(
-                  (message) => Padding(
+              (message) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
                   message,
@@ -1042,12 +1063,28 @@ class _TargetOutsideSafeZoneOverlay extends StatelessWidget {
                 letterSpacing: 0,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              _precisionPointBreakdown(precisionPointResult),
+              style: const TextStyle(
+                color: Color(0xFFB8C5D4),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
             const SizedBox(height: 16),
             FilledButton(onPressed: onConfirm, child: const Text('OK')),
           ],
         ),
       ),
     );
+  }
+
+  String _precisionPointBreakdown(PrecisionPointResult result) {
+    return '${result.basePP} PP × '
+        '${result.levelMultiplier.toStringAsFixed(2)} = '
+        '${result.awardedPP} PP';
   }
 }
 

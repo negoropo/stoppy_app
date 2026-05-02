@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 7 completed.
+Session 8 completed.
 
-Current session: Session 8 — Precision Points (PP)
+Current session: Session 9 — Registration / Login System
 
 ---
 
