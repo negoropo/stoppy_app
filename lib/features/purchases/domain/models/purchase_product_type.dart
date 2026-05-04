@@ -1,0 +1,1 @@
+enum PurchaseProductType { gamePointPack, removeAds }

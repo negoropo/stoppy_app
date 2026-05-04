@@ -1308,4 +1308,134 @@ Status: Ready ⏳
 
 ---
 
+## 🔄 Session Update
+
+### Session: Session 11 — Purchases
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the purchase system, including GP packs and ad removal, with a mockable and scalable architecture.
+
+---
+
+### 📦 Deliverables
+
+* [x] PurchaseProduct model implemented
+* [x] PurchaseProductType enum implemented
+* [x] PurchaseResult model with typed errors implemented
+* [x] PurchaseError enum implemented
+* [x] PurchaseRepository contract defined
+* [x] MockPurchaseRepository implemented
+* [x] StoreScreen implemented
+* [x] PlayerProfile extended with `adsRemoved`
+* [x] Purchase flow integrated with GameScreen
+* [x] Profile update and persistence implemented after purchase
+* [x] UI loading and error handling implemented
+* [x] Test coverage for purchase logic
+
+---
+
+### 🛠️ Work Done
+
+* Implemented purchase domain layer with clean separation:
+
+  * Models: PurchaseProduct, PurchaseResult
+  * Enum-based error handling (PurchaseError)
+  * Repository abstraction for future IAP integration
+* Implemented MockPurchaseRepository:
+
+  * GP packs (small, large)
+  * Remove Ads purchase
+  * Protection against duplicate purchases
+  * Typed error handling
+* Extended PlayerProfile:
+
+  * Added `adsRemoved` field (default = false)
+  * Fully integrated with JSON serialization and copyWith
+* Implemented StoreScreen:
+
+  * Product listing via repository
+  * Purchase flow with loading state
+  * Error/success feedback
+  * PlayerProfile updates propagated to GameScreen
+* Integrated purchase flow into GameScreen:
+
+  * Store button added
+  * Purchase results update local and persisted profile
+* Improved robustness:
+
+  * Prevented double purchase taps
+  * Ensured immutability and safe state updates
+  * Added defensive constraints on Game Points
+* Ensured full compatibility with future real IAP system
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Purchases are fully mocked (no real store integration)
+* PurchaseResult uses typed errors instead of raw strings
+* PlayerProfile remains the single source of truth for player state
+* StoreScreen maintains local state but propagates updates upward
+* Ads removal is persistent via PlayerProfile
+* Purchase flow is designed to support future:
+
+  * receipt validation
+  * async purchase states
+  * backend verification
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze (no issues)
+* [x] flutter test (passing)
+* [x] GP packs correctly increase Game Points
+* [x] Remove Ads correctly updates profile
+* [x] Remove Ads cannot be purchased twice
+* [x] Purchase errors are correctly handled and displayed
+* [x] Store UI reflects updated player state
+* [x] Profile updates persist correctly via AuthRepository
+* [x] No duplicate purchases from rapid taps
+* [x] PurchaseResult typed errors behave correctly
+
+---
+
+### 📌 Next Session
+
+Session 12 — Ads
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* 🔄 Session 12 — Ads (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 12 — Ads
+Status: Ready ⏳
+
+---
+
+
 

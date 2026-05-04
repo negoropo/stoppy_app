@@ -5,6 +5,7 @@ class PlayerProfile {
     required this.createdAt,
     this.gamePoints = 5,
     this.lastDailyGpAwardedAt,
+    this.adsRemoved = false,
   });
 
   final String id;
@@ -12,6 +13,7 @@ class PlayerProfile {
   final DateTime createdAt;
   final int gamePoints;
   final DateTime? lastDailyGpAwardedAt;
+  final bool adsRemoved;
 
   factory PlayerProfile.fromJson(Map<String, dynamic> json) {
     return PlayerProfile(
@@ -22,6 +24,7 @@ class PlayerProfile {
       lastDailyGpAwardedAt: json['lastDailyGpAwardedAt'] == null
           ? null
           : DateTime.parse(json['lastDailyGpAwardedAt'] as String),
+      adsRemoved: json['adsRemoved'] as bool? ?? false,
     );
   }
 
@@ -32,6 +35,7 @@ class PlayerProfile {
       'createdAt': createdAt.toIso8601String(),
       'gamePoints': gamePoints,
       'lastDailyGpAwardedAt': lastDailyGpAwardedAt?.toIso8601String(),
+      'adsRemoved': adsRemoved,
     };
   }
 
@@ -41,15 +45,17 @@ class PlayerProfile {
     DateTime? createdAt,
     int? gamePoints,
     Object? lastDailyGpAwardedAt = _sentinel,
+    bool? adsRemoved,
   }) {
     return PlayerProfile(
       id: id ?? this.id,
       username: username ?? this.username,
       createdAt: createdAt ?? this.createdAt,
-      gamePoints: gamePoints ?? this.gamePoints,
+      gamePoints: (gamePoints ?? this.gamePoints).clamp(0, 999999),
       lastDailyGpAwardedAt: identical(lastDailyGpAwardedAt, _sentinel)
           ? this.lastDailyGpAwardedAt
           : lastDailyGpAwardedAt as DateTime?,
+      adsRemoved: adsRemoved ?? this.adsRemoved,
     );
   }
 

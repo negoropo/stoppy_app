@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 9 completed.
+Session 11 completed.
 
-Current session: Session 10 — GP System
+Current session: Session 12 — Ads
 
 ---
 

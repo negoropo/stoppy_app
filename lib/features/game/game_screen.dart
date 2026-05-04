@@ -7,6 +7,8 @@ import 'config/game_geometry_config.dart';
 import 'package:stoppy_app/core/constants/debug_constants.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:stoppy_app/features/purchases/domain/repositories/purchase_repository.dart';
+import 'package:stoppy_app/features/purchases/presentation/screens/store_screen.dart';
 import 'domain/economy/game_point_reward_calculator.dart';
 import 'domain/economy/game_point_reward_result.dart';
 import 'domain/economy/run_mode.dart';
@@ -34,6 +36,7 @@ class GameScreen extends StatefulWidget {
     this.initialLevelConfig,
     this.playerProfile,
     this.authRepository,
+    this.purchaseRepository,
     this.initialRunMode,
     this.now,
   });
@@ -43,6 +46,7 @@ class GameScreen extends StatefulWidget {
   final GameLevelConfig? initialLevelConfig;
   final PlayerProfile? playerProfile;
   final AuthRepository? authRepository;
+  final PurchaseRepository? purchaseRepository;
   final RunMode? initialRunMode;
   final DateTime Function()? now;
 
@@ -627,7 +631,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     final updatedGamePoints =
         (playerProfile?.gamePoints ?? _currentGamePoints) +
-            gpRewardResult.totalGp;
+        gpRewardResult.totalGp;
 
     _totalPrecisionPoints = finalizedPrecisionPoints;
     _pendingPrecisionPointResult = null;
@@ -658,6 +662,37 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       // Mock persistence is best-effort in the client. Future backend
       // integration should surface authenticated write failures explicitly.
     }
+  }
+
+  void _openStore() {
+    final playerProfile = _playerProfile;
+    final purchaseRepository = widget.purchaseRepository;
+    if (playerProfile == null || purchaseRepository == null) {
+      return;
+    }
+
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) {
+          return StoreScreen(
+            playerProfile: playerProfile,
+            purchaseRepository: purchaseRepository,
+            onPlayerProfileUpdated: _handlePurchasedPlayerProfile,
+          );
+        },
+      ),
+    );
+  }
+
+  void _handlePurchasedPlayerProfile(PlayerProfile playerProfile) {
+    setState(() {
+      _playerProfile = playerProfile;
+      _currentGamePoints = playerProfile.gamePoints;
+      _runMode =
+          widget.initialRunMode ?? _defaultRunModeForPlayer(playerProfile);
+    });
+
+    unawaited(_persistPlayerProfile(playerProfile));
   }
 
   void _restartCurrentLevelAnimations() {
@@ -881,10 +916,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           runLevel: _currentRunLevel,
                           totalPrecisionPoints: _totalPrecisionPoints,
                           totalRunPoints: _committedRunPoints,
+                          totalGamePoints: _currentGamePoints,
                           runMode: _runMode,
                           remainingSeconds: _remainingStopTimeSeconds,
                         ),
                       ),
+                      if (_playerProfile != null &&
+                          widget.purchaseRepository != null)
+                        Positioned(
+                          right: 16,
+                          bottom: 16,
+                          child: FilledButton(
+                            onPressed: _openStore,
+                            child: const Text('Store'),
+                          ),
+                        ),
                       if (_lastHitResult != null &&
                           !_isRewardOverlayVisible &&
                           !_isGameOver &&
@@ -1026,6 +1072,7 @@ class _RunStatusOverlay extends StatelessWidget {
     required this.runLevel,
     required this.totalPrecisionPoints,
     required this.totalRunPoints,
+    required this.totalGamePoints,
     required this.runMode,
     required this.remainingSeconds,
   });
@@ -1033,6 +1080,7 @@ class _RunStatusOverlay extends StatelessWidget {
   final int runLevel;
   final int totalPrecisionPoints;
   final int totalRunPoints;
+  final int totalGamePoints;
   final RunMode runMode;
   final int remainingSeconds;
 
@@ -1062,6 +1110,7 @@ class _RunStatusOverlay extends StatelessWidget {
               Text('Mode: ${runMode.label}'),
               Text('PP: $totalPrecisionPoints'),
               Text('RP: $totalRunPoints'),
+              Text('GP: $totalGamePoints'),
               Text('Time: ${remainingSeconds}s'),
             ],
           ),

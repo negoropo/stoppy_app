@@ -10,6 +10,8 @@ import 'package:stoppy_app/features/game/domain/models/game_level_config.dart';
 import 'package:stoppy_app/features/game/domain/models/movement_direction.dart';
 import 'package:stoppy_app/features/game/game_screen.dart';
 import 'package:stoppy_app/features/game/rendering/game_area_painter.dart';
+import 'package:stoppy_app/features/purchases/data/mock_purchase_repository.dart';
+import 'package:stoppy_app/features/purchases/presentation/screens/store_screen.dart';
 import 'package:stoppy_app/main.dart';
 
 void main() {
@@ -62,6 +64,32 @@ void main() {
 
     expect(find.byType(GameScreen), findsOneWidget);
     expect(_gameAreaPainterFinder(), findsOneWidget);
+  });
+
+  testWidgets('Store button opens store products for authenticated player', (
+    WidgetTester tester,
+  ) async {
+    final repository = await authenticatedRepository();
+
+    await tester.pumpWidget(
+      StoppyApp(
+        authRepository: repository,
+        purchaseRepository: const MockPurchaseRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Store'), findsOneWidget);
+
+    await tester.tap(find.text('Store'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(StoreScreen), findsOneWidget);
+    expect(find.text('Small GP Pack'), findsOneWidget);
+    expect(find.text('Large GP Pack'), findsOneWidget);
+    expect(find.text('Remove Ads'), findsOneWidget);
+    expect(find.textContaining('GP:'), findsAtLeastNWidgets(1));
+    expect(find.text('Ads removed: No'), findsOneWidget);
   });
 
   testWidgets('Game screen uses the game area painter', (

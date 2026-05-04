@@ -14,6 +14,7 @@ void main() {
 
       expect(playerProfile.gamePoints, 5);
       expect(playerProfile.lastDailyGpAwardedAt, isNull);
+      expect(playerProfile.adsRemoved, isFalse);
     });
   });
 
@@ -37,6 +38,7 @@ void main() {
 
       expect(playerProfile.username, 'Nelson');
       expect(playerProfile.gamePoints, 5);
+      expect(playerProfile.adsRemoved, isFalse);
       expect(authState.isAuthenticated, isTrue);
       expect(authState.playerProfile?.username, 'Nelson');
     });
