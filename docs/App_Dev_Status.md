@@ -42,10 +42,10 @@ Stoppy é uma aplicação mobile competitiva baseada em precisão e timing, onde
 
 * Obrigatórios em:
 
-    * lógica do Game Engine
-    * cálculos de pontuação
-    * regras de liga
-    * qualquer lógica não trivial
+  * lógica do Game Engine
+  * cálculos de pontuação
+  * regras de liga
+  * qualquer lógica não trivial
 
 ---
 
@@ -184,9 +184,9 @@ Organizar projeto e preparar base para desenvolvimento
 * Criar pasta `/docs`
 * Criar:
 
-    * Game_Rules.md
-    * Architecture.md
-    * App_Dev_Status.md
+  * Game_Rules.md
+  * Architecture.md
+  * App_Dev_Status.md
 * Commit inicial
 
 ✅ Critério de conclusão:
@@ -362,8 +362,8 @@ Sistema de pontuação competitivo
 * Cada sessão deve ser concluída antes de avançar
 * No final de cada sessão:
 
-    * Atualizar este ficheiro
-    * Marcar progresso
+  * Atualizar este ficheiro
+  * Marcar progresso
 * Nunca confiar no histórico do chat
 * Este ficheiro é a única fonte de verdade para progresso
 
@@ -1147,16 +1147,6 @@ Implement player authentication system with registration and login flows.
 
 Session 10 — GP System
 
-Planned tasks:
-
-* [ ] Criar modelo de GP no PlayerProfile
-* [ ] Implementar conversão RP → GP no final da run
-* [ ] Acumular GP por jogador
-* [ ] Mostrar GP no Game Over screen
-* [ ] Implementar reward diário (base)
-* [ ] Implementar sistema de warmup (primeira run do dia)
-* [ ] Adicionar display de GP na UI
-
 ---
 
 ### 📊 Progress Update
@@ -1180,3 +1170,142 @@ Current session: Session 10 — GP System
 Status: Ready ⏳
 
 ---
+
+Perfeito — vamos fechar a Session 10 corretamente (como deve ser) 👇
+
+---
+
+# 📄 Atualização do `App_Dev_Status.md`
+
+Aqui tens a versão pronta para colar:
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 10 — GP System
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the Game Points (GP) system, including run completion rewards, daily rewards, and warmup rules.
+
+---
+
+### 📦 Deliverables
+
+* [x] GP model added to PlayerProfile
+* [x] GamePointRewardCalculator implemented
+* [x] GamePointRewardResult model created
+* [x] Completion GP system implemented (league, tournament, warmup)
+* [x] Daily GP system implemented
+* [x] Warmup availability policy implemented
+* [x] GP accumulation and persistence implemented
+* [x] GP displayed in Game Over screen
+* [x] Full test coverage for GP logic
+
+---
+
+### 🛠️ Work Done
+
+* Implemented GamePointRewardCalculator with:
+
+  * +1 GP for league and tournament runs
+  * Warmup GP conditional on PP ≥ 10,000
+  * +2 Daily GP based on first run of the day
+* Implemented GamePointRewardResult with breakdown and total GP
+* Added GP fields to PlayerProfile:
+
+  * `gamePoints` (default = 5)
+  * `lastDailyGpAwardedAt`
+* Implemented safe `copyWith` with nullable field support
+* Implemented WarmupAvailabilityPolicy:
+
+  * Warmup available when GP < 10
+* Integrated GP calculation into GameScreen:
+
+  * GP calculated at Game Over only
+  * Run finalization protected with `_isRunFinalized`
+* Fixed critical edge case:
+
+  * Pending PP is committed before GP calculation on run finalization
+* Implemented run duration system:
+
+  * Run ends after 1 hour
+  * Game Over triggered on duration limit
+* Implemented mock persistence via MockAuthRepository
+* Added full unit test coverage for GP logic
+* Updated Game Over UI with GP breakdown
+
+---
+
+### ⚠️ Notes / Decisions
+
+* All runs end in Game Over (normal completion state)
+* Run ends when:
+
+  * Player loses; or
+  * 1 hour passes since run start
+* GP is always calculated at Game Over
+* Daily GP uses the Game Over timestamp (not run start)
+* Daily GP is awarded once per local calendar day
+* Warmup:
+
+  * Available only when GP < 10
+  * Grants GP only if PP ≥ 10,000
+* GP is currently client-side only (mock persistence)
+* Backend validation will be required for anti-cheat
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze (no issues)
+* [x] flutter test (passing)
+* [x] Completion GP correctly awarded for all run modes
+* [x] Warmup threshold correctly enforced
+* [x] Daily GP correctly awarded once per day
+* [x] Daily GP correctly resets on next day
+* [x] Run duration limit triggers Game Over correctly
+* [x] GP calculated only once per run
+* [x] Pending PP correctly included on run finalization
+* [x] PlayerProfile updates correctly persisted in mock repository
+* [x] Game Over UI displays correct GP breakdown
+
+---
+
+### 📌 Next Session
+
+Session 11 — Purchases
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* 🔄 Session 11 — Purchases (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 11 — Purchases
+Status: Ready ⏳
+
+---
+
+

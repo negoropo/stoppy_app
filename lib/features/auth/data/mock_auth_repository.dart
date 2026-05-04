@@ -69,6 +69,24 @@ class MockAuthRepository implements AuthRepository {
     _currentPlayer = null;
   }
 
+  @override
+  Future<PlayerProfile> updatePlayerProfile(PlayerProfile playerProfile) async {
+    final normalizedUsername = _normalizeUsername(playerProfile.username);
+    final existingRecord = _playersByNormalizedUsername[normalizedUsername];
+    if (existingRecord == null) {
+      throw const AuthException('Player profile does not exist.');
+    }
+
+    // The mock repository updates the full profile record in memory. A backend
+    // repository can later replace this with an authenticated server mutation
+    // using the same contract.
+    _playersByNormalizedUsername[normalizedUsername] = existingRecord.copyWith(
+      playerProfile: playerProfile,
+    );
+    _currentPlayer = playerProfile;
+    return playerProfile;
+  }
+
   String _cleanUsername(String username) {
     return username.trim();
   }
@@ -99,4 +117,11 @@ class _MockPlayerRecord {
 
   final PlayerProfile playerProfile;
   final String password;
+
+  _MockPlayerRecord copyWith({PlayerProfile? playerProfile, String? password}) {
+    return _MockPlayerRecord(
+      playerProfile: playerProfile ?? this.playerProfile,
+      password: password ?? this.password,
+    );
+  }
 }

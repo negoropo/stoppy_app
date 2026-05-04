@@ -6,7 +6,8 @@ Target — posição especial na linha; parar a bola sobre ele faz passar de ní
 fora da safe zone, o jogador passa de nível sem aumentar nenhum nível de dificuldade em nenhuma 
 variável para compensar o risco de tentar parar a bola no target fora da safe zone.
 
-O jogador perde se parar a bola fora da Safe Zone e também fora do Target.
+O jogador perde se parar a bola fora da Safe Zone e também fora do Target ou exceder o tempo limite para acabar uma run que é 1 hora.
+Após 1 hora desde o início, a run acaba e o jogador fica com a pontuação que tinha no final, mesmo que esteja em pause.
 Safe Zone dividida em zonas (por percentagem da safe zone):
 
 Gold: primeiros 10% + últimos 10%
@@ -151,17 +152,16 @@ JOGADOR
 Registo:
 
 Campos: Username (único), Email e País (Escolha de uma lista pré-definida com todos os países do mundo)
-Recebe 10 GP ao registar
+Recebe 5 GP ao registar
 
 GP — Como ganhar:
 
-1 GP por cada run completa (liga, torneio ou warmup(no warmup só ganha 1 GP se fizer pelo menos 5000 PP na run))
-2 GP por cada dia com pelo menos 1 jogada (conta hora de início da run)
+1 GP por cada run feita (liga, torneio ou warmup(no warmup só ganha 1 GP se fizer pelo menos 10000 PP na run))
+2 GP por cada dia com pelo menos 1 jogada (conta hora de fim da primeira run do dia)
 Compra direta: 10GP=1€, 25GP=2€
 
 Warmup:
-
-Só disponível quando GP < 10
+É uma run como outra qualquer, mas só está disponível quando GP < 10
 Permite fazer runs e ganhar GP sem custo de entrada
 
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/features/auth/data/mock_auth_repository.dart';
+import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:stoppy_app/features/auth/presentation/screens/register_screen.dart';
+import 'package:stoppy_app/features/game/domain/economy/run_mode.dart';
 import 'package:stoppy_app/features/game/domain/models/difficulty_state.dart';
 import 'package:stoppy_app/features/game/domain/models/game_level_config.dart';
 import 'package:stoppy_app/features/game/domain/models/movement_direction.dart';
@@ -46,6 +48,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(GameScreen), findsOneWidget);
+    expect(find.text('Mode: Warmup'), findsOneWidget);
     expect(_gameAreaPainterFinder(), findsOneWidget);
   });
 
@@ -277,6 +280,11 @@ void main() {
     expect(find.text('No lives left. Game Over!'), findsOneWidget);
     expect(find.text('Restart run'), findsOneWidget);
     expect(find.text('Reward'), findsNothing);
+    expect(find.text('Run mode: League'), findsOneWidget);
+    expect(find.text('Completion GP: 1'), findsOneWidget);
+    expect(find.text('Daily GP: 2'), findsOneWidget);
+    expect(find.text('Total GP earned: 3'), findsOneWidget);
+    expect(find.text('Current total GP: 3'), findsOneWidget);
 
     await tester.tap(find.text('Restart run'));
     await tester.pump();
@@ -326,6 +334,88 @@ void main() {
     expect(find.text('Time: 30s'), findsOneWidget);
     expect(find.text('Level: 1'), findsOneWidget);
     expect(find.text('PP: 0'), findsOneWidget);
+  });
+
+  testWidgets('Run is forced to Game Over after one hour and finalizes GP', (
+    WidgetTester tester,
+  ) async {
+    var currentTime = DateTime(2026, 5, 4, 10);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          initialRunMode: RunMode.league,
+          now: () => currentTime,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: const GameLevelConfig(
+            ballRotationDuration: Duration(seconds: 3),
+            ballRadius: 18,
+            stopTimeLimit: Duration(hours: 2),
+            safeZoneSweepAngle: 1,
+            safeZoneRotationDuration: null,
+            targetRotationDuration: null,
+            ballStartAngle: 0,
+            safeZoneStartAngle: -0.5,
+            targetStartAngle: 2,
+            ballDirection: MovementDirection.clockwise,
+          ),
+        ),
+      ),
+    );
+
+    currentTime = currentTime.add(const Duration(hours: 1));
+    await tester.pump(const Duration(hours: 1));
+
+    expect(find.text('Game Over'), findsOneWidget);
+    expect(find.text('Run duration limit reached.'), findsOneWidget);
+    expect(find.text('Completion GP: 1'), findsOneWidget);
+    expect(find.text('Daily GP: 2'), findsOneWidget);
+    expect(find.text('Total GP earned: 3'), findsOneWidget);
+    expect(find.text('Current total GP: 3'), findsOneWidget);
+  });
+
+  testWidgets('Daily GP uses Game Over timestamp instead of run start', (
+    WidgetTester tester,
+  ) async {
+    final runStartedAt = DateTime(2026, 5, 4, 23, 30);
+    var currentTime = runStartedAt;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            gamePoints: 5,
+            lastDailyGpAwardedAt: DateTime(2026, 5, 4, 10),
+          ),
+          initialRunMode: RunMode.league,
+          now: () => currentTime,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: const GameLevelConfig(
+            ballRotationDuration: Duration(seconds: 3),
+            ballRadius: 18,
+            stopTimeLimit: Duration(hours: 2),
+            safeZoneSweepAngle: 1,
+            safeZoneRotationDuration: null,
+            targetRotationDuration: null,
+            ballStartAngle: 0,
+            safeZoneStartAngle: -0.5,
+            targetStartAngle: 2,
+            ballDirection: MovementDirection.clockwise,
+          ),
+        ),
+      ),
+    );
+
+    currentTime = runStartedAt.add(const Duration(hours: 1));
+    await tester.pump(const Duration(hours: 1));
+
+    expect(find.text('Game Over'), findsOneWidget);
+    expect(find.text('Run duration limit reached.'), findsOneWidget);
+    expect(find.text('Daily GP: 2'), findsOneWidget);
+    expect(find.text('Current total GP: 8'), findsOneWidget);
   });
 }
 

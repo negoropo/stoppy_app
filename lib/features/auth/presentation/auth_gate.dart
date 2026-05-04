@@ -124,7 +124,10 @@ class _AuthGateState extends State<AuthGate> {
         }
 
         if (effectiveAuthState.isAuthenticated) {
-          return const GameScreen();
+          return GameScreen(
+            playerProfile: effectiveAuthState.playerProfile,
+            authRepository: widget.authRepository,
+          );
         }
 
         if (_isRegisterMode) {
@@ -168,6 +171,11 @@ class _DefaultAuthRepository implements AuthRepository {
   @override
   Future<void> logout() {
     return _repository.logout();
+  }
+
+  @override
+  Future<PlayerProfile> updatePlayerProfile(PlayerProfile playerProfile) {
+    return _repository.updatePlayerProfile(playerProfile);
   }
 
   @override

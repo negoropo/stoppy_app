@@ -5,6 +5,12 @@ import 'package:flutter/material.dart';
 
 import 'config/game_geometry_config.dart';
 import 'package:stoppy_app/core/constants/debug_constants.dart';
+import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
+import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
+import 'domain/economy/game_point_reward_calculator.dart';
+import 'domain/economy/game_point_reward_result.dart';
+import 'domain/economy/run_mode.dart';
+import 'domain/economy/warmup_availability_policy.dart';
 import 'domain/level_generator.dart';
 import 'domain/models/difficulty_state.dart';
 import 'domain/models/game_level_config.dart';
@@ -26,11 +32,19 @@ class GameScreen extends StatefulWidget {
     this.levelGenerator,
     this.initialDifficultyState,
     this.initialLevelConfig,
+    this.playerProfile,
+    this.authRepository,
+    this.initialRunMode,
+    this.now,
   });
 
   final LevelGenerator? levelGenerator;
   final DifficultyState? initialDifficultyState;
   final GameLevelConfig? initialLevelConfig;
+  final PlayerProfile? playerProfile;
+  final AuthRepository? authRepository;
+  final RunMode? initialRunMode;
+  final DateTime Function()? now;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -38,6 +52,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const Duration _feedbackDuration = Duration(milliseconds: 900);
+  static const Duration _maximumRunDuration = Duration(hours: 1);
   static const GameGeometryConfig _baseGeometry = GameGeometryConfig();
   static const double _gameAreaPadding = 24;
   static const int _targetOutsideSafeZoneRpReward = 5;
@@ -46,6 +61,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       RunPointRewardCalculator();
   static const PrecisionPointCalculator _precisionPointCalculator =
       PrecisionPointCalculator();
+  static const GamePointRewardCalculator _gpRewardCalculator =
+      GamePointRewardCalculator();
+  static const WarmupAvailabilityPolicy _warmupAvailabilityPolicy =
+      WarmupAvailabilityPolicy();
   static const RunPointRewardResult _noRpRewardResult = RunPointRewardResult(
     rewardTier: RunPointRewardTier.none,
     rpAmount: 0,
@@ -62,6 +81,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late DifficultyState _difficultyState;
   late GameLevelConfig _levelConfig;
   late GameGeometryConfig _geometry;
+  late RunMode _runMode;
   late final AnimationController _ballController;
   AnimationController? _safeZoneController;
   AnimationController? _targetController;
@@ -76,15 +96,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int _lives = 0;
   int _currentRunLevel = 1;
   int _committedRunPoints = 0;
+  int _currentGamePoints = 0;
   bool _isRewardOverlayVisible = false;
   bool _isProcessingHit = false;
   bool _isGameOver = false;
   String? _failureMessage;
   String? _targetOutsideSafeZoneMessage;
   List<String> _gameOverMessages = const [];
+  PlayerProfile? _playerProfile;
+  GamePointRewardResult? _lastGamePointRewardResult;
+  bool _isRunFinalized = false;
+  late DateTime _runStartedAt;
   int _remainingStopTimeSeconds = 0;
   Timer? _feedbackTimer;
   Timer? _stopTimeTimer;
+  Timer? _runDurationTimer;
 
   @override
   void initState() {
@@ -96,6 +122,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _levelConfig =
         widget.initialLevelConfig ??
         _levelGenerator.generateLevelConfig(_difficultyState);
+    _playerProfile = widget.playerProfile;
+    _currentGamePoints = _playerProfile?.gamePoints ?? 0;
+    _runMode =
+        widget.initialRunMode ?? _defaultRunModeForPlayer(_playerProfile);
+    _runStartedAt = _now();
     _geometry = _geometryForLevelConfig(_levelConfig);
     _ballController = AnimationController(
       vsync: this,
@@ -109,12 +140,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
     _resetStopTimeCountdown();
     _startStopTimeCountdown();
+    _startRunDurationTimer();
   }
 
   @override
   void dispose() {
     _feedbackTimer?.cancel();
     _stopStopTimeCountdown();
+    _stopRunDurationTimer();
     _ballController.dispose();
     _safeZoneController?.dispose();
     _targetController?.dispose();
@@ -181,6 +214,42 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _remainingStopTimeSeconds = _levelConfig.stopTimeLimit.inSeconds;
   }
 
+  DateTime _now() {
+    return widget.now?.call() ?? DateTime.now();
+  }
+
+  void _startRunDurationTimer() {
+    _stopRunDurationTimer();
+
+    final elapsedRunDuration = _now().difference(_runStartedAt);
+    final remainingRunDuration = _maximumRunDuration - elapsedRunDuration;
+
+    if (remainingRunDuration <= Duration.zero) {
+      _handleRunDurationExpired();
+      return;
+    }
+
+    _runDurationTimer = Timer(remainingRunDuration, _handleRunDurationExpired);
+  }
+
+  void _stopRunDurationTimer() {
+    _runDurationTimer?.cancel();
+    _runDurationTimer = null;
+  }
+
+  void _handleRunDurationExpired() {
+    if (!mounted || _isGameOver || _isRunFinalized) {
+      return;
+    }
+
+    if (_now().difference(_runStartedAt) < _maximumRunDuration) {
+      _startRunDurationTimer();
+      return;
+    }
+
+    _triggerRunDurationGameOver();
+  }
+
   double _currentBallAngle() {
     return _motionCalculator.movingAngle(
       startAngle: _levelConfig.ballStartAngle,
@@ -212,6 +281,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       safeZoneStartAngle: levelConfig.safeZoneStartAngle,
       targetAngle: levelConfig.targetStartAngle,
     );
+  }
+
+  RunMode _defaultRunModeForPlayer(PlayerProfile? playerProfile) {
+    if (playerProfile != null &&
+        _warmupAvailabilityPolicy.isWarmupAvailable(playerProfile)) {
+      return RunMode.warmup;
+    }
+
+    return RunMode.league;
   }
 
   void _validateCurrentBallPosition(double circleRadius) {
@@ -311,7 +389,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _triggerTimeoutGameOver() {
     _stopAnimations();
+    _stopRunDurationTimer();
     _feedbackTimer?.cancel();
+    _finalizeRun();
 
     setState(() {
       _isGameOver = true;
@@ -323,6 +403,29 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _isRewardOverlayVisible = false;
       _isProcessingHit = false;
       _gameOverMessages = const ["Time's up! No lives left. Game Over!"];
+    });
+  }
+
+  void _triggerRunDurationGameOver() {
+    _stopAnimations();
+    _stopRunDurationTimer();
+    _feedbackTimer?.cancel();
+
+    // A one-hour duration limit is a normal run completion boundary. It is
+    // finalized through Game Over so GP and final score are recorded exactly
+    // once using the run end timestamp.
+    _finalizeRun();
+
+    setState(() {
+      _isGameOver = true;
+      _lastHitResult = null;
+      _lastRpRewardResult = null;
+      _pendingPrecisionPointResult = null;
+      _failureMessage = null;
+      _targetOutsideSafeZoneMessage = null;
+      _isRewardOverlayVisible = false;
+      _isProcessingHit = false;
+      _gameOverMessages = const ['Run duration limit reached.', 'Game Over!'];
     });
   }
 
@@ -481,7 +584,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _triggerGameOver(HitValidationResult result) {
     _stopAnimations();
+    _stopRunDurationTimer();
     _feedbackTimer?.cancel();
+    _finalizeRun();
 
     setState(() {
       _isGameOver = true;
@@ -499,6 +604,62 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  void _finalizeRun() {
+    if (_isRunFinalized) {
+      return;
+    }
+
+    final runEndedAt = _now();
+    final playerProfile = _playerProfile;
+
+    // A run can end while a successful level reward is still waiting for player
+    // confirmation. Commit pending PP before GP calculation so warmup threshold
+    // and final scoring use the real completed run value.
+    final finalizedPrecisionPoints =
+        _totalPrecisionPoints + (_pendingPrecisionPointResult?.awardedPP ?? 0);
+
+    final gpRewardResult = _gpRewardCalculator.calculate(
+      runMode: _runMode,
+      totalPrecisionPoints: finalizedPrecisionPoints,
+      runEndedAt: runEndedAt,
+      lastDailyGpAwardedAt: playerProfile?.lastDailyGpAwardedAt,
+    );
+
+    final updatedGamePoints =
+        (playerProfile?.gamePoints ?? _currentGamePoints) +
+            gpRewardResult.totalGp;
+
+    _totalPrecisionPoints = finalizedPrecisionPoints;
+    _pendingPrecisionPointResult = null;
+    _lastGamePointRewardResult = gpRewardResult;
+    _currentGamePoints = updatedGamePoints;
+    _isRunFinalized = true;
+
+    if (playerProfile == null || widget.authRepository == null) {
+      return;
+    }
+
+    final updatedPlayerProfile = playerProfile.copyWith(
+      gamePoints: updatedGamePoints,
+      lastDailyGpAwardedAt: gpRewardResult.dailyGpAwarded
+          ? runEndedAt
+          : playerProfile.lastDailyGpAwardedAt,
+    );
+
+    _playerProfile = updatedPlayerProfile;
+
+    unawaited(_persistPlayerProfile(updatedPlayerProfile));
+  }
+
+  Future<void> _persistPlayerProfile(PlayerProfile playerProfile) async {
+    try {
+      await widget.authRepository?.updatePlayerProfile(playerProfile);
+    } catch (_) {
+      // Mock persistence is best-effort in the client. Future backend
+      // integration should surface authenticated write failures explicitly.
+    }
+  }
+
   void _restartCurrentLevelAnimations() {
     _ballController
       ..reset()
@@ -514,6 +675,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _restartRun() {
     _feedbackTimer?.cancel();
     _stopStopTimeCountdown();
+    _stopRunDurationTimer();
 
     final initialDifficultyState = _levelGenerator
         .createInitialDifficultyState();
@@ -525,6 +687,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _levelConfig = initialLevelConfig;
     _lastChangedVariable = null;
     _lastChangeWasIncrease = true;
+    _runMode =
+        widget.initialRunMode ?? _defaultRunModeForPlayer(_playerProfile);
+    _runStartedAt = _now();
     _geometry = _geometryForLevelConfig(initialLevelConfig);
     _ballController.duration = initialLevelConfig.ballRotationDuration;
     _resetStopTimeCountdown();
@@ -561,8 +726,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _isProcessingHit = false;
       _isGameOver = false;
       _gameOverMessages = const [];
+      _lastGamePointRewardResult = null;
+      _isRunFinalized = false;
     });
     _startStopTimeCountdown();
+    _startRunDurationTimer();
   }
 
   void _advanceToNextDebugLevel({required RewardMenuAction action}) {
@@ -713,6 +881,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           runLevel: _currentRunLevel,
                           totalPrecisionPoints: _totalPrecisionPoints,
                           totalRunPoints: _committedRunPoints,
+                          runMode: _runMode,
                           remainingSeconds: _remainingStopTimeSeconds,
                         ),
                       ),
@@ -760,6 +929,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           messages: _gameOverMessages,
                           totalPrecisionPoints: _totalPrecisionPoints,
                           runLevel: _currentRunLevel,
+                          runMode: _runMode,
+                          gpRewardResult: _lastGamePointRewardResult,
+                          currentGamePoints: _currentGamePoints,
                           onRestart: _restartRun,
                         ),
                       if (kShowDebugOverlay)
@@ -854,12 +1026,14 @@ class _RunStatusOverlay extends StatelessWidget {
     required this.runLevel,
     required this.totalPrecisionPoints,
     required this.totalRunPoints,
+    required this.runMode,
     required this.remainingSeconds,
   });
 
   final int runLevel;
   final int totalPrecisionPoints;
   final int totalRunPoints;
+  final RunMode runMode;
   final int remainingSeconds;
 
   @override
@@ -885,6 +1059,7 @@ class _RunStatusOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Level: $runLevel'),
+              Text('Mode: ${runMode.label}'),
               Text('PP: $totalPrecisionPoints'),
               Text('RP: $totalRunPoints'),
               Text('Time: ${remainingSeconds}s'),
@@ -901,12 +1076,18 @@ class _GameOverOverlay extends StatelessWidget {
     required this.messages,
     required this.totalPrecisionPoints,
     required this.runLevel,
+    required this.runMode,
+    required this.gpRewardResult,
+    required this.currentGamePoints,
     required this.onRestart,
   });
 
   final List<String> messages;
   final int totalPrecisionPoints;
   final int runLevel;
+  final RunMode runMode;
+  final GamePointRewardResult? gpRewardResult;
+  final int currentGamePoints;
   final VoidCallback onRestart;
 
   @override
@@ -995,6 +1176,77 @@ class _GameOverOverlay extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+
+            if (gpRewardResult != null) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Game Points',
+                style: TextStyle(
+                  color: Color(0xFFFFD166),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Run mode: ${runMode.label}',
+                style: const TextStyle(
+                  color: Color(0xFFD6DEE8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Completion GP: ${gpRewardResult!.completionGp}',
+                style: const TextStyle(
+                  color: Color(0xFFD6DEE8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Daily GP: ${gpRewardResult!.dailyGp}',
+                style: const TextStyle(
+                  color: Color(0xFFD6DEE8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Total GP earned: ${gpRewardResult!.totalGp}',
+                style: const TextStyle(
+                  color: Color(0xFF39D98A),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Current total GP: $currentGamePoints',
+                style: const TextStyle(
+                  color: Color(0xFFD6DEE8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (runMode == RunMode.warmup) ...[
+                const SizedBox(height: 6),
+                Text(
+                  gpRewardResult!.warmupThresholdReached
+                      ? 'Warmup completion GP awarded: 10,000 PP threshold reached.'
+                      : 'Warmup completion GP not awarded: 10,000 PP threshold not reached.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFFFD166),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
 
             const SizedBox(height: 16),
 
