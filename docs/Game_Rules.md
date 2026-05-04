@@ -71,7 +71,10 @@ PRECISION POINTS (PP) — Pontuação de Competição
 Pontuação máxima: 1000 PP quando o centro da bola coincide exatamente com o Target
 Quando para na Safe Zone: PP calculados pela distância do centro da bola ao Target
 PP acumulam durante toda a run e são sempre visíveis no ecrã
+PP ganhos ganhos num nível são o total PP base (distância do centro da bola ao 
+    Target) * ( 1 + (nível * 0.01) )
 Se parar fora da Safe Zone e fora do Target: perde, PP=0 para esse nível
+Pontuação final da Run são o total de PP ganhos + Pontos Bónus de níveis (nível atingido * 100)
 
 Pontuação semanal:
 
@@ -147,7 +150,7 @@ Fecho semanal: Domingo às 23:59 hora de Portugal (Europe/Lisbon)
 JOGADOR
 Registo:
 
-Campos: Nick (único), Email e País (Escolha de uma lista pré-definida com todos os países do mundo)
+Campos: Username (único), Email e País (Escolha de uma lista pré-definida com todos os países do mundo)
 Recebe 10 GP ao registar
 
 GP — Como ganhar:

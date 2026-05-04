@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/features/auth/data/mock_auth_repository.dart';
+import 'package:stoppy_app/features/auth/presentation/screens/login_screen.dart';
+import 'package:stoppy_app/features/auth/presentation/screens/register_screen.dart';
 import 'package:stoppy_app/features/game/domain/models/difficulty_state.dart';
 import 'package:stoppy_app/features/game/domain/models/game_level_config.dart';
 import 'package:stoppy_app/features/game/domain/models/movement_direction.dart';
@@ -8,22 +11,66 @@ import 'package:stoppy_app/features/game/rendering/game_area_painter.dart';
 import 'package:stoppy_app/main.dart';
 
 void main() {
+  Future<MockAuthRepository> authenticatedRepository() async {
+    final repository = MockAuthRepository();
+    await repository.register(username: 'Tester', password: 'pass123');
+    return repository;
+  }
+
+  testWidgets('Stoppy app shows auth flow before login', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(StoppyApp(authRepository: MockAuthRepository()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(GameScreen), findsNothing);
+    expect(find.text('Login'), findsWidgets);
+    expect(find.text('Create account'), findsOneWidget);
+  });
+
+  testWidgets('Registering a player opens the game screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(StoppyApp(authRepository: MockAuthRepository()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Create account'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RegisterScreen), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'NewPlayer');
+    await tester.enterText(find.byType(TextFormField).at(1), 'pass123');
+    await tester.tap(find.widgetWithText(FilledButton, 'Register'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GameScreen), findsOneWidget);
+    expect(_gameAreaPainterFinder(), findsOneWidget);
+  });
+
   testWidgets('Stoppy app shows the game rendering surface', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const StoppyApp());
+    final repository = await authenticatedRepository();
+
+    await tester.pumpWidget(StoppyApp(authRepository: repository));
+    await tester.pumpAndSettle();
 
     expect(find.byType(GameScreen), findsOneWidget);
-    expect(find.byType(CustomPaint), findsOneWidget);
+    expect(_gameAreaPainterFinder(), findsOneWidget);
   });
 
   testWidgets('Game screen uses the game area painter', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const StoppyApp());
+    final repository = await authenticatedRepository();
+
+    await tester.pumpWidget(StoppyApp(authRepository: repository));
+    await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 100));
 
-    final customPaint = tester.widget<CustomPaint>(find.byType(CustomPaint));
+    final customPaint = tester.widget<CustomPaint>(_gameAreaPainterFinder());
 
     expect(customPaint.painter, isA<GameAreaPainter>());
   });
@@ -91,7 +138,7 @@ void main() {
   testWidgets('Game screen shows the temporary difficulty debug overlay', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const StoppyApp());
+    await tester.pumpWidget(const MaterialApp(home: GameScreen()));
 
     expect(find.text('DEBUG ONLY - Difficulty'), findsOneWidget);
     expect(find.text('Level: 1'), findsOneWidget);
@@ -279,5 +326,11 @@ void main() {
     expect(find.text('Time: 30s'), findsOneWidget);
     expect(find.text('Level: 1'), findsOneWidget);
     expect(find.text('PP: 0'), findsOneWidget);
+  });
+}
+
+Finder _gameAreaPainterFinder() {
+  return find.byWidgetPredicate((widget) {
+    return widget is CustomPaint && widget.painter is GameAreaPainter;
   });
 }

@@ -204,7 +204,7 @@ Endpoints típicos:
 #### Player
 
 * id
-* nick
+* username
 * email
 * país
 * GP

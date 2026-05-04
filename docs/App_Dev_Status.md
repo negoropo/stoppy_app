@@ -289,7 +289,7 @@ Sistema de pontuação competitivo
 #### Sessão 9: Registo/Login
 
 * Criar jogador
-* Validar nick único
+* Validar username único
 
 #### Sessão 10: Sistema de GP
 
@@ -1048,14 +1048,6 @@ Implement a precision-based competitive scoring system based on angular distance
 
 Session 9 — Registo/Login
 
-Planned tasks:
-
-* [ ] Create player account system
-* [ ] Implement registration flow
-* [ ] Implement login flow
-* [ ] Validate unique username
-* [ ] Prepare user data model for backend
-
 ---
 
 ### 📊 Progress Update
@@ -1076,3 +1068,115 @@ Planned tasks:
 
 Current session: Session 9 — Registo/Login  
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 9 — Registration/Login
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement player authentication system with registration and login flows.
+
+---
+
+### 📦 Deliverables
+
+* [x] PlayerProfile model implemented
+* [x] AuthState model implemented
+* [x] AuthRepository contract defined
+* [x] MockAuthRepository implemented
+* [x] Username-based authentication (nickname removed)
+* [x] LoginScreen implemented
+* [x] RegisterScreen implemented
+* [x] Shared AuthFormCard widget implemented
+* [x] AuthGate navigation system implemented
+* [x] Authentication flow integrated with GameScreen
+* [x] Error handling and loading states implemented
+* [x] Dependency injection supported via AuthRepository
+
+---
+
+### 🛠️ Work Done
+
+* Implemented PlayerProfile model with username and creation date
+* Implemented AuthState with authenticated/unauthenticated states
+* Defined AuthRepository abstraction for future backend integration
+* Implemented MockAuthRepository using in-memory storage
+* Added username normalization and uniqueness validation
+* Replaced all nickname references with username across the system
+* Created AuthGate to manage authentication state and navigation
+* Implemented LoginScreen and RegisterScreen using shared AuthFormCard
+* Added form validation, loading state, and error feedback
+* Integrated authentication flow with GameScreen entry point
+* Updated and fixed tests to align with username-based system
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Authentication uses in-memory mock (no persistence)
+* Users are lost on app restart (expected for this phase)
+* No logout flow implemented yet
+* Auth logic is partially coupled with UI via AuthGate (acceptable for current phase)
+* Structure is prepared for future backend (Firebase or custom)
+* Dependency injection via AuthRepository enables testability and future scalability
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze (no issues)
+* [x] flutter test (passing)
+* [x] Register flow works correctly
+* [x] Login flow works within same app session
+* [x] Username uniqueness enforced
+* [x] Error messages displayed correctly
+* [x] Navigation to GameScreen on successful authentication
+
+---
+
+### 📌 Next Session
+
+Session 10 — GP System
+
+Planned tasks:
+
+* [ ] Criar modelo de GP no PlayerProfile
+* [ ] Implementar conversão RP → GP no final da run
+* [ ] Acumular GP por jogador
+* [ ] Mostrar GP no Game Over screen
+* [ ] Implementar reward diário (base)
+* [ ] Implementar sistema de warmup (primeira run do dia)
+* [ ] Adicionar display de GP na UI
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* 🔄 Session 10 — GP System (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 10 — GP System
+Status: Ready ⏳
+
+---

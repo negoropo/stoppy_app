@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-
-import 'features/game/game_screen.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/presentation/auth_gate.dart';
 
 void main() {
   runApp(const StoppyApp());
 }
 
 class StoppyApp extends StatelessWidget {
-  const StoppyApp({super.key});
+  const StoppyApp({super.key, this.authRepository});
+
+  final AuthRepository? authRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +20,7 @@ class StoppyApp extends StatelessWidget {
         useMaterial3: true,
         colorSchemeSeed: Colors.blue,
       ),
-      home: const GameScreen(),
+      home: AuthGate(authRepository: authRepository),
     );
   }
 }

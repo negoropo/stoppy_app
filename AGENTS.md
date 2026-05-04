@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 8 completed.
+Session 9 completed.
 
-Current session: Session 9 — Registration / Login System
+Current session: Session 10 — GP System
 
 ---
 
