@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../ads/data/mock_ad_repository.dart';
+import '../../ads/domain/repositories/ad_repository.dart';
 import '../../game/game_screen.dart';
 import '../../purchases/data/mock_purchase_repository.dart';
 import '../../purchases/domain/repositories/purchase_repository.dart';
@@ -11,16 +13,19 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({
+  AuthGate({
     super.key,
     AuthRepository? authRepository,
     PurchaseRepository? purchaseRepository,
+    AdRepository? adRepository,
   }) : authRepository = authRepository ?? const _DefaultAuthRepository(),
        purchaseRepository =
-           purchaseRepository ?? const MockPurchaseRepository();
+           purchaseRepository ?? const MockPurchaseRepository(),
+       adRepository = adRepository ?? MockAdRepository();
 
   final AuthRepository authRepository;
   final PurchaseRepository purchaseRepository;
+  final AdRepository adRepository;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -136,6 +141,7 @@ class _AuthGateState extends State<AuthGate> {
             playerProfile: effectiveAuthState.playerProfile,
             authRepository: widget.authRepository,
             purchaseRepository: widget.purchaseRepository,
+            adRepository: widget.adRepository,
           );
         }
 

@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 11 completed.
+Session 12 completed.
 
-Current session: Session 12 — Ads
+Current session: Session 13 — League structure
 
 ---
 

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import 'config/game_geometry_config.dart';
 import 'package:stoppy_app/core/constants/debug_constants.dart';
+import 'package:stoppy_app/features/ads/domain/ad_controller.dart';
+import 'package:stoppy_app/features/ads/domain/repositories/ad_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:stoppy_app/features/purchases/domain/repositories/purchase_repository.dart';
@@ -37,6 +39,7 @@ class GameScreen extends StatefulWidget {
     this.playerProfile,
     this.authRepository,
     this.purchaseRepository,
+    this.adRepository,
     this.initialRunMode,
     this.now,
   });
@@ -47,6 +50,7 @@ class GameScreen extends StatefulWidget {
   final PlayerProfile? playerProfile;
   final AuthRepository? authRepository;
   final PurchaseRepository? purchaseRepository;
+  final AdRepository? adRepository;
   final RunMode? initialRunMode;
   final DateTime Function()? now;
 
@@ -86,6 +90,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameLevelConfig _levelConfig;
   late GameGeometryConfig _geometry;
   late RunMode _runMode;
+  AdController? _adController;
   late final AnimationController _ballController;
   AnimationController? _safeZoneController;
   AnimationController? _targetController;
@@ -111,10 +116,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   GamePointRewardResult? _lastGamePointRewardResult;
   bool _isRunFinalized = false;
   late DateTime _runStartedAt;
+  int _lastBannerLoadedRunLevel = 1;
   int _remainingStopTimeSeconds = 0;
   Timer? _feedbackTimer;
   Timer? _stopTimeTimer;
   Timer? _runDurationTimer;
+  Timer? _scoreTransitionTimer;
+  bool _isExtraLifeOfferVisible = false;
+  bool _isScoreTransitionVisible = false;
+  bool _isFinalResultsVisible = false;
+  bool _isShowingRewardedAd = false;
+  String? _extraLifeMessage;
 
   @override
   void initState() {
@@ -131,6 +143,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _runMode =
         widget.initialRunMode ?? _defaultRunModeForPlayer(_playerProfile);
     _runStartedAt = _now();
+    _adController = widget.adRepository == null
+        ? null
+        : AdController(adRepository: widget.adRepository!);
     _geometry = _geometryForLevelConfig(_levelConfig);
     _ballController = AnimationController(
       vsync: this,
@@ -145,11 +160,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _resetStopTimeCountdown();
     _startStopTimeCountdown();
     _startRunDurationTimer();
+    _preloadAdsForRun();
   }
 
   @override
   void dispose() {
     _feedbackTimer?.cancel();
+    _scoreTransitionTimer?.cancel();
     _stopStopTimeCountdown();
     _stopRunDurationTimer();
     _ballController.dispose();
@@ -239,6 +256,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _stopRunDurationTimer() {
     _runDurationTimer?.cancel();
     _runDurationTimer = null;
+  }
+
+  void _preloadAdsForRun() {
+    final adController = _adController;
+    if (adController == null) {
+      return;
+    }
+
+    unawaited(adController.preloadBeforeRun(_playerProfile));
+    if (!(_playerProfile?.adsRemoved ?? false)) {
+      _lastBannerLoadedRunLevel = _currentRunLevel;
+    }
   }
 
   void _handleRunDurationExpired() {
@@ -351,12 +380,37 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _isRewardOverlayVisible = shouldShowRewardOverlay;
     });
 
+    if (result.isInsideSafeZone) {
+      _refreshBannerAfterSafeZoneStop();
+    }
+
     if (shouldShowRewardOverlay) {
       _stopAnimations();
       return;
     }
 
     _startTemporaryHitFeedbackTimer();
+  }
+
+  void _refreshBannerAfterSafeZoneStop() {
+    final adController = _adController;
+    if (adController == null) {
+      return;
+    }
+
+    unawaited(
+      adController
+          .refreshBannerAfterSafeZoneStop(
+            playerProfile: _playerProfile,
+            currentRunLevel: _currentRunLevel,
+            lastBannerLoadedRunLevel: _lastBannerLoadedRunLevel,
+            wasSafeZoneStop: true,
+          )
+          .then((loadedRunLevel) {
+            if (!mounted) return;
+            _lastBannerLoadedRunLevel = loadedRunLevel;
+          }),
+    );
   }
 
   void _handleStopTimeExpired() {
@@ -395,19 +449,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _stopAnimations();
     _stopRunDurationTimer();
     _feedbackTimer?.cancel();
-    _finalizeRun();
-
-    setState(() {
-      _isGameOver = true;
-      _lastHitResult = null;
-      _lastRpRewardResult = null;
-      _pendingPrecisionPointResult = null;
-      _failureMessage = null;
-      _targetOutsideSafeZoneMessage = null;
-      _isRewardOverlayVisible = false;
-      _isProcessingHit = false;
-      _gameOverMessages = const ["Time's up! No lives left. Game Over!"];
-    });
+    _showGameOverOffer(
+      messages: const ["Time's up! No lives left. Game Over!"],
+    );
   }
 
   void _triggerRunDurationGameOver() {
@@ -415,22 +459,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _stopRunDurationTimer();
     _feedbackTimer?.cancel();
 
-    // A one-hour duration limit is a normal run completion boundary. It is
-    // finalized through Game Over so GP and final score are recorded exactly
-    // once using the run end timestamp.
-    _finalizeRun();
-
-    setState(() {
-      _isGameOver = true;
-      _lastHitResult = null;
-      _lastRpRewardResult = null;
-      _pendingPrecisionPointResult = null;
-      _failureMessage = null;
-      _targetOutsideSafeZoneMessage = null;
-      _isRewardOverlayVisible = false;
-      _isProcessingHit = false;
-      _gameOverMessages = const ['Run duration limit reached.', 'Game Over!'];
-    });
+    _showGameOverOffer(
+      messages: const ['Run duration limit reached.', 'Game Over!'],
+    );
   }
 
   void _showTargetOutsideSafeZoneReward(
@@ -589,21 +620,112 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _stopAnimations();
     _stopRunDurationTimer();
     _feedbackTimer?.cancel();
-    _finalizeRun();
 
     setState(() {
-      _isGameOver = true;
       _lastHitResult = result;
       _lastRpRewardResult = _noRpRewardResult;
+    });
+    _showGameOverOffer(
+      messages: const [
+        'Missed safe zone and target.',
+        'No lives left. Game Over!',
+      ],
+    );
+  }
+
+  void _showGameOverOffer({required List<String> messages}) {
+    setState(() {
+      _isGameOver = true;
       _pendingPrecisionPointResult = null;
       _failureMessage = null;
       _targetOutsideSafeZoneMessage = null;
       _isRewardOverlayVisible = false;
       _isProcessingHit = false;
-      _gameOverMessages = const [
-        'Missed safe zone and target.',
-        'No lives left. Game Over!',
-      ];
+      _isExtraLifeOfferVisible = true;
+      _isScoreTransitionVisible = false;
+      _isFinalResultsVisible = false;
+      _extraLifeMessage = null;
+      _gameOverMessages = messages;
+    });
+  }
+
+  Future<void> _acceptRewardedContinue() async {
+    if (_isShowingRewardedAd) return;
+    _isShowingRewardedAd = true;
+
+    try {
+      final adController = _adController;
+      if (adController == null) return;
+
+      setState(() {
+        _extraLifeMessage = null;
+      });
+
+      final result = await adController.showRewardedExtraLife();
+      if (!mounted) return;
+
+      if (!result.shown) {
+        setState(() {
+          _extraLifeMessage = 'Rewarded ad is not available yet.';
+        });
+        return;
+      }
+
+      if (!result.rewardGranted) {
+        setState(() {
+          _extraLifeMessage =
+          'You must watch the full ad to continue this run.';
+        });
+        return;
+      }
+
+      _resetStopTimeCountdown();
+      setState(() {
+        _isGameOver = false;
+        _isExtraLifeOfferVisible = false;
+        _isScoreTransitionVisible = false;
+        _isFinalResultsVisible = false;
+        _gameOverMessages = const [];
+        _lastHitResult = null;
+        _lastRpRewardResult = null;
+        _pendingPrecisionPointResult = null;
+        _isProcessingHit = false;
+      });
+
+      _restartCurrentLevelAnimations();
+      _startStopTimeCountdown();
+      _startRunDurationTimer();
+    } finally {
+      _isShowingRewardedAd = false;
+    }
+  }
+
+  void _declineRewardedExtraLifeAndExit() {
+    setState(() {
+      _isExtraLifeOfferVisible = false;
+      _isScoreTransitionVisible = true;
+      _extraLifeMessage = null;
+    });
+
+    _scoreTransitionTimer?.cancel();
+    _scoreTransitionTimer = Timer(
+      const Duration(milliseconds: 1500),
+      _showInterstitialThenFinalResults,
+    );
+  }
+
+  Future<void> _showInterstitialThenFinalResults() async {
+    await _adController?.showInterstitialOnExit(_playerProfile);
+
+    if (!mounted) {
+      return;
+    }
+
+    _finalizeRun();
+
+    setState(() {
+      _isScoreTransitionVisible = false;
+      _isFinalResultsVisible = true;
     });
   }
 
@@ -708,6 +830,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _restartRun() {
     _feedbackTimer?.cancel();
+    _scoreTransitionTimer?.cancel();
     _stopStopTimeCountdown();
     _stopRunDurationTimer();
 
@@ -762,9 +885,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _gameOverMessages = const [];
       _lastGamePointRewardResult = null;
       _isRunFinalized = false;
+      _isExtraLifeOfferVisible = false;
+      _isScoreTransitionVisible = false;
+      _isFinalResultsVisible = false;
+      _extraLifeMessage = null;
     });
     _startStopTimeCountdown();
     _startRunDurationTimer();
+    _preloadAdsForRun();
   }
 
   void _advanceToNextDebugLevel({required RewardMenuAction action}) {
@@ -969,7 +1097,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ),
                           onSelected: _selectRewardOption,
                         ),
-                      if (_isGameOver)
+                      if (_isGameOver && _isExtraLifeOfferVisible)
+                        _ExtraLifeOfferOverlay(
+                          messages: _gameOverMessages,
+                          message: _extraLifeMessage,
+                          canWatchRewardedAd: _adController != null,
+                          onWatchRewardedAd: _acceptRewardedContinue,
+                          onExitRun: _declineRewardedExtraLifeAndExit,
+                        ),
+                      if (_isGameOver && _isScoreTransitionVisible)
+                        const _ScoreTransitionOverlay(),
+                      if (_isGameOver && _isFinalResultsVisible)
                         _GameOverOverlay(
                           messages: _gameOverMessages,
                           totalPrecisionPoints: _totalPrecisionPoints,
@@ -1112,6 +1250,124 @@ class _RunStatusOverlay extends StatelessWidget {
               Text('GP: $totalGamePoints'),
               Text('Time: ${remainingSeconds}s'),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExtraLifeOfferOverlay extends StatelessWidget {
+  const _ExtraLifeOfferOverlay({
+    required this.messages,
+    required this.message,
+    required this.canWatchRewardedAd,
+    required this.onWatchRewardedAd,
+    required this.onExitRun,
+  });
+
+  final List<String> messages;
+  final String? message;
+  final bool canWatchRewardedAd;
+  final VoidCallback onWatchRewardedAd;
+  final VoidCallback onExitRun;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xEE101418),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFFD166)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Game Over',
+              style: TextStyle(
+                color: Color(0xFFFFD166),
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...messages.map(
+              (gameOverMessage) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  gameOverMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFD6DEE8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Watch a rewarded ad to continue from this level?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFFD6DEE8),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFFF6B6B),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: canWatchRewardedAd ? onWatchRewardedAd : null,
+              child: const Text('Watch ad to continue'),
+            ),
+            TextButton(onPressed: onExitRun, child: const Text('Exit run')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScoreTransitionOverlay extends StatelessWidget {
+  const _ScoreTransitionOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xEE101418),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF7CC7FF)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(20),
+        child: Text(
+          'Calculating your score... 🚀',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFF7CC7FF),
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'features/ads/domain/repositories/ad_repository.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/auth_gate.dart';
 import 'features/purchases/domain/repositories/purchase_repository.dart';
@@ -8,10 +9,16 @@ void main() {
 }
 
 class StoppyApp extends StatelessWidget {
-  const StoppyApp({super.key, this.authRepository, this.purchaseRepository});
+  const StoppyApp({
+    super.key,
+    this.authRepository,
+    this.purchaseRepository,
+    this.adRepository,
+  });
 
   final AuthRepository? authRepository;
   final PurchaseRepository? purchaseRepository;
+  final AdRepository? adRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +29,7 @@ class StoppyApp extends StatelessWidget {
       home: AuthGate(
         authRepository: authRepository,
         purchaseRepository: purchaseRepository,
+        adRepository: adRepository,
       ),
     );
   }

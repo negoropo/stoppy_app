@@ -1426,5 +1426,116 @@ Status: Ready ⏳
 
 ---
 
+## 🔄 Session Update
 
+### Session: Session 12 — Ads
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement a mock-first ads system with strict gameplay performance protection.
+
+---
+
+### 📦 Deliverables
+
+* [x] AdType model implemented
+* [x] AdLoadState model implemented
+* [x] AdShowResult model implemented
+* [x] AdRepository contract defined
+* [x] MockAdRepository implemented
+* [x] AdController implemented
+* [x] Ads integrated with GameScreen
+* [x] Banner preload and manual refresh policy implemented
+* [x] Interstitial exit flow implemented
+* [x] Rewarded continue flow implemented
+* [x] Remove Ads rule implemented
+* [x] Tests updated for ads logic
+
+---
+
+### 🛠️ Work Done
+
+* Added mock-first ads architecture prepared for future AdMob integration
+* Implemented banner, interstitial and rewarded ad types
+* Added typed ad load states: loading, loaded and failed
+* Added typed ad show result with shown and rewardGranted flags
+* Implemented run-start preloading for ads
+* Implemented manual banner refresh after safe-zone success and at least 10 run levels
+* Implemented Game Over rewarded continue flow
+* Implemented score transition before final results
+* Implemented interstitial display only when player exits without rewarded continue
+* Ensured Remove Ads disables only banners and interstitials
+* Ensured rewarded ads remain available because they are optional continue opportunities
+* Added protection against multiple rewarded ad taps
+* Kept ad loading/showing logic outside critical gameplay timing where possible
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Ads are currently mocked; no real AdMob SDK integration yet
+* Rewarded ad does not grant a literal extra life
+* Rewarded ad allows the player to continue from the same failed level
+* Rewarded continue does not trigger an interstitial
+* Remove Ads disables non-optional ads only:
+  * banners
+  * interstitials
+* Remove Ads does not disable rewarded ads
+* Banner auto-refresh is intentionally not used
+* Banner refresh is manual and sparse to avoid gameplay stutter
+* Real AdMob integration must preserve this performance strategy
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Remove Ads skips banners
+* [x] Remove Ads skips interstitials
+* [x] Remove Ads does not skip rewarded ads
+* [x] Rewarded continue remains available when ads are removed
+* [x] Rewarded continue does not grant a literal life
+* [x] Rewarded continue resumes the same run level
+* [x] Rewarded continue prevents interstitial
+* [x] Declined rewarded offer triggers interstitial on exit
+* [x] Banner refresh happens only after 10 run levels
+* [x] Banner refresh happens only after safe-zone success
+
+---
+
+### 📌 Next Session
+
+Session 13 — League structure
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* 🔄 Session 13 — League structure (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 13 — League structure  
+Status: Ready ⏳
 

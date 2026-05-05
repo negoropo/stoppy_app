@@ -90,6 +90,62 @@ Multiplicador bónus por dias de atividade na semana:
 5 dias: ×1.6 | 6 dias: ×1.8 | 7 dias: ×2.0
 
 
+Ads
+
+A Estratégia de Ads
+
+Fim do jogo:
+
+Exemplo prático de fim do jogo:
+1. O jogador termina a run.
+2. Tu ofereces: "Queres uma continuar do mesmo nível?” (Vídeo Recompensado).
+3. Cenário A (Ele clica): Vê o vídeo, recomeça do mesmo nível e não vê mais nada.
+4. Cenário B (Ele recusa): Ele clica em "Sair". Ele vê um Intersticial rápido (5 segundos).
+
+Fim da run: O jogador clica em “Sair”.
+Ecrã de Transição (1.5 segundos): Fundo desfocado do jogo com a mensagem: "A calcular a tua pontuação... 🚀".
+Disparo do Anúncio: O Intersticial aparece.
+Fecho: O jogador volta diretamente para o ecrã de resultados finais.
+
+Durante o jogo (banners):
+
+Como o jogo depende de precisão absoluta e milissegundos, o "refresh" automático de banners pode ser um problema. O processo de descarregar e renderizar um novo anúncio consome CPU e pode causar um frame drop (aquele pequeno "salto") exatamente no momento de um clique decisivo.
+Para garantir zero stutter, aqui está a estratégia técnica que deves seguir:
+
+1. Desativar o "Auto-Refresh" Totalmente
+   Devemos assumir o controlo manual do refresh de banners:
+
+* Carregamento inicial: Carrega o primeiro banner quando o jogador está no Menu Principal.
+
+* Refresh a cada 10 níveis: Só pedes um novo banner na primeira vez que o jogador parar a bola na safe zone após pelo menos 10 níveis depois do banner actual ter sido carregado. Quando a "run" terminar, se o jogador escolher ter uma vida extra é carregado novo banner e a regra de refresh a cada 10 níveis mantém até o jogador acabar a run (game over).
+
+Resumo da Implementação Técnica:
+
+1.1. Se o jogador está a jogar: Banner estático (sem refresh).
+1.2. Se o jogador pára a bola na safe zone:
+    * Verifica: nº de níveis passados desde o último load/refresh >= 10 ?
+    * Se sim: Executa refreshBanner().
+    * Se não: Mantém o atual.
+1.3. Antes de voltar a jogar: Garante que o pedido do anúncio já terminou ou está em segundo plano antes de recomeçar a run.
+
+
+2. Pré-carregamento (Caching)
+   Configura o código para fazer o fetch (pedido) do próximo Intersticial ou Vídeo Recompensado logo no início da run.
+   Assim, quando o jogador perder, o anúncio já está na memória do telemóvel e aparece instantaneamente, sem precisar de usar a internet ou o processador naquele momento crítico.
+   A mesma coisa deve ser feita para o primeiro banner: o fetch(pedido) deve ser feito antes do início da run.
+
+3. Usar Banners Estáticos (Não-Animados)
+   Evita banners que contenham vídeos ou animações pesadas. No painel da rede de anúncios (ex: AdMob), podes filtrar os tipos de anúncios:
+
+* Bloqueia: Anúncios de vídeo e GIFs complexos em banners.
+* Permite: Apenas imagens estáticas e texto. São muito mais leves e não causam picos de processamento após o carregamento inicial.
+
+
+4. Prioridade de Processamento (Thread Handling)
+   Garantir que a SDK de anúncios corre numa thread secundária e nunca na thread principal (Main/UI Thread), onde o jogo processa a física e os inputs.
+   Mesmo assim, possivelmente, em telemóveis mais fracos, a simples gestão de rede pode causar picos de latência.
+
+
 SISTEMA DE LIGA
 Estrutura de divisões:
 

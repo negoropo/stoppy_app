@@ -307,8 +307,13 @@ void main() {
     expect(find.text('Game Over'), findsOneWidget);
     expect(find.text('Missed safe zone and target.'), findsOneWidget);
     expect(find.text('No lives left. Game Over!'), findsOneWidget);
-    expect(find.text('Restart run'), findsOneWidget);
+    expect(find.text('Watch ad for extra life'), findsOneWidget);
+    expect(find.text('Exit run'), findsOneWidget);
     expect(find.text('Reward'), findsNothing);
+
+    await _exitRunAndShowFinalResults(tester);
+
+    expect(find.text('Restart run'), findsOneWidget);
     expect(find.text('Run mode: League'), findsOneWidget);
     expect(find.text('Completion GP: 1'), findsOneWidget);
     expect(find.text('Daily GP: 2'), findsOneWidget);
@@ -356,6 +361,8 @@ void main() {
     expect(find.text("Time's up! No lives left. Game Over!"), findsOneWidget);
     expect(find.text('Reward'), findsNothing);
 
+    await _exitRunAndShowFinalResults(tester);
+
     await tester.tap(find.text('Restart run'));
     await tester.pump();
 
@@ -397,6 +404,9 @@ void main() {
 
     expect(find.text('Game Over'), findsOneWidget);
     expect(find.text('Run duration limit reached.'), findsOneWidget);
+
+    await _exitRunAndShowFinalResults(tester);
+
     expect(find.text('Completion GP: 1'), findsOneWidget);
     expect(find.text('Daily GP: 2'), findsOneWidget);
     expect(find.text('Total GP earned: 3'), findsOneWidget);
@@ -443,9 +453,19 @@ void main() {
 
     expect(find.text('Game Over'), findsOneWidget);
     expect(find.text('Run duration limit reached.'), findsOneWidget);
+
+    await _exitRunAndShowFinalResults(tester);
+
     expect(find.text('Daily GP: 2'), findsOneWidget);
     expect(find.text('Current total GP: 8'), findsOneWidget);
   });
+}
+
+Future<void> _exitRunAndShowFinalResults(WidgetTester tester) async {
+  await tester.tap(find.text('Exit run'));
+  await tester.pump();
+  expect(find.text('Calculating your score... 🚀'), findsOneWidget);
+  await tester.pump(const Duration(milliseconds: 1500));
 }
 
 Finder _gameAreaPainterFinder() {
