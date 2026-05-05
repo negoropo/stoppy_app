@@ -255,7 +255,7 @@ void main() {
     expect(
       find.text(
         "You've hit the target outside the Safe Zone! Congratulations! "
-        'You earned 5 RP and your reward is Level Advance with NO difficulty increase!',
+        'Your reward is Level Advance with NO difficulty increase!',
       ),
       findsOneWidget,
     );
@@ -272,6 +272,7 @@ void main() {
     expect(find.text('Game Over'), findsNothing);
     expect(find.text('Level: 2'), findsOneWidget);
     expect(find.text('PP: 1010'), findsOneWidget);
+    expect(find.text('RP: 0'), findsOneWidget);
     expect(find.text('last increased: none'), findsOneWidget);
     expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
     expect(find.text('total RP: 5'), findsNothing);

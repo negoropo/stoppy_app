@@ -884,7 +884,6 @@ Implement lives usage, timeout failure, and full run-level flow.
 * Added visible run level tracking
 * Separated run level from difficulty level
 * Added target-outside-safe-zone reward:
-  * Grants 5 RP
   * Advances level
   * Does not increase difficulty
   * Does not show reward menu
@@ -904,7 +903,7 @@ Implement lives usage, timeout failure, and full run-level flow.
 * Difficulty progression remains independent from run level
 * Timeout is treated as failure, not as hit validation
 * Target hit means any part of the ball touches the target
-* Target outside Safe Zone grants 5 RP and free level advance with no difficulty increase
+* Target outside Safe Zone grants free level advance with no difficulty increase
 * Safe Zone edge hit remains a valid success but grants 0 RP if the ball center is outside the Safe Zone
 
 ---
@@ -918,7 +917,7 @@ Implement lives usage, timeout failure, and full run-level flow.
 * [x] Retry keeps same level and difficulty
 * [x] Successful hit advances run level
 * [x] Reward menu advances run level after selection
-* [x] Target outside Safe Zone grants 5 RP and advances level without difficulty increase
+* [x] Target outside Safe Zone advances level without difficulty increase
 * [x] Safe Zone edge hit opens reward menu with 0 RP
 * [x] Restart resets RP, lives, run level, timer and difficulty
 * [x] Timer visible and resets correctly
@@ -1017,7 +1016,7 @@ Implement a precision-based competitive scoring system based on angular distance
 * PP is independent from RP and Safe Zone reward tiers
 * PP is based on distance to target, even when advancing through Safe Zone
 * Failed hits and timeouts award 0 PP
-* Target outside Safe Zone grants RP, PP and advances level without difficulty increase
+* Target outside Safe Zone grants PP and advances level without difficulty increase
 * PP uses awardedPP after multiplier for total scoring
 * basePP is preserved for player-facing breakdown
 * RP shown in HUD represents committed RP only
@@ -1168,16 +1167,6 @@ Session 10 — GP System
 
 Current session: Session 10 — GP System
 Status: Ready ⏳
-
----
-
-Perfeito — vamos fechar a Session 10 corretamente (como deve ser) 👇
-
----
-
-# 📄 Atualização do `App_Dev_Status.md`
-
-Aqui tens a versão pronta para colar:
 
 ---
 

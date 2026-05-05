@@ -59,7 +59,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const Duration _maximumRunDuration = Duration(hours: 1);
   static const GameGeometryConfig _baseGeometry = GameGeometryConfig();
   static const double _gameAreaPadding = 24;
-  static const int _targetOutsideSafeZoneRpReward = 5;
+  static const int _targetOutsideSafeZoneRpReward = 0;
   static const GameMotionCalculator _motionCalculator = GameMotionCalculator();
   static const RunPointRewardCalculator _rpRewardCalculator =
       RunPointRewardCalculator();
@@ -78,7 +78,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       RunPointRewardResult(
         rewardTier: RunPointRewardTier.none,
         rpAmount: _targetOutsideSafeZoneRpReward,
-        rewarded: true,
+        rewarded: false,
       );
 
   late final LevelGenerator _levelGenerator;
@@ -444,10 +444,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _lastHitResult = result;
       _lastRpRewardResult = _targetOutsideSafeZoneRewardResult;
       _pendingPrecisionPointResult = precisionPointResult;
-      _totalRunPoints += _targetOutsideSafeZoneRpReward;
       _targetOutsideSafeZoneMessage =
           "You've hit the target outside the Safe Zone! Congratulations! "
-          'You earned 5 RP and your reward is Level Advance with NO difficulty increase!';
+          'Your reward is Level Advance with NO difficulty increase!';
     });
   }
 
