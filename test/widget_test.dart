@@ -106,7 +106,7 @@ void main() {
     expect(customPaint.painter, isA<GameAreaPainter>());
   });
 
-  testWidgets('Tapping the game screen shows the post-hit reward overlay', (
+  testWidgets('Tapping the game screen shows summary before reward overlay', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -132,11 +132,26 @@ void main() {
     await tester.tap(find.byType(GameScreen));
     await tester.pump();
 
-    expect(find.text('Reward'), findsOneWidget);
-    expect(find.textContaining('RP gained:'), findsOneWidget);
-    expect(find.textContaining('+'), findsOneWidget);
-    expect(find.text('Precision Points'), findsOneWidget);
-    expect(find.textContaining('total RP:'), findsOneWidget);
+    expect(find.text('Reward Summary'), findsNothing);
+    expect(find.text('Reward'), findsNothing);
+    expect(find.text('Next level'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Reward Summary'), findsOneWidget);
+    expect(find.text('Safe Zone RP earned: 3'), findsOneWidget);
+    expect(find.text('Target RP bonus earned: 0'), findsOneWidget);
+    expect(find.text('Total RP earned: 3'), findsOneWidget);
+    expect(find.text('Next level'), findsNothing);
+
+    await tester.tap(find.text('OK'));
+    await tester.pump();
+
+    expect(find.text('Reward Summary'), findsNothing);
+    expect(find.text('Accumulated RP: 3'), findsOneWidget);
+    expect(find.textContaining('Accumulated PP:'), findsOneWidget);
+    expect(find.textContaining('RP gained:'), findsNothing);
+    expect(find.text('Precision Points'), findsNothing);
     expect(find.text('Next level'), findsOneWidget);
     expect(find.text('Do not increase difficulty'), findsOneWidget);
     expect(find.text('Decrease random difficulty'), findsOneWidget);
@@ -185,7 +200,7 @@ void main() {
     expect(find.text('last increased: none'), findsOneWidget);
   });
 
-  testWidgets('Safe zone edge hit with no RP still shows reward overlay', (
+  testWidgets('Safe zone edge hit with no RP still shows reward summary', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -211,22 +226,26 @@ void main() {
     await tester.tap(find.byType(GameScreen));
     await tester.pump();
 
-    expect(find.text('Reward'), findsOneWidget);
-    expect(find.text('RP gained: 0'), findsOneWidget);
-    expect(find.textContaining('+'), findsOneWidget);
-    expect(find.text('Precision Points'), findsOneWidget);
-    expect(find.text('total RP: 0'), findsOneWidget);
-    expect(
-      find.text(
-        'Ball is touching the Safe Zone! No RP gained because the ball '
-        'center is outside the Safe Zone.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Reward Summary'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Reward Summary'), findsOneWidget);
+    expect(find.text('Safe Zone RP earned: 0'), findsOneWidget);
+    expect(find.text('Target RP bonus earned: 0'), findsOneWidget);
+    expect(find.text('Total RP earned: 0'), findsOneWidget);
+    expect(find.text('Reward'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
+
+    await tester.tap(find.text('OK'));
+    await tester.pump();
+
+    expect(find.text('Accumulated RP: 0'), findsOneWidget);
+    expect(find.text('RP gained: 0'), findsNothing);
+    expect(find.text('Precision Points'), findsNothing);
   });
 
-  testWidgets('Target hit outside safe zone advances without reward menu', (
+  testWidgets('Target hit outside safe zone succeeds and opens summary first', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -252,30 +271,72 @@ void main() {
     await tester.tap(find.byType(GameScreen));
     await tester.pump();
 
+    expect(find.text('Reward Summary'), findsNothing);
+    expect(find.text('Next level'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Reward Summary'), findsOneWidget);
+    expect(find.text('Safe Zone RP earned: 0'), findsOneWidget);
+    expect(find.text('Target RP bonus earned: 10'), findsOneWidget);
+    expect(find.text('Total RP earned: 10'), findsOneWidget);
+    expect(
+      find.text('1000 PP × Level Multiplier 1.01 = 1010 PP'),
+      findsOneWidget,
+    );
     expect(
       find.text(
-        "You've hit the target outside the Safe Zone! Congratulations! "
-        'Your reward is Level Advance with NO difficulty increase!',
+        'Perfect hit! You stopped the center of the ball exactly on the '
+        'target and earned +10 RP.',
       ),
       findsOneWidget,
     );
-    expect(find.text('+1010 PP'), findsOneWidget);
-    expect(find.text('Precision Points'), findsOneWidget);
-    expect(find.text('1000 PP × 1.01 = 1010 PP'), findsOneWidget);
     expect(find.text('Reward'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
 
     await tester.tap(find.text('OK'));
     await tester.pump();
 
-    expect(find.text('Reward'), findsNothing);
+    expect(find.text('Reward'), findsOneWidget);
+    expect(find.text('Accumulated RP: 10'), findsOneWidget);
+    expect(find.text('Accumulated PP: 1010'), findsOneWidget);
+    expect(find.text('Precision Points'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
-    expect(find.text('Level: 2'), findsOneWidget);
-    expect(find.text('PP: 1010'), findsOneWidget);
+    expect(find.text('Level: 1'), findsOneWidget);
+    expect(find.text('PP: 0'), findsOneWidget);
     expect(find.text('RP: 0'), findsOneWidget);
-    expect(find.text('last increased: none'), findsOneWidget);
-    expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
-    expect(find.text('total RP: 5'), findsNothing);
+  });
+
+  testWidgets('Safe Zone and Target RP rewards are combined in summary', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initialDifficultyState: DifficultyState.initial(),
+          initialLevelConfig: GameLevelConfig(
+            ballRotationDuration: Duration(seconds: 3),
+            ballRadius: 18,
+            stopTimeLimit: Duration(seconds: 30),
+            safeZoneSweepAngle: 1,
+            safeZoneRotationDuration: null,
+            targetRotationDuration: null,
+            ballStartAngle: 0,
+            safeZoneStartAngle: -0.05,
+            targetStartAngle: 0,
+            ballDirection: MovementDirection.clockwise,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(GameScreen));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Reward Summary'), findsOneWidget);
+    expect(find.text('Safe Zone RP earned: 3'), findsOneWidget);
+    expect(find.text('Target RP bonus earned: 10'), findsOneWidget);
+    expect(find.text('Total RP earned: 13'), findsOneWidget);
   });
 
   testWidgets('Failed hit with no lives shows game over and can restart', (
@@ -307,7 +368,7 @@ void main() {
     expect(find.text('Game Over'), findsOneWidget);
     expect(find.text('Missed safe zone and target.'), findsOneWidget);
     expect(find.text('No lives left. Game Over!'), findsOneWidget);
-    expect(find.text('Watch ad for extra life'), findsOneWidget);
+    expect(find.text('Watch ad to continue'), findsOneWidget);
     expect(find.text('Exit run'), findsOneWidget);
     expect(find.text('Reward'), findsNothing);
 

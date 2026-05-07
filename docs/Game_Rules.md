@@ -2,9 +2,13 @@ O JOGO
 Um círculo com uma bola que se move na sua linha. Nessa linha existe:
 
 Safe Zone — se o jogador parar a bola nesta zona, avança de nível.
-Target — posição especial na linha; parar a bola sobre ele faz passar de nível. Se o target estiver
-fora da safe zone, o jogador passa de nível sem aumentar nenhum nível de dificuldade em nenhuma 
-variável para compensar o risco de tentar parar a bola no target fora da safe zone.
+Target — posição especial na linha; parar a bola sobre ele também faz passar de nível. Se o jogador
+parar a bola no target vai ganhar RP sendo que o nº de RP ganhos vai depender dos seguintes cenários:
+No caso do jogador parar a bola no target e os PP = 1000 então o jogador ganha + 10 RP extra.
+Se o jogador parar a bola no target e os PP>=997 e PP <= 999 então o jogador ganha + 5 RP extra.
+Se o jogador parar a bola no target e os PP>=990 e PP <= 996 então o jogador ganha + 3 RP extra.
+Se o jogador parar a bola no target e os PP<990 então o jogador ganha + 2 RP extra.
+
 
 O jogador perde se parar a bola fora da Safe Zone e também fora do Target ou exceder o tempo limite para acabar uma run que é 1 hora.
 Após 1 hora desde o início, a run acaba e o jogador fica com a pontuação que tinha no final, mesmo que esteja em pause.
@@ -14,8 +18,9 @@ Gold: primeiros 10% + últimos 10%
 Silver: seguintes 15% + anteriores 15%
 Bronze: 50% centrais
 
-Cada zona vale Run Points (RP): Gold=3, Silver=2, Bronze=1
-O centro da bola determina os RP ganhos. Mas o jogador passa de nível se qualquer parte da bola tocar a Safe Zone. Se o centro estiver fora da Safe Zone mas a bola tocar nela, o jogador passa mas não ganha RP — mostrar mensagem e fazer zoom para mostrar posição exata.
+Cada zona da safe zone vale Run Points (RP): Gold=3, Silver=2, Bronze=1
+O centro da bola determina os RP ganhos. Mas o jogador passa de nível se qualquer parte da bola tocar a Safe Zone. 
+Se o centro estiver fora da Safe Zone mas a bola tocar nela, o jogador passa mas não ganha RP — mostrar mensagem e fazer zoom para mostrar posição exata.
 Para o Target: considera acerto se qualquer parte da bola tocar o Target.
 
 SISTEMA DE DIFICULDADE
@@ -70,7 +75,8 @@ Comprar uma vida — 20 RP (permite repetir o nível se perder; sem limite de vi
 PRECISION POINTS (PP) — Pontuação de Competição
 
 Pontuação máxima: 1000 PP quando o centro da bola coincide exatamente com o Target
-Quando para na Safe Zone: PP calculados pela distância do centro da bola ao Target
+Quando para na Safe Zone ou acerta no target independentemente de onde ele estiver: PP calculados pela
+distância do centro da bola ao Target
 PP acumulam durante toda a run e são sempre visíveis no ecrã
 PP ganhos ganhos num nível são o total PP base (distância do centro da bola ao 
     Target) * ( 1 + (nível * 0.01) )

@@ -1539,3 +1539,127 @@ Session 13 — League structure
 Current session: Session 13 — League structure  
 Status: Ready ⏳
 
+---
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 12.1 — RP Target Bonus + Reward Summary Flow
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Refine RP rewards by adding target-based bonus RP and simplifying the post-hit reward flow.
+
+---
+
+### 📦 Deliverables
+
+* [x] Target RP bonus system implemented
+* [x] Target bonus based on base PP before level multiplier
+* [x] Safe Zone RP rewards kept unchanged
+* [x] Combined Safe Zone + Target RP reward result implemented
+* [x] Reward Summary overlay implemented
+* [x] Post-hit difficulty menu simplified
+* [x] Target outside Safe Zone success flow updated
+* [x] Miss outside Safe Zone and Target failure flow preserved
+* [x] Tests added for Target RP bonus logic
+
+---
+
+### 🛠️ Work Done
+
+* Added TargetRunPointBonusCalculator
+* Added TargetRunPointBonusResult
+* Added CombinedRunPointRewardResult
+* Added extra RP rewards when the player stops the ball on the target:
+  * 1000 base PP: +10 RP
+  * 997–999 base PP: +5 RP
+  * 990–996 base PP: +3 RP
+  * <990 base PP: +2 RP
+* Preserved existing Safe Zone RP rewards:
+  * Gold: +3 RP
+  * Silver: +2 RP
+  * Bronze: +1 RP
+  * Edge/contact-only success: +0 RP
+* Updated successful hit flow:
+  * Player stops ball
+  * Reward Summary appears
+  * Player confirms with OK
+  * Difficulty choice menu appears
+* Removed temporary debug hit feedback from normal gameplay flow
+* Simplified PostHitRewardOverlay to show only:
+  * Accumulated RP
+  * Accumulated PP
+  * Difficulty/action options
+* Ensured Target outside Safe Zone now follows the same success flow
+* Ensured miss outside both Safe Zone and Target still follows failure/life/Game Over flow
+* Ensured target bonus uses base PP, not multiplied awarded PP
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Target RP bonus is awarded only when the ball touches the target
+* Target RP bonus is independent from Safe Zone RP
+* Safe Zone RP and Target RP can stack
+* Target bonus thresholds use base PP before run-level multiplier
+* RP is committed after confirming the Reward Summary
+* PP is committed after confirming the Reward Summary
+* Buy life remains available from the difficulty menu and does not advance level
+* All other difficulty actions advance the run level
+* Reward Summary is now the only post-hit reward explanation screen before the difficulty menu
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Safe Zone RP rewards unchanged
+* [x] Target RP bonus thresholds validated
+* [x] Safe Zone + Target combined RP validated
+* [x] Target outside Safe Zone succeeds
+* [x] Miss outside Safe Zone and Target fails
+* [x] Reward Summary appears before difficulty menu
+* [x] Difficulty menu shows accumulated RP and PP only
+* [x] No duplicate RP award observed
+* [x] Target bonus uses base PP before multiplier
+
+---
+
+### 📌 Next Session
+
+Session 13 — League structure
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (completed)
+* 🔄 Session 13 — League structure (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 13 — League structure  
+Status: Ready ⏳

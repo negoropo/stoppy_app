@@ -2,26 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../domain/models/difficulty_state.dart';
 import '../domain/models/reward_menu_action.dart';
-import '../engine/precision_point_result.dart';
-import '../engine/run_point_reward_result.dart';
 
 class PostHitRewardOverlay extends StatelessWidget {
   const PostHitRewardOverlay({
     super.key,
     required this.difficultyState,
-    required this.rpRewardResult,
-    required this.precisionPointResult,
     required this.totalRunPoints,
+    required this.accumulatedPrecisionPoints,
     required this.onSelected,
-    this.warningMessage,
   });
 
   final DifficultyState difficultyState;
-  final RunPointRewardResult rpRewardResult;
-  final PrecisionPointResult precisionPointResult;
   final int totalRunPoints;
+  final int accumulatedPrecisionPoints;
   final ValueSetter<RewardMenuAction> onSelected;
-  final String? warningMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -48,23 +42,10 @@ class PostHitRewardOverlay extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              if (warningMessage != null) ...[
-                Text(
-                  warningMessage!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD166),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
               Text(
-                'RP gained: ${rpRewardResult.rpAmount}',
+                'Accumulated RP: $totalRunPoints',
                 style: const TextStyle(
-                  color: Color(0xFF39D98A),
+                  color: Color(0xFFD6DEE8),
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0,
@@ -72,37 +53,7 @@ class PostHitRewardOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '+${precisionPointResult.awardedPP} PP',
-                style: const TextStyle(
-                  color: Color(0xFF7CC7FF),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Precision Points',
-                style: TextStyle(
-                  color: Color(0xFFD6DEE8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _precisionPointBreakdown(precisionPointResult),
-                style: const TextStyle(
-                  color: Color(0xFFB8C5D4),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'total RP: $totalRunPoints',
+                'Accumulated PP: $accumulatedPrecisionPoints',
                 style: const TextStyle(
                   color: Color(0xFFD6DEE8),
                   fontSize: 16,
@@ -194,10 +145,6 @@ class PostHitRewardOverlay extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _precisionPointBreakdown(PrecisionPointResult result) {
-    return '${result.basePP} PP × Level Multiplier ${result.levelMultiplier.toStringAsFixed(2)} = ${result.awardedPP} PP';
   }
 }
 
