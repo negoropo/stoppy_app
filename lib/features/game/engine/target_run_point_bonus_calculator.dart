@@ -18,7 +18,7 @@ class TargetRunPointBonusCalculator {
       return const TargetRunPointBonusResult(
         rpAmount: 10,
         message:
-            'Perfect hit! You stopped the center of the ball exactly on the target so you earned +10 RP (PP = 1000).',
+            'Perfect hit! You stopped the center of the ball exactly on the target and earned +10 RP.',
       );
     }
 
@@ -26,7 +26,7 @@ class TargetRunPointBonusCalculator {
       return const TargetRunPointBonusResult(
         rpAmount: 5,
         message:
-            'So close! You were extremely close to a perfect target hit so you earned +5 RP (PP >= 997).',
+            'So close! You were extremely close to a perfect target hit and earned +5 RP.',
       );
     }
 
@@ -34,13 +34,13 @@ class TargetRunPointBonusCalculator {
       return const TargetRunPointBonusResult(
         rpAmount: 3,
         message:
-            'Great shot! You were close to a perfect target hit so you earned +3 RP (PP >= 990).',
+            'Great shot! You were close to a perfect target hit and earned +3 RP.',
       );
     }
 
     return const TargetRunPointBonusResult(
       rpAmount: 2,
-      message: 'Target touch.',
+      message: 'Target hit! You earned +2 RP.',
     );
   }
 }

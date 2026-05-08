@@ -1663,3 +1663,192 @@ Session 13 — League structure
 
 Current session: Session 13 — League structure  
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 13 — League structure
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the foundational weekly league domain system, including divisions, rankings, score calculation, promotion/relegation logic, and season settlement rules.
+
+---
+
+### 📦 Deliverables
+
+* [x] LeagueDivision model implemented
+* [x] LeaguePlayerEntry model implemented
+* [x] WeeklyLeagueRun model implemented
+* [x] WeeklyLeagueScore model implemented
+* [x] LeagueRankingEntry model implemented
+* [x] LeagueRankingSnapshot model implemented
+* [x] LeagueDivisionSettlement model implemented
+* [x] LeagueSeasonId model implemented
+* [x] LeagueDivisionPolicy implemented
+* [x] WeeklyLeagueScoreCalculator implemented
+* [x] LeagueRankingCalculator implemented
+* [x] LeagueSeasonSettlementCalculator implemented
+* [x] Deterministic ranking tie-breaker chain implemented
+* [x] Weekly activity multiplier system implemented
+* [x] Promotion/relegation rules implemented
+* [x] Last division closure logic implemented
+* [x] Ranking snapshot system implemented
+* [x] Extensive domain tests implemented
+
+---
+
+### 🛠️ Work Done
+
+* Added full weekly league domain layer under:
+
+  * `lib/features/league/domain/models`
+  * `lib/features/league/domain/services`
+
+* Implemented league division structure:
+
+  * Division 1 starts with 10 players
+  * Every next division doubles capacity
+  * New divisions are automatically created when the lowest division becomes full
+
+* Implemented weekly player participation model:
+
+  * Reserved slots
+  * Weekly entry payment state
+  * Active vs inactive weekly participation
+  * Immutable player entry updates
+
+* Implemented weekly score calculation system:
+
+  * Score blocks based on best runs
+  * Activity-day multipliers
+  * Base score + bonus score separation
+  * Final weekly score calculation
+  * Weekly run averaging helpers
+  * Best-run extraction helpers
+
+* Implemented deterministic ranking logic using:
+
+  * Final weekly score
+  * Active days
+  * Run count
+  * Weekly average score
+  * Best runs
+  * Lifetime tournament runs
+  * Lifetime average score
+  * Registration date
+
+* Implemented ranking snapshot system:
+
+  * Current player ranking
+  * Nearby players above and below
+  * Promotion-zone score requirement
+  * Stay-in-division score requirement
+
+* Implemented promotion/relegation rules:
+
+  * Minimum 40% relegation floor
+  * Minimum 20% promotion floor
+  * Inactive players always relegate
+  * Promotions matched against relegation count where possible
+
+* Implemented special penultimate/last division behavior:
+
+  * Last division active players can be promoted
+  * Inactive penultimate players always relegate
+  * Last division can close completely when emptied
+  * Penultimate division becomes the new last division after closure
+
+* Added defensive domain protections:
+
+  * Assertions
+  * Immutable state transitions
+  * Deterministic ranking guarantees
+  * Duplicate settlement protection
+
+* Added comprehensive test coverage for:
+
+  * Division capacities
+  * New player placement
+  * Weekly score blocks
+  * Activity multipliers
+  * Tie-breaker ordering
+  * Snapshot ordering
+  * Promotion score calculations
+  * Relegation rules
+  * Division closure scenarios
+  * Penultimate/last division edge cases
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Weekly ranking is fully deterministic
+* Inactive players display `inactive` instead of numeric score
+* Active players with 0 runs still rank above inactive players
+* Score needed for promotion/staying requires surpassing tied cutoff scores
+* Players above current player are ordered nearest-first for UI usage
+* Weekly score calculations assume runs are already filtered by week/season
+* Settlement logic is currently domain-only (no persistence/backend yet)
+* Inactive reserved slots do not reduce relegation pressure
+* Last division may disappear entirely when no active players remain
+* Promotions from the last division are capped by available active players
+* Promotions and relegations are intentionally allowed to be asymmetric when divisions collapse
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Deterministic ranking verified
+* [x] Tie-breaker chain verified
+* [x] Weekly score block logic verified
+* [x] Activity multiplier logic verified
+* [x] Promotion/relegation rules verified
+* [x] Last division closure verified
+* [x] Snapshot ordering verified
+* [x] Promotion score calculations verified
+* [x] Relegation floor verified
+* [x] Inactive-player relegation verified
+* [x] Division collapse edge cases verified
+
+---
+
+### 📌 Next Session
+
+Session 14 — Weekly League Entry + Runtime Integration
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (completed)
+* ✅ Session 13 — League structure (completed)
+* 🔄 Session 14 — Weekly League Entry + Runtime Integration (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 14 — Weekly League Entry + Runtime Integration
+Status: Ready ⏳

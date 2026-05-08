@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 12.1 completed.
+Session 13 completed.
 
-Current session: Session 13 — League structure
+Current session: Session 14 — Weekly League Entry + Runtime Integration
 
 ---
 

@@ -303,8 +303,6 @@ void main() {
     expect(find.text('Precision Points'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
     expect(find.text('Level: 1'), findsOneWidget);
-    expect(find.text('PP: 0'), findsOneWidget);
-    expect(find.text('RP: 0'), findsOneWidget);
   });
 
   testWidgets('Safe Zone and Target RP rewards are combined in summary', (

@@ -184,8 +184,8 @@ Mínimo 20% de jogadores sobe de cada divisão
 Regras especiais penúltima ↔ última divisão:
 
 Todos os inativos da penúltima descem e perdem reserva
-Se 20% melhores da última divisão > nº de inativos que descem: descem os inativos + piores ativos até igualar o nº que vai subir
-Se 20% melhores da última divisão < nº de inativos que descem: sobem os melhores classificados da última até igualar o nº de inativos
+Se 20% melhores da última divisão e activos > nº de inativos que descem: descem os inativos + piores ativos até igualar o nº que vai subir
+Se 20% melhores da última divisão e activos < nº de inativos que descem: sobem os melhores classificados da última e fecha-se a última divisão
 Ativos que descem para a última ficam com slot reservada
 Ativos que se mantêm na última ficam com slot reservada
 Só inativos que ficam ou descem para a última perdem reserva
@@ -203,9 +203,12 @@ Desempates (por ordem):
 
 Maior nº de dias com atividade na semana
 Maior nº de jogadas feitas na semana
+Média de pontuação por jogada
 Melhor jogada individual da semana
 Segunda melhor jogada individual
 Terceira melhor jogada individual
+Mais jogadas feitas desde sempre
+Melhor média de pontuação por jogada desde sempre
 Registo mais antigo na app
 
 Fecho semanal: Domingo às 23:59 hora de Portugal (Europe/Lisbon)
