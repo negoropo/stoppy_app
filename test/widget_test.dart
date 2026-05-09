@@ -10,6 +10,11 @@ import 'package:stoppy_app/features/game/domain/models/game_level_config.dart';
 import 'package:stoppy_app/features/game/domain/models/movement_direction.dart';
 import 'package:stoppy_app/features/game/game_screen.dart';
 import 'package:stoppy_app/features/game/rendering/game_area_painter.dart';
+import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
+import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
+import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
+import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 import 'package:stoppy_app/features/purchases/data/mock_purchase_repository.dart';
 import 'package:stoppy_app/features/purchases/presentation/screens/store_screen.dart';
 import 'package:stoppy_app/main.dart';
@@ -64,6 +69,46 @@ void main() {
 
     expect(find.byType(GameScreen), findsOneWidget);
     expect(_gameAreaPainterFinder(), findsOneWidget);
+  });
+
+  testWidgets('Player with weekly entry starts in league mode', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'league-player',
+            username: 'LeaguePlayer',
+            createdAt: DateTime(2026, 5, 1),
+            gamePoints: 5,
+            hasWeeklyLeagueEntry: true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Mode: League'), findsOneWidget);
+  });
+
+  testWidgets('Player below 10 GP without weekly entry starts in warmup mode', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'warmup-player',
+            username: 'WarmupPlayer',
+            createdAt: DateTime(2026, 5, 1),
+            gamePoints: 5,
+            hasWeeklyLeagueEntry: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Mode: Warmup'), findsOneWidget);
   });
 
   testWidgets('Store button opens store products for authenticated player', (
@@ -373,11 +418,11 @@ void main() {
     await _exitRunAndShowFinalResults(tester);
 
     expect(find.text('Restart run'), findsOneWidget);
-    expect(find.text('Run mode: League'), findsOneWidget);
-    expect(find.text('Completion GP: 1'), findsOneWidget);
+    expect(find.text('Run mode: Warmup'), findsOneWidget);
+    expect(find.text('Completion GP: 0'), findsOneWidget);
     expect(find.text('Daily GP: 2'), findsOneWidget);
-    expect(find.text('Total GP earned: 3'), findsOneWidget);
-    expect(find.text('Current total GP: 3'), findsOneWidget);
+    expect(find.text('Total GP earned: 2'), findsOneWidget);
+    expect(find.text('Current total GP: 2'), findsOneWidget);
 
     await tester.tap(find.text('Restart run'));
     await tester.pump();
@@ -518,6 +563,141 @@ void main() {
     expect(find.text('Daily GP: 2'), findsOneWidget);
     expect(find.text('Current total GP: 8'), findsOneWidget);
   });
+
+  testWidgets('League run is not submitted without weekly entry', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            gamePoints: 12,
+            hasWeeklyLeagueEntry: false,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+
+    expect(leagueRepository.submittedRuns, isEmpty);
+  });
+
+  testWidgets('League run finalization submits final score once', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+
+    expect(leagueRepository.submittedRuns, hasLength(1));
+    expect(leagueRepository.submittedRuns.single.playerId, 'player-id');
+    expect(leagueRepository.submittedRuns.single.score, 100);
+
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(leagueRepository.submittedRuns, hasLength(1));
+  });
+
+  testWidgets('Warmup run never submits league score', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.warmup,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+
+    expect(leagueRepository.submittedRuns, isEmpty);
+  });
+
+  testWidgets('Restart resets league run submission guard', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository();
+    var currentTime = DateTime(2026, 5, 8, 10);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+          now: () => currentTime,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    expect(leagueRepository.submittedRuns, hasLength(1));
+
+    await tester.tap(find.text('Restart run'));
+    await tester.pump();
+
+    currentTime = currentTime.add(const Duration(hours: 1));
+    await tester.pump(const Duration(hours: 1));
+    await _exitRunAndShowFinalResults(tester);
+
+    expect(leagueRepository.submittedRuns, hasLength(2));
+  });
+}
+
+Future<void> _failRunAndShowFinalResults(WidgetTester tester) async {
+  await tester.tap(find.byType(GameScreen));
+  await tester.pump();
+  await _exitRunAndShowFinalResults(tester);
 }
 
 Future<void> _exitRunAndShowFinalResults(WidgetTester tester) async {
@@ -531,4 +711,51 @@ Finder _gameAreaPainterFinder() {
   return find.byWidgetPredicate((widget) {
     return widget is CustomPaint && widget.painter is GameAreaPainter;
   });
+}
+
+const _failingLevelConfig = GameLevelConfig(
+  ballRotationDuration: Duration(seconds: 3),
+  ballRadius: 18,
+  stopTimeLimit: Duration(seconds: 30),
+  safeZoneSweepAngle: 1,
+  safeZoneRotationDuration: null,
+  targetRotationDuration: null,
+  ballStartAngle: 3,
+  safeZoneStartAngle: -0.5,
+  targetStartAngle: 1.5,
+  ballDirection: MovementDirection.clockwise,
+);
+
+class _FakeLeagueRepository implements LeagueRepository {
+  final submittedRuns = <WeeklyLeagueRun>[];
+
+  @override
+  Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
+    return null;
+  }
+
+  @override
+  Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<LeagueRankingEntry>> fetchDivisionRanking(
+    int divisionNumber,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<LeagueRankingSnapshot> fetchPlayerSnapshot({
+    required String playerId,
+    required int divisionNumber,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> submitLeagueRun(WeeklyLeagueRun run) async {
+    submittedRuns.add(run);
+  }
 }

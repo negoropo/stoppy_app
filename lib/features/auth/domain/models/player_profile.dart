@@ -6,6 +6,9 @@ class PlayerProfile {
     this.gamePoints = 5,
     this.lastDailyGpAwardedAt,
     this.adsRemoved = false,
+    this.currentLeagueDivision,
+    this.hasWeeklyLeagueEntry = false,
+    this.reservedLeagueSlot = false,
   });
 
   final String id;
@@ -14,6 +17,9 @@ class PlayerProfile {
   final int gamePoints;
   final DateTime? lastDailyGpAwardedAt;
   final bool adsRemoved;
+  final int? currentLeagueDivision;
+  final bool hasWeeklyLeagueEntry;
+  final bool reservedLeagueSlot;
 
   factory PlayerProfile.fromJson(Map<String, dynamic> json) {
     return PlayerProfile(
@@ -25,6 +31,9 @@ class PlayerProfile {
           ? null
           : DateTime.parse(json['lastDailyGpAwardedAt'] as String),
       adsRemoved: json['adsRemoved'] as bool? ?? false,
+      currentLeagueDivision: json['currentLeagueDivision'] as int?,
+      hasWeeklyLeagueEntry: json['hasWeeklyLeagueEntry'] as bool? ?? false,
+      reservedLeagueSlot: json['reservedLeagueSlot'] as bool? ?? false,
     );
   }
 
@@ -36,6 +45,9 @@ class PlayerProfile {
       'gamePoints': gamePoints,
       'lastDailyGpAwardedAt': lastDailyGpAwardedAt?.toIso8601String(),
       'adsRemoved': adsRemoved,
+      'currentLeagueDivision': currentLeagueDivision,
+      'hasWeeklyLeagueEntry': hasWeeklyLeagueEntry,
+      'reservedLeagueSlot': reservedLeagueSlot,
     };
   }
 
@@ -46,6 +58,9 @@ class PlayerProfile {
     int? gamePoints,
     Object? lastDailyGpAwardedAt = _sentinel,
     bool? adsRemoved,
+    Object? currentLeagueDivision = _sentinel,
+    bool? hasWeeklyLeagueEntry,
+    bool? reservedLeagueSlot,
   }) {
     return PlayerProfile(
       id: id ?? this.id,
@@ -56,6 +71,11 @@ class PlayerProfile {
           ? this.lastDailyGpAwardedAt
           : lastDailyGpAwardedAt as DateTime?,
       adsRemoved: adsRemoved ?? this.adsRemoved,
+      currentLeagueDivision: identical(currentLeagueDivision, _sentinel)
+          ? this.currentLeagueDivision
+          : currentLeagueDivision as int?,
+      hasWeeklyLeagueEntry: hasWeeklyLeagueEntry ?? this.hasWeeklyLeagueEntry,
+      reservedLeagueSlot: reservedLeagueSlot ?? this.reservedLeagueSlot,
     );
   }
 

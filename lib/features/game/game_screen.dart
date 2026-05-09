@@ -9,6 +9,9 @@ import 'package:stoppy_app/features/ads/domain/ad_controller.dart';
 import 'package:stoppy_app/features/ads/domain/repositories/ad_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
+import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
+import 'package:stoppy_app/features/league/presentation/screens/league_home_screen.dart';
 import 'package:stoppy_app/features/purchases/domain/repositories/purchase_repository.dart';
 import 'package:stoppy_app/features/purchases/presentation/screens/store_screen.dart';
 import 'domain/economy/game_point_reward_calculator.dart';
@@ -43,6 +46,7 @@ class GameScreen extends StatefulWidget {
     this.authRepository,
     this.purchaseRepository,
     this.adRepository,
+    this.leagueRepository,
     this.initialRunMode,
     this.now,
   });
@@ -54,6 +58,7 @@ class GameScreen extends StatefulWidget {
   final AuthRepository? authRepository;
   final PurchaseRepository? purchaseRepository;
   final AdRepository? adRepository;
+  final LeagueRepository? leagueRepository;
   final RunMode? initialRunMode;
   final DateTime Function()? now;
 
@@ -112,6 +117,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   PlayerProfile? _playerProfile;
   GamePointRewardResult? _lastGamePointRewardResult;
   bool _isRunFinalized = false;
+  bool _leagueRunSubmitted = false;
   late DateTime _runStartedAt;
   int _lastBannerLoadedRunLevel = 1;
   int _remainingStopTimeSeconds = 0;
@@ -317,12 +323,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   RunMode _defaultRunModeForPlayer(PlayerProfile? playerProfile) {
+    if (playerProfile?.hasWeeklyLeagueEntry ?? false) {
+      return RunMode.league;
+    }
+
     if (playerProfile != null &&
         _warmupAvailabilityPolicy.isWarmupAvailable(playerProfile)) {
       return RunMode.warmup;
     }
 
-    return RunMode.league;
+    return RunMode.warmup;
   }
 
   void _validateCurrentBallPosition(double circleRadius) {
@@ -705,6 +715,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _lastGamePointRewardResult = gpRewardResult;
     _currentGamePoints = updatedGamePoints;
     _isRunFinalized = true;
+    _submitLeagueRunIfNeeded(
+      playerProfile: playerProfile,
+      runEndedAt: runEndedAt,
+      finalScore: _finalScoreFor(
+        totalPrecisionPoints: finalizedPrecisionPoints,
+        runLevel: _currentRunLevel,
+      ),
+    );
 
     if (playerProfile == null || widget.authRepository == null) {
       return;
@@ -749,6 +767,39 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         },
       ),
     );
+  }
+
+  void _openLeague() {
+    final playerProfile = _playerProfile;
+    final authRepository = widget.authRepository;
+    final leagueRepository = widget.leagueRepository;
+    if (playerProfile == null ||
+        authRepository == null ||
+        leagueRepository == null) {
+      return;
+    }
+
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) {
+          return LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: authRepository,
+            leagueRepository: leagueRepository,
+            onPlayerProfileUpdated: _handleLeaguePlayerProfileUpdated,
+          );
+        },
+      ),
+    );
+  }
+
+  void _handleLeaguePlayerProfileUpdated(PlayerProfile playerProfile) {
+    setState(() {
+      _playerProfile = playerProfile;
+      _currentGamePoints = playerProfile.gamePoints;
+      _runMode =
+          widget.initialRunMode ?? _defaultRunModeForPlayer(playerProfile);
+    });
   }
 
   void _handlePurchasedPlayerProfile(PlayerProfile playerProfile) {
@@ -832,6 +883,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _gameOverMessages = const [];
       _lastGamePointRewardResult = null;
       _isRunFinalized = false;
+      _leagueRunSubmitted = false;
       _isExtraLifeOfferVisible = false;
       _isScoreTransitionVisible = false;
       _isFinalResultsVisible = false;
@@ -929,6 +981,39 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  void _submitLeagueRunIfNeeded({
+    required PlayerProfile? playerProfile,
+    required DateTime runEndedAt,
+    required int finalScore,
+  }) {
+    final leagueRepository = widget.leagueRepository;
+    if (_leagueRunSubmitted ||
+        _runMode != RunMode.league ||
+        playerProfile == null ||
+        !playerProfile.hasWeeklyLeagueEntry ||
+        leagueRepository == null) {
+      return;
+    }
+
+    _leagueRunSubmitted = true;
+    unawaited(
+      leagueRepository.submitLeagueRun(
+        WeeklyLeagueRun(
+          playerId: playerProfile.id,
+          score: finalScore,
+          completedAt: runEndedAt,
+        ),
+      ),
+    );
+  }
+
+  int _finalScoreFor({
+    required int totalPrecisionPoints,
+    required int runLevel,
+  }) {
+    return totalPrecisionPoints + (runLevel * 100);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1000,6 +1085,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           child: FilledButton(
                             onPressed: _openStore,
                             child: const Text('Store'),
+                          ),
+                        ),
+                      if (_playerProfile != null &&
+                          widget.leagueRepository != null)
+                        Positioned(
+                          left: 16,
+                          bottom: 16,
+                          child: FilledButton(
+                            onPressed: _openLeague,
+                            child: const Text('League'),
                           ),
                         ),
                       if (_failureMessage != null)

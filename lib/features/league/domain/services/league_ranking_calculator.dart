@@ -83,15 +83,13 @@ class LeagueRankingCalculator {
           .reversed
           .toList(),
       playersBelow: rankedEntries.sublist(currentIndex + 1, endIndex),
+      // These display values are absolute targets, not deltas from the current
+      // player. Adding one point makes the requirement explicit because equal
+      // scores still fall back to tie breakers.
       scoreNeededForPromotionZone: promotionScore == null
           ? null
-          : math.max(
-              0,
-              promotionScore - currentEntry.weeklyScore.finalScore + 1,
-            ),
-      scoreNeededToStayInDivision: stayScore == null
-          ? null
-          : math.max(0, stayScore - currentEntry.weeklyScore.finalScore + 1),
+          : promotionScore + 1,
+      scoreNeededToStayInDivision: stayScore == null ? null : stayScore + 1,
     );
   }
 

@@ -1852,3 +1852,160 @@ Session 14 — Weekly League Entry + Runtime Integration
 
 Current session: Session 14 — Weekly League Entry + Runtime Integration
 Status: Ready ⏳
+
+---
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 14 — Weekly League Entry + Runtime Integration
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Integrate weekly league entry, runtime league mode, score submission, and player-facing league snapshot into the live gameplay flow.
+
+---
+
+### 📦 Deliverables
+
+* [x] LeagueRepository contract implemented
+* [x] MockLeagueRepository implemented
+* [x] PlayerProfile extended with league fields
+* [x] LeagueHomeScreen implemented
+* [x] Weekly league entry flow implemented
+* [x] Weekly entry GP deduction implemented
+* [x] Duplicate weekly entry guard implemented
+* [x] League button added to GameScreen
+* [x] League runtime mode integrated with GameScreen
+* [x] WeeklyLeagueRun submission after finalized league runs
+* [x] League run submission guard implemented
+* [x] Warmup availability rules updated
+* [x] League mode priority over warmup implemented
+* [x] Promotion need and Stay need target score rules finalized
+* [x] Runtime player profile synchronization implemented
+* [x] Tests updated for league runtime behavior
+
+---
+
+### 🛠️ Work Done
+
+* Added LeagueRepository abstraction for backend-ready league runtime access
+* Added MockLeagueRepository with deterministic in-memory league state
+* Added support for seeded mock ranking data and empty mock test state
+* Extended PlayerProfile with:
+  * currentLeagueDivision
+  * hasWeeklyLeagueEntry
+  * reservedLeagueSlot
+* Added JSON serialization and copyWith support for new league fields
+* Threaded LeagueRepository through:
+  * StoppyApp
+  * AuthGate
+  * GameScreen
+* Added LeagueHomeScreen with:
+  * current division display
+  * GP display
+  * weekly entry status
+  * ranking preview
+  * player snapshot
+  * promotion target score
+  * stay target score
+* Added weekly league entry flow:
+  * validates duplicate active entry before GP deduction
+  * validates enough GP before entry
+  * deducts weekly entry cost
+  * updates player profile
+  * refreshes league state
+* Added League button to GameScreen
+* Integrated league runtime mode into GameScreen
+* Added automatic WeeklyLeagueRun submission at run finalization
+* Ensured league runs submit only when:
+  * run mode is RunMode.league
+  * player has active weekly league entry
+  * league repository exists
+  * run has not already been submitted
+* Updated run mode selection:
+  * league entry takes priority over warmup
+  * warmup is only available when player has less than 10 GP and no active league entry
+* Finalized ranking target display rules:
+  * Promotion need = last promotion slot score + 1
+  * Stay need = last safe slot score + 1
+* Updated widget and domain tests for new league runtime rules
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Weekly league runtime is still mock-first and in-memory
+* Backend validation is still required in a future phase
+* Client league submissions are not trusted long-term
+* Weekly league players cannot play warmup while enrolled
+* Warmup is only a fallback for low-GP players without weekly league entry
+* League entry validation must always happen before GP deduction
+* League run submission is protected against duplicate finalization
+* Promotion need and Stay need are absolute target scores, not deltas from the current player
+* Equal scores still rely on deterministic tie breakers
+* MockLeagueRepository is designed to be replaceable by Firebase or custom backend later
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Weekly league entry flow validated
+* [x] Duplicate weekly entry prevention validated
+* [x] GP deduction validated
+* [x] PlayerProfile league fields validated
+* [x] PlayerProfile JSON compatibility validated
+* [x] LeagueRepository dependency injection validated
+* [x] MockLeagueRepository runtime behavior validated
+* [x] LeagueHomeScreen state loading validated
+* [x] League mode priority over warmup validated
+* [x] Warmup restriction rules validated
+* [x] WeeklyLeagueRun submission validated
+* [x] Duplicate league run submission prevention validated
+* [x] Restart resets league submission guard
+* [x] Promotion need calculation validated
+* [x] Stay need calculation validated
+* [x] Snapshot UI values validated
+
+---
+
+### 📌 Next Session
+
+Session 15 — Weekly League Scoring + Ranking UI
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (completed)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* 🔄 Session 15 — Weekly League Scoring + Ranking UI (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 15 — Weekly League Scoring + Ranking UI  
+Status: Ready ⏳

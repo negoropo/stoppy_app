@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 13 completed.
+Session 14 completed.
 
-Current session: Session 14 — Weekly League Entry + Runtime Integration
+Current session: Session 15 — Weekly League Scoring + Ranking UI
 
 ---
 

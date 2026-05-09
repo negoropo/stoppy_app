@@ -15,6 +15,26 @@ void main() {
       expect(playerProfile.gamePoints, 5);
       expect(playerProfile.lastDailyGpAwardedAt, isNull);
       expect(playerProfile.adsRemoved, isFalse);
+      expect(playerProfile.currentLeagueDivision, isNull);
+      expect(playerProfile.hasWeeklyLeagueEntry, isFalse);
+      expect(playerProfile.reservedLeagueSlot, isFalse);
+    });
+
+    test('serializes league fields defensively', () {
+      final playerProfile = PlayerProfile(
+        id: 'player-id',
+        username: 'Tester',
+        createdAt: DateTime(2026),
+        currentLeagueDivision: 2,
+        hasWeeklyLeagueEntry: true,
+        reservedLeagueSlot: true,
+      );
+
+      final restoredProfile = PlayerProfile.fromJson(playerProfile.toJson());
+
+      expect(restoredProfile.currentLeagueDivision, 2);
+      expect(restoredProfile.hasWeeklyLeagueEntry, isTrue);
+      expect(restoredProfile.reservedLeagueSlot, isTrue);
     });
   });
 

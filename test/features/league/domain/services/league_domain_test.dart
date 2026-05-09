@@ -316,10 +316,11 @@ void main() {
         isNot('inactive'),
       );
       expect(snapshot.scoreNeededForPromotionZone, greaterThan(0));
-      expect(snapshot.scoreNeededToStayInDivision, 0);
+      expect(snapshot.scoreNeededForPromotionZone, 1171);
+      expect(snapshot.scoreNeededToStayInDivision, 1131);
     });
 
-    test('score needed for promotion requires surpassing the target score', () {
+    test('promotion need equals promotion cutoff score plus one', () {
       final entries = [
         _entry('target', entryPaid: true, registeredAt: DateTime(2025)),
         _entry('current', entryPaid: true, registeredAt: DateTime(2026)),
@@ -338,10 +339,10 @@ void main() {
         relegationCount: 0,
       );
 
-      expect(snapshot.scoreNeededForPromotionZone, 1);
+      expect(snapshot.scoreNeededForPromotionZone, 101);
     });
 
-    test('score needed to stay requires surpassing tied relegation cutoff', () {
+    test('stay need equals stay cutoff score plus one', () {
       final entries = [
         _entry('safe-1', entryPaid: true, registeredAt: DateTime(2025, 1, 1)),
         _entry('safe-2', entryPaid: true, registeredAt: DateTime(2025, 1, 2)),
@@ -369,7 +370,7 @@ void main() {
         relegationCount: 2,
       );
 
-      expect(snapshot.scoreNeededToStayInDivision, 1);
+      expect(snapshot.scoreNeededToStayInDivision, 101);
     });
   });
 

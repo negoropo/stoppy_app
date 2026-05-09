@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../ads/data/mock_ad_repository.dart';
 import '../../ads/domain/repositories/ad_repository.dart';
 import '../../game/game_screen.dart';
+import '../../league/data/mock_league_repository.dart';
+import '../../league/domain/repositories/league_repository.dart';
 import '../../purchases/data/mock_purchase_repository.dart';
 import '../../purchases/domain/repositories/purchase_repository.dart';
 import '../data/mock_auth_repository.dart';
@@ -18,14 +20,17 @@ class AuthGate extends StatefulWidget {
     AuthRepository? authRepository,
     PurchaseRepository? purchaseRepository,
     AdRepository? adRepository,
+    LeagueRepository? leagueRepository,
   }) : authRepository = authRepository ?? const _DefaultAuthRepository(),
        purchaseRepository =
            purchaseRepository ?? const MockPurchaseRepository(),
-       adRepository = adRepository ?? MockAdRepository();
+       adRepository = adRepository ?? MockAdRepository(),
+       leagueRepository = leagueRepository ?? MockLeagueRepository();
 
   final AuthRepository authRepository;
   final PurchaseRepository purchaseRepository;
   final AdRepository adRepository;
+  final LeagueRepository leagueRepository;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -142,6 +147,7 @@ class _AuthGateState extends State<AuthGate> {
             authRepository: widget.authRepository,
             purchaseRepository: widget.purchaseRepository,
             adRepository: widget.adRepository,
+            leagueRepository: widget.leagueRepository,
           );
         }
 
