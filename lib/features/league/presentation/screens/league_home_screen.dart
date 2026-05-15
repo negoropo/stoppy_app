@@ -172,7 +172,13 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
                   _RankingPreviewCard(entries: _rankingPreview),
                   if (_snapshot != null) ...[
                     const SizedBox(height: 12),
+                    _WeeklyScoreBreakdownCard(
+                      entry: _snapshot!.currentPlayerEntry,
+                    ),
+                    const SizedBox(height: 12),
                     _PlayerSnapshotCard(snapshot: _snapshot!),
+                    const SizedBox(height: 12),
+                    _NearbyRankingCard(snapshot: _snapshot!),
                   ],
                 ],
               ),
@@ -285,11 +291,11 @@ class _PlayerSnapshotCard extends StatelessWidget {
             style: _LeagueTextStyles.body,
           ),
           Text(
-            'Active days: ${snapshot.currentPlayerEntry.weeklyScore.activeDays}',
+            'Promotion zone: ${_zoneText(snapshot.promotionZoneEndRank, isPromotion: true)}',
             style: _LeagueTextStyles.body,
           ),
           Text(
-            'Multiplier: x${snapshot.currentPlayerEntry.weeklyScore.activityMultiplier.toStringAsFixed(1)}',
+            'Relegation zone: ${_zoneText(snapshot.relegationZoneStartRank, isPromotion: false)}',
             style: _LeagueTextStyles.body,
           ),
           const SizedBox(height: 8),
@@ -312,6 +318,162 @@ class _PlayerSnapshotCard extends StatelessWidget {
     }
 
     return score.ceil().toString();
+  }
+
+  String _zoneText(int? rank, {required bool isPromotion}) {
+    if (rank == null) {
+      return 'N/A';
+    }
+
+    return isPromotion ? '#1-#$rank' : '#$rank and below';
+  }
+}
+
+class _WeeklyScoreBreakdownCard extends StatelessWidget {
+  const _WeeklyScoreBreakdownCard({required this.entry});
+
+  final LeagueRankingEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = entry.weeklyScore;
+
+    return _LeagueCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Weekly Score', style: _LeagueTextStyles.title),
+          const SizedBox(height: 10),
+          Text('Weekly runs: ${score.runCount}', style: _LeagueTextStyles.body),
+          Text(
+            'Best runs used: ${score.bestRunsCount}',
+            style: _LeagueTextStyles.body,
+          ),
+          Text(
+            'Average of selected best runs: ${_scoreText(score.baseScore)}',
+            style: _LeagueTextStyles.body,
+          ),
+          Text(
+            'Active days this week: ${score.activeDays}',
+            style: _LeagueTextStyles.body,
+          ),
+          Text(
+            'Activity multiplier: x${score.activityMultiplier.toStringAsFixed(1)}',
+            style: _LeagueTextStyles.body,
+          ),
+          Text(
+            'Final weekly score: ${_scoreText(score.finalScore)}',
+            style: _LeagueTextStyles.body,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _scoreText(double score) {
+    if (score == score.roundToDouble()) {
+      return score.round().toString();
+    }
+
+    return score.toStringAsFixed(1);
+  }
+}
+
+class _NearbyRankingCard extends StatelessWidget {
+  const _NearbyRankingCard({required this.snapshot});
+
+  final LeagueRankingSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleEntries = [
+      ...snapshot.playersAbove.reversed,
+      snapshot.currentPlayerEntry,
+      ...snapshot.playersBelow,
+    ];
+
+    return _LeagueCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Nearby Ranking', style: _LeagueTextStyles.title),
+          const SizedBox(height: 10),
+          ...visibleEntries.map(
+            (entry) => _NearbyRankingRow(
+              entry: entry,
+              isCurrentPlayer:
+                  entry.playerEntry.playerId ==
+                  snapshot.currentPlayerEntry.playerEntry.playerId,
+              promotionZoneEndRank: snapshot.promotionZoneEndRank,
+              relegationZoneStartRank: snapshot.relegationZoneStartRank,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NearbyRankingRow extends StatelessWidget {
+  const _NearbyRankingRow({
+    required this.entry,
+    required this.isCurrentPlayer,
+    required this.promotionZoneEndRank,
+    required this.relegationZoneStartRank,
+  });
+
+  final LeagueRankingEntry entry;
+  final bool isCurrentPlayer;
+  final int? promotionZoneEndRank;
+  final int? relegationZoneStartRank;
+
+  @override
+  Widget build(BuildContext context) {
+    final zoneLabel = _zoneLabel();
+
+    return Container(
+      key: isCurrentPlayer ? const Key('current-player-ranking-row') : null,
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: isCurrentPlayer ? const Color(0x334FC3F7) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isCurrentPlayer ? const Color(0xFF4FC3F7) : Colors.transparent,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '#${entry.rank} ${entry.playerEntry.username}'
+              '${isCurrentPlayer ? ' (You)' : ''}',
+              style: isCurrentPlayer
+                  ? _LeagueTextStyles.highlight
+                  : _LeagueTextStyles.body,
+            ),
+          ),
+          if (zoneLabel != null) ...[
+            Text(zoneLabel, style: _LeagueTextStyles.zone),
+            const SizedBox(width: 10),
+          ],
+          Text(entry.displayScore, style: _LeagueTextStyles.body),
+        ],
+      ),
+    );
+  }
+
+  String? _zoneLabel() {
+    if (promotionZoneEndRank != null && entry.rank <= promotionZoneEndRank!) {
+      return 'promotion';
+    }
+
+    if (relegationZoneStartRank != null &&
+        entry.rank >= relegationZoneStartRank!) {
+      return 'relegation';
+    }
+
+    return null;
   }
 }
 
@@ -352,6 +514,20 @@ class _LeagueTextStyles {
     color: Color(0xFF7CC7FF),
     fontSize: 13,
     fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+  );
+
+  static const highlight = TextStyle(
+    color: Color(0xFF7CC7FF),
+    fontSize: 14,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 0,
+  );
+
+  static const zone = TextStyle(
+    color: Color(0xFFFFD166),
+    fontSize: 12,
+    fontWeight: FontWeight.w800,
     letterSpacing: 0,
   );
 }

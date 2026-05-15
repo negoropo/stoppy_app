@@ -90,6 +90,8 @@ class LeagueRankingCalculator {
           ? null
           : promotionScore + 1,
       scoreNeededToStayInDivision: stayScore == null ? null : stayScore + 1,
+      promotionZoneEndRank: promotionScore == null ? null : promotionCount,
+      relegationZoneStartRank: stayScore == null ? null : stayRank + 1,
     );
   }
 

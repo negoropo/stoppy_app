@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 14 completed.
+Session 15 completed.
 
-Current session: Session 15 — Weekly League Scoring + Ranking UI
+Current session: Session 16 — Weekly League History + Personal Records
 
 ---
 

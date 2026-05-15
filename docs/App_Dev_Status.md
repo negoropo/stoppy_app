@@ -315,7 +315,7 @@ Sistema de pontuação competitivo
 * Estrutura de divisões
 * Entrada semanal
 * Pontuação semanal
-* Ranking
+* Weekly League History + Personal Records
 * Subidas/descidas
 * Última divisão
 * Fecho semanal
@@ -2008,4 +2008,162 @@ Session 15 — Weekly League Scoring + Ranking UI
 ### 🧭 Current State
 
 Current session: Session 15 — Weekly League Scoring + Ranking UI  
+Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 15 — Weekly League Scoring + Ranking UI
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement player-facing weekly league scoring breakdown and ranking UI using the existing league domain and runtime systems.
+
+---
+
+### 📦 Deliverables
+
+* [x] Weekly score breakdown UI implemented
+* [x] Best-runs scoring display implemented
+* [x] Activity multiplier display implemented
+* [x] Final weekly score display implemented
+* [x] Nearby ranking UI implemented
+* [x] Current player highlight implemented
+* [x] Promotion/relegation zone display implemented
+* [x] Inactive player display implemented
+* [x] Snapshot zone metadata integrated into UI
+* [x] League UI widget tests implemented
+
+---
+
+### 🛠️ Work Done
+
+* Extended `WeeklyLeagueScore`:
+
+  * Added `bestRunsCount`
+  * Added defensive consistency assertions
+* Extended `LeagueRankingSnapshot`:
+
+  * Added promotion zone end rank
+  * Added relegation zone start rank
+  * Added defensive rank assertions
+* Updated `LeagueRankingCalculator`:
+
+  * Added promotion/relegation zone metadata generation
+  * Preserved deterministic ranking behavior
+  * Preserved inactive-player ordering rules
+* Updated `LeagueHomeScreen`:
+
+  * Added weekly score breakdown card:
+
+    * weekly runs
+    * best runs used
+    * average selected best runs
+    * active days
+    * activity multiplier
+    * final weekly score
+  * Added nearby ranking section:
+
+    * players above
+    * current player
+    * players below
+  * Added promotion/relegation zone labels
+  * Added current-player visual highlight
+  * Added inactive player score display
+* Confirmed scoring formula:
+
+  * `((runCount - 1) ~/ 5) + 1`
+  * Equivalent to:
+
+    * 1–5 runs → best 1
+    * 6–10 runs → best 2
+    * 11–15 runs → best 3
+    * etc.
+* Confirmed weekly activity multipliers:
+
+  * 1 day → ×1.0
+  * 2 days → ×1.1
+  * 3 days → ×1.2
+  * 4 days → ×1.4
+  * 5 days → ×1.6
+  * 6 days → ×1.8
+  * 7 days → ×2.0
+* Added widget tests covering:
+
+  * best-runs display
+  * multiplier display
+  * final score display
+  * inactive display
+  * current-player highlight
+  * promotion/stay target display
+
+---
+
+### ⚠️ Notes / Decisions
+
+* UI does not recalculate league scoring rules
+* Weekly scoring logic remains isolated in domain services
+* `bestRunsCount` is exposed by the domain model for UI safety
+* Multiple runs on the same local calendar day count as one active day
+* Promotion/stay targets remain absolute score requirements
+* Equal scores still rely on deterministic tie breakers
+* Nearby ranking ordering is nearest-first in domain logic
+* UI reverses upper entries only for visual top-down ordering
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Weekly score breakdown validated
+* [x] Best-runs formula validated
+* [x] Activity multiplier validated
+* [x] Final score display validated
+* [x] Inactive player display validated
+* [x] Current-player highlight validated
+* [x] Promotion/relegation labels validated
+* [x] Snapshot zone metadata validated
+* [x] Deterministic ranking behavior preserved
+
+---
+
+### 📌 Next Session
+
+Session 16 — Weekly League History + Personal Records
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (completed)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* 🔄 Session 16 — Weekly League History + Personal Records (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 16 — Weekly League History + Personal Records
 Status: Ready ⏳

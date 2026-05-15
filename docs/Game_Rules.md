@@ -89,6 +89,8 @@ Pontuação semanal:
 6-10 jogadas: média das 2 melhores
 11-15 jogadas: média das 3 melhores
 (incrementa 1 jogada por cada 5 adicionais)
+Fórmula:
+média das   /*  floor((jogadas+4)/5) */   melhores jogadas do jogador na liga semanal
 
 Multiplicador bónus por dias de atividade na semana:
 

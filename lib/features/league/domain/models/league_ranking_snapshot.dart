@@ -10,7 +10,11 @@ class LeagueRankingSnapshot {
     required List<LeagueRankingEntry> playersBelow,
     required this.scoreNeededForPromotionZone,
     required this.scoreNeededToStayInDivision,
+    required this.promotionZoneEndRank,
+    required this.relegationZoneStartRank,
   }) : assert(currentPlayerRank > 0),
+        assert(promotionZoneEndRank == null || promotionZoneEndRank > 0),
+        assert(relegationZoneStartRank == null || relegationZoneStartRank > 0),
        playersAbove = UnmodifiableListView(playersAbove),
        playersBelow = UnmodifiableListView(playersBelow);
 
@@ -32,4 +36,10 @@ class LeagueRankingSnapshot {
   /// Null when relegation does not exist
   /// (e.g. last division).
   final double? scoreNeededToStayInDivision;
+
+  /// Null when the division has no promotion zone.
+  final int? promotionZoneEndRank;
+
+  /// Null when the division has no relegation zone.
+  final int? relegationZoneStartRank;
 }

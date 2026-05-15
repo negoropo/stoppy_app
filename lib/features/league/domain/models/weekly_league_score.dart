@@ -18,6 +18,7 @@ class WeeklyLeagueScore {
        assert(baseScore >= 0),
        assert(finalScore >= 0),
        assert(bonusPoints >= 0),
+        assert(countedRunScores.length <= allRunScores.length),
        countedRunScores = UnmodifiableListView(countedRunScores),
        allRunScores = UnmodifiableListView(allRunScores);
 
@@ -31,6 +32,10 @@ class WeeklyLeagueScore {
   final double bonusPoints;
   final List<int> countedRunScores;
   final List<int> allRunScores;
+
+  /// The scoring service picks one more best run for every block of five total
+  /// runs. Exposing the selected count keeps UI from reimplementing that rule.
+  int get bestRunsCount => countedRunScores.length;
 
   String get displayScore {
     if (!isActive) {
