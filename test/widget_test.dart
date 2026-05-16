@@ -13,6 +13,9 @@ import 'package:stoppy_app/features/game/rendering/game_area_painter.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 import 'package:stoppy_app/features/purchases/data/mock_purchase_repository.dart';
@@ -755,7 +758,32 @@ class _FakeLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<void> submitLeagueRun(WeeklyLeagueRun run) async {
+  Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId) async {
+    return PlayerLeagueRecords.empty(playerId);
+  }
+
+  @override
+  Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(
+    String playerId,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<List<WeeklyLeagueRun>> fetchPlayerWeeklyRuns({
+    required String playerId,
+    required LeagueSeasonId seasonId,
+  }) async {
+    return const [];
+  }
+
+  @override
+  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
     submittedRuns.add(run);
+
+    return LeagueRunSubmissionResult(
+      accepted: true,
+      playerRecords: PlayerLeagueRecords.empty(run.playerId),
+    );
   }
 }

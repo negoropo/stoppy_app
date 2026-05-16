@@ -5,6 +5,9 @@ import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_score.dart';
 import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
@@ -68,6 +71,34 @@ void main() {
         promotionZoneEndRank: 4,
         relegationZoneStartRank: 7,
       ),
+      records: PlayerLeagueRecords(
+        playerId: 'current',
+        allTimeBestFinalScore: 1800,
+        currentWeeklyBestScore: 1250,
+        currentSeasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 4)),
+      ),
+      history: [
+        WeeklyLeagueHistoryEntry(
+          playerId: 'current',
+          seasonId: LeagueSeasonId.fromDate(DateTime(2026, 4, 27)),
+          finalRank: 3,
+          finalDivision: 2,
+          result: WeeklyLeagueSeasonResult.promoted,
+          finalWeeklyScore: 1400,
+        ),
+      ],
+      weeklyRuns: [
+        WeeklyLeagueRun(
+          playerId: 'current',
+          score: 1250,
+          completedAt: DateTime(2026, 5, 16, 14, 30),
+        ),
+        WeeklyLeagueRun(
+          playerId: 'current',
+          score: 1100,
+          completedAt: DateTime(2026, 5, 15, 9, 5),
+        ),
+      ],
     );
 
     await tester.pumpWidget(
@@ -82,12 +113,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Weekly Score'),
+      200,
+      scrollable: find.byType(Scrollable),
+    );
     expect(find.text('Weekly runs: 6'), findsOneWidget);
     expect(find.text('Best runs used: 2'), findsOneWidget);
     expect(find.text('Average of selected best runs: 950'), findsOneWidget);
     expect(find.text('Active days this week: 3'), findsOneWidget);
     expect(find.text('Activity multiplier: x1.2'), findsOneWidget);
     expect(find.text('Final weekly score: 1140'), findsOneWidget);
+    expect(find.text('All-time best final score: 1800'), findsOneWidget);
+    expect(find.text('Current weekly best score: 1250'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Weekly Runs'),
+      -200,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('1250 - 2026-05-16 14:30'), findsOneWidget);
+    expect(find.text('1100 - 2026-05-15 09:05'), findsOneWidget);
     expect(find.text('#7 Inactive Player - inactive'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Nearby Ranking'),
@@ -100,6 +145,15 @@ void main() {
     expect(find.text('Relegation zone: #7 and below'), findsOneWidget);
     expect(find.text('Promotion need: 1301'), findsOneWidget);
     expect(find.text('Stay need: 901'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('League History'),
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(
+      find.text('2026-04-27 - Division 2 - #3 - promoted - 1400'),
+      findsOneWidget,
+    );
   });
 }
 
@@ -167,11 +221,17 @@ class _LeagueScreenRepository implements LeagueRepository {
     required this.storedEntry,
     required this.ranking,
     required this.snapshot,
+    required this.records,
+    required this.history,
+    required this.weeklyRuns,
   });
 
   final LeaguePlayerEntry storedEntry;
   final List<LeagueRankingEntry> ranking;
   final LeagueRankingSnapshot snapshot;
+  final PlayerLeagueRecords records;
+  final List<WeeklyLeagueHistoryEntry> history;
+  final List<WeeklyLeagueRun> weeklyRuns;
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
@@ -199,5 +259,27 @@ class _LeagueScreenRepository implements LeagueRepository {
   }
 
   @override
-  Future<void> submitLeagueRun(WeeklyLeagueRun run) async {}
+  Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId) async {
+    return records;
+  }
+
+  @override
+  Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(
+    String playerId,
+  ) async {
+    return history;
+  }
+
+  @override
+  Future<List<WeeklyLeagueRun>> fetchPlayerWeeklyRuns({
+    required String playerId,
+    required LeagueSeasonId seasonId,
+  }) async {
+    return weeklyRuns;
+  }
+
+  @override
+  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
+    return LeagueRunSubmissionResult(accepted: true, playerRecords: records);
+  }
 }

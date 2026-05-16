@@ -2167,3 +2167,178 @@ Session 16 — Weekly League History + Personal Records
 
 Current session: Session 16 — Weekly League History + Personal Records
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 16 — Weekly League History + Personal Records
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement player-facing weekly league history, personal records, and weekly run tracking using the existing league runtime and ranking systems.
+
+---
+
+### 📦 Deliverables
+
+* [x] PlayerLeagueRecords model implemented
+* [x] WeeklyLeagueHistoryEntry model implemented
+* [x] PlayerLeagueRecordsCalculator implemented
+* [x] WeeklyLeagueHistoryGenerator implemented
+* [x] Personal records tracking implemented
+* [x] Weekly best score tracking implemented
+* [x] Weekly score reset by season implemented
+* [x] League history entry generation implemented
+* [x] LeagueRepository extended with records/history access
+* [x] MockLeagueRepository records integration implemented
+* [x] Personal records UI implemented
+* [x] League history UI implemented
+* [x] Current weekly runs list implemented
+* [x] Weekly runs sorting implemented
+* [x] Weekly runs ranking display implemented
+* [x] Weekly runs aligned leaderboard layout implemented
+* [x] Repository and UI tests updated
+
+---
+
+### 🛠️ Work Done
+
+* Added new league domain models:
+
+  * `PlayerLeagueRecords`
+  * `WeeklyLeagueHistoryEntry`
+
+* Added new league domain services:
+
+  * `PlayerLeagueRecordsCalculator`
+  * `WeeklyLeagueHistoryGenerator`
+
+* Implemented personal records system:
+
+  * all-time best final score
+  * current weekly best score
+  * season-aware weekly reset logic
+
+* Implemented league history generation:
+
+  * final season rank
+  * final division
+  * promoted / relegated / stayed result
+  * final weekly score
+
+* Extended `LeagueRepository` with:
+
+  * `fetchPlayerRecords`
+  * `fetchPlayerHistory`
+  * `fetchPlayerWeeklyRuns`
+
+* Refactored `submitLeagueRun`:
+
+  * added `LeagueRunSubmissionResult`
+  * added accepted/rejected submission support
+  * prepared repository contract for future backend validation
+
+* Updated `MockLeagueRepository`:
+
+  * records update on submitted league runs
+  * current weekly runs filtering by season
+  * sorting by best score first
+  * newest run first on score ties
+  * immutable weekly runs return values
+
+* Updated `LeagueHomeScreen`:
+
+  * added Personal Records card
+  * added League History card
+  * added Weekly Runs card
+  * added leaderboard-style weekly runs layout
+  * aligned score digits using fixed-width score columns
+  * added run ranking order (1º, 2º, 3º...)
+  * improved async loading using parallel futures
+
+* Added and updated tests for:
+
+  * weekly record updates
+  * season reset behavior
+  * history generation
+  * repository sorting/filtering
+  * weekly runs ordering
+  * UI rendering
+  * repository contract updates
+
+---
+
+### ⚠️ Notes / Decisions
+
+* All-time records never reset
+* Weekly best scores reset automatically when season changes
+* Weekly runs are filtered by current season only
+* Weekly runs sorting is handled entirely in the repository layer
+* Weekly runs are ordered:
+
+  * highest score first
+  * newest run first on ties
+* League history currently depends on generated settlement data
+* Real automated season settlement runtime is deferred to Session 17
+* UI does not calculate ranking, sorting, filtering, or records
+* Repository contracts are now prepared for backend validation and anti-cheat flows
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Personal records update correctly
+* [x] Weekly best resets correctly on season change
+* [x] All-time best persists across seasons
+* [x] Weekly runs filtering validated
+* [x] Weekly runs sorting validated
+* [x] Weekly runs leaderboard display validated
+* [x] League history rendering validated
+* [x] Repository contract updates validated
+* [x] Async loading flow validated
+* [x] UI alignment validated
+
+---
+
+### 📌 Next Session
+
+Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (completed)
+* ✅ Session 7 — Lives system (completed)
+* ✅ Session 8 — Precision Points (PP) (completed)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (completed)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* 🔄 Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+Status: Ready ⏳

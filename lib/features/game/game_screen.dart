@@ -987,6 +987,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     required int finalScore,
   }) {
     final leagueRepository = widget.leagueRepository;
+
     if (_leagueRunSubmitted ||
         _runMode != RunMode.league ||
         playerProfile == null ||
@@ -996,14 +997,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
 
     _leagueRunSubmitted = true;
+
     unawaited(
-      leagueRepository.submitLeagueRun(
+      leagueRepository
+          .submitLeagueRun(
         WeeklyLeagueRun(
           playerId: playerProfile.id,
           score: finalScore,
           completedAt: runEndedAt,
         ),
-      ),
+      )
+          .then((submissionResult) {
+        if (!submissionResult.accepted) {
+          // Future backend validation can surface rejection reasons here.
+          return;
+        }
+
+        // Future UI/state sync can use:
+        // submissionResult.playerRecords
+      }),
     );
   }
 

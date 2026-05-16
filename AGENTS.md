@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 15 completed.
+Session 16 completed.
 
-Current session: Session 16 — Weekly League History + Personal Records
+Current session: Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
 
 ---
 

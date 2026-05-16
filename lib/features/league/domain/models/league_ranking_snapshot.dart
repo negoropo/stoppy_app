@@ -13,8 +13,8 @@ class LeagueRankingSnapshot {
     required this.promotionZoneEndRank,
     required this.relegationZoneStartRank,
   }) : assert(currentPlayerRank > 0),
-        assert(promotionZoneEndRank == null || promotionZoneEndRank > 0),
-        assert(relegationZoneStartRank == null || relegationZoneStartRank > 0),
+       assert(promotionZoneEndRank == null || promotionZoneEndRank > 0),
+       assert(relegationZoneStartRank == null || relegationZoneStartRank > 0),
        playersAbove = UnmodifiableListView(playersAbove),
        playersBelow = UnmodifiableListView(playersBelow);
 

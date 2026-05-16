@@ -1,14 +1,93 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/features/league/domain/models/league_division.dart';
+import 'package:stoppy_app/features/league/domain/models/league_division_settlement.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_score.dart';
 import 'package:stoppy_app/features/league/domain/services/league_division_policy.dart';
 import 'package:stoppy_app/features/league/domain/services/league_ranking_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/league_season_settlement_calculator.dart';
+import 'package:stoppy_app/features/league/domain/services/player_league_records_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/weekly_league_score_calculator.dart';
+import 'package:stoppy_app/features/league/domain/services/weekly_league_history_generator.dart';
 
 void main() {
+  group('PlayerLeagueRecordsCalculator', () {
+    const calculator = PlayerLeagueRecordsCalculator();
+
+    test('updates all-time and weekly best scores in the same season', () {
+      final records = calculator.recordRun(
+        previousRecords: calculator.recordRun(
+          previousRecords: PlayerLeagueRecords.empty('p1'),
+          finalScore: 500,
+          seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 4)),
+        ),
+        finalScore: 750,
+        seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 8)),
+      );
+
+      expect(records.allTimeBestFinalScore, 750);
+      expect(records.currentWeeklyBestScore, 750);
+    });
+
+    test('resets weekly best on a new season but preserves all-time best', () {
+      final records = calculator.recordRun(
+        previousRecords: PlayerLeagueRecords(
+          playerId: 'p1',
+          allTimeBestFinalScore: 900,
+          currentWeeklyBestScore: 900,
+          currentSeasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 4)),
+        ),
+        finalScore: 400,
+        seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 11)),
+      );
+
+      expect(records.allTimeBestFinalScore, 900);
+      expect(records.currentWeeklyBestScore, 400);
+    });
+  });
+
+  group('WeeklyLeagueHistoryGenerator', () {
+    const generator = WeeklyLeagueHistoryGenerator();
+
+    test('creates season history from final ranking and settlement result', () {
+      final rankingEntry = LeagueRankingEntry(
+        rank: 2,
+        playerEntry: _entry('p1', entryPaid: true),
+        weeklyScore: WeeklyLeagueScore(
+          playerId: 'p1',
+          isActive: true,
+          runCount: 1,
+          activeDays: 1,
+          activityMultiplier: 1,
+          baseScore: 1234,
+          finalScore: 1234,
+          bonusPoints: 0,
+          countedRunScores: [1234],
+          allRunScores: [1234],
+        ),
+      );
+
+      final historyEntry = generator.generate(
+        seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 4)),
+        finalRankingEntry: rankingEntry,
+        settlement: LeagueDivisionSettlement(
+          divisionNumber: 1,
+          promotedPlayerIds: const ['p1'],
+        ),
+      );
+
+      expect(historyEntry.finalRank, 2);
+      expect(historyEntry.finalDivision, 1);
+      expect(historyEntry.result, WeeklyLeagueSeasonResult.promoted);
+      expect(historyEntry.finalWeeklyScore, 1234);
+    });
+  });
+
   group('LeagueDivisionPolicy', () {
     const policy = LeagueDivisionPolicy();
 

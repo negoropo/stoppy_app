@@ -5,11 +5,15 @@ import 'package:stoppy_app/features/league/domain/models/league_division.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 import 'package:stoppy_app/features/league/domain/services/league_division_policy.dart';
 import 'package:stoppy_app/features/league/domain/services/league_ranking_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/league_season_settlement_calculator.dart';
+import 'package:stoppy_app/features/league/domain/services/player_league_records_calculator.dart';
 
 class MockLeagueRepository implements LeagueRepository {
   MockLeagueRepository({
@@ -17,10 +21,13 @@ class MockLeagueRepository implements LeagueRepository {
     LeagueRankingCalculator rankingCalculator = const LeagueRankingCalculator(),
     LeagueSeasonSettlementCalculator settlementCalculator =
         const LeagueSeasonSettlementCalculator(),
+    PlayerLeagueRecordsCalculator recordsCalculator =
+        const PlayerLeagueRecordsCalculator(),
     bool seedMockData = true,
   }) : _divisionPolicy = divisionPolicy,
        _rankingCalculator = rankingCalculator,
-       _settlementCalculator = settlementCalculator {
+       _settlementCalculator = settlementCalculator,
+       _recordsCalculator = recordsCalculator {
     if (seedMockData) {
       _seedMockLeague();
     }
@@ -29,9 +36,13 @@ class MockLeagueRepository implements LeagueRepository {
   final LeagueDivisionPolicy _divisionPolicy;
   final LeagueRankingCalculator _rankingCalculator;
   final LeagueSeasonSettlementCalculator _settlementCalculator;
+  final PlayerLeagueRecordsCalculator _recordsCalculator;
+
   final List<LeagueDivision> _divisions = [];
   final Map<String, LeaguePlayerEntry> _entriesByPlayerId = {};
   final List<WeeklyLeagueRun> _runs = [];
+  final Map<String, PlayerLeagueRecords> _recordsByPlayerId = {};
+  final Map<String, List<WeeklyLeagueHistoryEntry>> _historyByPlayerId = {};
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
@@ -52,6 +63,7 @@ class MockLeagueRepository implements LeagueRepository {
   @override
   Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) async {
     final existingEntry = _entriesByPlayerId[profile.id];
+
     if (existingEntry != null) {
       if (existingEntry.isActive) {
         return existingEntry;
@@ -66,6 +78,7 @@ class MockLeagueRepository implements LeagueRepository {
       divisions: _divisions,
       entries: _entriesByPlayerId.values.toList(),
     );
+
     if (!_divisions.any((existing) => existing.number == division.number)) {
       _divisions.add(division);
     }
@@ -77,18 +90,67 @@ class MockLeagueRepository implements LeagueRepository {
       registeredAt: profile.createdAt,
       entryPaid: true,
     );
+
     _entriesByPlayerId[profile.id] = entry;
     return entry;
   }
 
   @override
-  Future<void> submitLeagueRun(WeeklyLeagueRun run) async {
+  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
     final entry = _entriesByPlayerId[run.playerId];
+    final previousRecords =
+        _recordsByPlayerId[run.playerId] ??
+        PlayerLeagueRecords.empty(run.playerId);
+
     if (entry == null || !entry.isActive) {
-      return;
+      return LeagueRunSubmissionResult(
+        accepted: false,
+        playerRecords: previousRecords,
+      );
     }
 
     _runs.add(run);
+    final updatedRecords = _recordSubmittedRun(run);
+
+    return LeagueRunSubmissionResult(
+      accepted: true,
+      playerRecords: updatedRecords,
+    );
+  }
+
+  @override
+  Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId) async {
+    return _recordsByPlayerId[playerId] ?? PlayerLeagueRecords.empty(playerId);
+  }
+
+  @override
+  Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(
+    String playerId,
+  ) async {
+    return List.unmodifiable(_historyByPlayerId[playerId] ?? const []);
+  }
+
+  @override
+  Future<List<WeeklyLeagueRun>> fetchPlayerWeeklyRuns({
+    required String playerId,
+    required LeagueSeasonId seasonId,
+  }) async {
+    final weeklyRuns =
+        _runs.where((run) {
+          return run.playerId == playerId &&
+              LeagueSeasonId.fromDate(run.completedAt).value == seasonId.value;
+        }).toList()..sort((a, b) {
+          final scoreOrder = b.score.compareTo(a.score);
+          if (scoreOrder != 0) {
+            return scoreOrder;
+          }
+
+          // Equal-score attempts show newest first so a player can see the most
+          // recent run before older runs with the same competitive value.
+          return b.completedAt.compareTo(a.completedAt);
+        });
+
+    return List.unmodifiable(weeklyRuns);
   }
 
   @override
@@ -98,13 +160,17 @@ class MockLeagueRepository implements LeagueRepository {
   }) async {
     final ranking = await fetchDivisionRanking(divisionNumber);
     final division = _divisionForNumber(divisionNumber);
+
     final highestDivisionNumber = _divisions.isEmpty
         ? divisionNumber
         : _divisions.map((division) => division.number).reduce(math.max);
+
     final isLastDivision = divisionNumber == highestDivisionNumber;
+
     final relegationCount = isLastDivision
         ? 0
         : _settlementCalculator.minimumRelegationCount(division);
+
     final promotionCount = division.isFirstDivision
         ? 0
         : _settlementCalculator.minimumPromotionCountWherePossible(division);
@@ -126,6 +192,21 @@ class MockLeagueRepository implements LeagueRepository {
         capacity: _divisionPolicy.capacityForDivision(divisionNumber),
       ),
     );
+  }
+
+  PlayerLeagueRecords _recordSubmittedRun(WeeklyLeagueRun run) {
+    final previousRecords =
+        _recordsByPlayerId[run.playerId] ??
+        PlayerLeagueRecords.empty(run.playerId);
+
+    final updatedRecords = _recordsCalculator.recordRun(
+      previousRecords: previousRecords,
+      finalScore: run.score,
+      seasonId: LeagueSeasonId.fromDate(run.completedAt),
+    );
+
+    _recordsByPlayerId[run.playerId] = updatedRecords;
+    return updatedRecords;
   }
 
   void _seedMockLeague() {
@@ -160,6 +241,7 @@ class MockLeagueRepository implements LeagueRepository {
         registeredAt: DateTime(2026, 1, 1).add(Duration(days: index)),
         entryPaid: false,
       );
+
       _entriesByPlayerId[entry.playerId] = entry;
     }
   }
@@ -177,13 +259,16 @@ class MockLeagueRepository implements LeagueRepository {
       registeredAt: DateTime(2026, 1, 1),
       entryPaid: true,
     );
+
     _entriesByPlayerId[playerId] = entry;
-    _runs.add(
-      WeeklyLeagueRun(
-        playerId: playerId,
-        score: score,
-        completedAt: DateTime(2026, 5, 4, 12),
-      ),
+
+    final run = WeeklyLeagueRun(
+      playerId: playerId,
+      score: score,
+      completedAt: DateTime(2026, 5, 4, 12),
     );
+
+    _runs.add(run);
+    _recordSubmittedRun(run);
   }
 }

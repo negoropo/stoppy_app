@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/league/data/mock_league_repository.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 
 void main() {
@@ -46,6 +47,9 @@ void main() {
 
       expect(ranking.first.playerEntry.playerId, playerProfile.id);
       expect(ranking.first.weeklyScore.finalScore, 50000);
+      final records = await repository.fetchPlayerRecords(playerProfile.id);
+      expect(records.allTimeBestFinalScore, 50000);
+      expect(records.currentWeeklyBestScore, 50000);
     });
 
     test('entering weekly league twice returns same active entry', () async {
@@ -85,5 +89,67 @@ void main() {
       );
       expect(snapshot.scoreNeededToStayInDivision, isNull);
     });
+
+    test(
+      'fetches requested weekly runs sorted by score then recency',
+      () async {
+        final repository = MockLeagueRepository(seedMockData: false);
+        final playerProfile = PlayerProfile(
+          id: 'player-id',
+          username: 'Tester',
+          createdAt: DateTime(2026),
+        );
+        final otherPlayerProfile = PlayerProfile(
+          id: 'other-player',
+          username: 'Other',
+          createdAt: DateTime(2026),
+        );
+        await repository.enterWeeklyLeague(playerProfile);
+        await repository.enterWeeklyLeague(otherPlayerProfile);
+        await repository.submitLeagueRun(
+          WeeklyLeagueRun(
+            playerId: playerProfile.id,
+            score: 500,
+            completedAt: DateTime(2026, 5, 12, 10),
+          ),
+        );
+        await repository.submitLeagueRun(
+          WeeklyLeagueRun(
+            playerId: playerProfile.id,
+            score: 700,
+            completedAt: DateTime(2026, 5, 13, 10),
+          ),
+        );
+        await repository.submitLeagueRun(
+          WeeklyLeagueRun(
+            playerId: playerProfile.id,
+            score: 700,
+            completedAt: DateTime(2026, 5, 14, 10),
+          ),
+        );
+        await repository.submitLeagueRun(
+          WeeklyLeagueRun(
+            playerId: 'other-player',
+            score: 999,
+            completedAt: DateTime(2026, 5, 14, 10),
+          ),
+        );
+        await repository.submitLeagueRun(
+          WeeklyLeagueRun(
+            playerId: playerProfile.id,
+            score: 900,
+            completedAt: DateTime(2026, 5, 5, 10),
+          ),
+        );
+
+        final runs = await repository.fetchPlayerWeeklyRuns(
+          playerId: playerProfile.id,
+          seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 12)),
+        );
+
+        expect(runs.map((run) => run.score), [700, 700, 500]);
+        expect(runs.map((run) => run.completedAt.day), [14, 13, 12]);
+      },
+    );
   });
 }

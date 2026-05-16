@@ -18,7 +18,7 @@ class WeeklyLeagueScore {
        assert(baseScore >= 0),
        assert(finalScore >= 0),
        assert(bonusPoints >= 0),
-        assert(countedRunScores.length <= allRunScores.length),
+       assert(countedRunScores.length <= allRunScores.length),
        countedRunScores = UnmodifiableListView(countedRunScores),
        allRunScores = UnmodifiableListView(allRunScores);
 

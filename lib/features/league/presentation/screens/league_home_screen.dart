@@ -5,6 +5,10 @@ import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../domain/models/league_player_entry.dart';
 import '../../domain/models/league_ranking_entry.dart';
 import '../../domain/models/league_ranking_snapshot.dart';
+import '../../domain/models/league_season_id.dart';
+import '../../domain/models/player_league_records.dart';
+import '../../domain/models/weekly_league_history_entry.dart';
+import '../../domain/models/weekly_league_run.dart';
 import '../../domain/repositories/league_repository.dart';
 import '../../domain/services/league_division_policy.dart';
 
@@ -33,6 +37,9 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
   LeaguePlayerEntry? _currentEntry;
   List<LeagueRankingEntry> _rankingPreview = const [];
   LeagueRankingSnapshot? _snapshot;
+  PlayerLeagueRecords? _records;
+  List<WeeklyLeagueHistoryEntry> _history = const [];
+  List<WeeklyLeagueRun> _weeklyRuns = const [];
   bool _isLoading = true;
   bool _isEntering = false;
   String? _message;
@@ -53,16 +60,40 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
     final entry = await widget.leagueRepository.currentEntry(_playerProfile.id);
     final divisionNumber =
         entry?.divisionNumber ?? _playerProfile.currentLeagueDivision ?? 2;
-    final ranking = await widget.leagueRepository.fetchDivisionRanking(
+
+    final rankingFuture = widget.leagueRepository.fetchDivisionRanking(
       divisionNumber,
     );
-    LeagueRankingSnapshot? snapshot;
-    if (entry != null) {
-      snapshot = await widget.leagueRepository.fetchPlayerSnapshot(
-        playerId: _playerProfile.id,
-        divisionNumber: entry.divisionNumber,
-      );
-    }
+    final recordsFuture = widget.leagueRepository.fetchPlayerRecords(
+      _playerProfile.id,
+    );
+    final historyFuture = widget.leagueRepository.fetchPlayerHistory(
+      _playerProfile.id,
+    );
+    final weeklyRunsFuture = widget.leagueRepository.fetchPlayerWeeklyRuns(
+      playerId: _playerProfile.id,
+      seasonId: LeagueSeasonId.fromDate(DateTime.now()),
+    );
+    final snapshotFuture = entry == null
+        ? Future<LeagueRankingSnapshot?>.value()
+        : widget.leagueRepository.fetchPlayerSnapshot(
+            playerId: _playerProfile.id,
+            divisionNumber: entry.divisionNumber,
+          );
+
+    final results = await Future.wait([
+      rankingFuture,
+      recordsFuture,
+      historyFuture,
+      weeklyRunsFuture,
+      snapshotFuture,
+    ]);
+
+    final ranking = results[0] as List<LeagueRankingEntry>;
+    final records = results[1] as PlayerLeagueRecords;
+    final history = results[2] as List<WeeklyLeagueHistoryEntry>;
+    final weeklyRuns = results[3] as List<WeeklyLeagueRun>;
+    final snapshot = results[4] as LeagueRankingSnapshot?;
 
     if (!mounted) {
       return;
@@ -72,6 +103,9 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
       _currentEntry = entry;
       _rankingPreview = ranking.take(_rankingPreviewCount).toList();
       _snapshot = snapshot;
+      _records = records;
+      _history = history;
+      _weeklyRuns = weeklyRuns;
       _isLoading = false;
     });
   }
@@ -170,6 +204,12 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   _RankingPreviewCard(entries: _rankingPreview),
+                  if (_records != null) ...[
+                    const SizedBox(height: 12),
+                    _PersonalRecordsCard(records: _records!),
+                  ],
+                  const SizedBox(height: 12),
+                  _WeeklyRunsCard(runs: _weeklyRuns),
                   if (_snapshot != null) ...[
                     const SizedBox(height: 12),
                     _WeeklyScoreBreakdownCard(
@@ -180,6 +220,8 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
                     const SizedBox(height: 12),
                     _NearbyRankingCard(snapshot: _snapshot!),
                   ],
+                  const SizedBox(height: 12),
+                  _LeagueHistoryCard(entries: _history),
                 ],
               ),
       ),
@@ -266,6 +308,147 @@ class _RankingPreviewCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _PersonalRecordsCard extends StatelessWidget {
+  const _PersonalRecordsCard({required this.records});
+
+  final PlayerLeagueRecords records;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LeagueCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Personal Records', style: _LeagueTextStyles.title),
+          const SizedBox(height: 10),
+          Text(
+            'All-time best final score: ${records.allTimeBestFinalScore}',
+            style: _LeagueTextStyles.body,
+          ),
+          Text(
+            'Current weekly best score: ${records.currentWeeklyBestScore}',
+            style: _LeagueTextStyles.body,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeeklyRunsCard extends StatelessWidget {
+  const _WeeklyRunsCard({required this.runs});
+
+  final List<WeeklyLeagueRun> runs;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LeagueCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Weekly Runs', style: _LeagueTextStyles.title),
+          const SizedBox(height: 10),
+          if (runs.isEmpty)
+            const Text(
+              'No weekly league runs yet.',
+              style: _LeagueTextStyles.body,
+            )
+          else
+            ...runs.asMap().entries.map(
+                  (entry) {
+                final index = entry.key;
+                final run = entry.value;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 34,
+                        child: Text(
+                          '${index + 1}º',
+                          style: _LeagueTextStyles.highlight,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 60,
+                        child: Text(
+                          '${run.score}',
+                          textAlign: TextAlign.right,
+                          style: _LeagueTextStyles.body,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        _completedAtText(run.completedAt),
+                        style: _LeagueTextStyles.body,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _completedAtText(DateTime completedAt) {
+    final local = completedAt.toLocal();
+    final year = local.year.toString().padLeft(4, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+
+    return '$year-$month-$day $hour:$minute';
+  }
+}
+
+class _LeagueHistoryCard extends StatelessWidget {
+  const _LeagueHistoryCard({required this.entries});
+
+  final List<WeeklyLeagueHistoryEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LeagueCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('League History', style: _LeagueTextStyles.title),
+          const SizedBox(height: 10),
+          if (entries.isEmpty)
+            const Text(
+              'No completed weekly seasons yet.',
+              style: _LeagueTextStyles.body,
+            )
+          else
+            ...entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '${entry.seasonId.value} - Division ${entry.finalDivision} - '
+                  '#${entry.finalRank} - ${_resultLabel(entry.result)} - '
+                  '${entry.finalWeeklyScore.round()}',
+                  style: _LeagueTextStyles.body,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _resultLabel(WeeklyLeagueSeasonResult result) {
+    return switch (result) {
+      WeeklyLeagueSeasonResult.promoted => 'promoted',
+      WeeklyLeagueSeasonResult.relegated => 'relegated',
+      WeeklyLeagueSeasonResult.stayed => 'stayed',
+    };
   }
 }
 
