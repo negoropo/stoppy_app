@@ -126,13 +126,13 @@ void main() {
     expect(find.text('Final weekly score: 1140'), findsOneWidget);
     expect(find.text('All-time best final score: 1800'), findsOneWidget);
     expect(find.text('Current weekly best score: 1250'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Weekly Runs'),
-      -200,
-      scrollable: find.byType(Scrollable),
-    );
-    expect(find.text('1250 - 2026-05-16 14:30'), findsOneWidget);
-    expect(find.text('1100 - 2026-05-15 09:05'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, 500));
+    await tester.pump();
+    expect(find.text('Weekly Runs'), findsOneWidget);
+    expect(find.text('1250'), findsWidgets);
+    expect(find.text('2026-05-16 14:30'), findsOneWidget);
+    expect(find.text('1100'), findsOneWidget);
+    expect(find.text('2026-05-15 09:05'), findsOneWidget);
     expect(find.text('#7 Inactive Player - inactive'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Nearby Ranking'),

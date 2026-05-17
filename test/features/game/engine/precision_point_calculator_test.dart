@@ -7,16 +7,18 @@ void main() {
   group('PrecisionPointCalculator', () {
     const calculator = PrecisionPointCalculator();
 
-    test('awards 1000 PP for a perfect target match', () {
+    test('awards the current tier max for a perfect target match', () {
       final result = calculator.calculate(
         ballAngle: 1,
         targetAngle: 1,
         didAdvanceLevel: true,
+        tierLevel: 6,
+        tierMaxPrecisionPoints: 1000,
       );
 
       expect(result.awardedPP, 1000);
-      expect(result.basePP, 1000);
-      expect(result.levelMultiplier, 1);
+      expect(result.tierLevel, 6);
+      expect(result.tierMaxPrecisionPoints, 1000);
       expect(result.angularDistance, 0);
       expect(result.normalizedPrecision, 1);
     });
@@ -26,6 +28,8 @@ void main() {
         ballAngle: 0,
         targetAngle: math.pi,
         didAdvanceLevel: true,
+        tierLevel: 1,
+        tierMaxPrecisionPoints: 100,
       );
 
       expect(result.awardedPP, 1);
@@ -38,6 +42,8 @@ void main() {
         ballAngle: math.pi * 1.95,
         targetAngle: math.pi * 0.05,
         didAdvanceLevel: true,
+        tierLevel: 6,
+        tierMaxPrecisionPoints: 1000,
       );
 
       expect(result.angularDistance, closeTo(math.pi * 0.1, 0.0001));
@@ -49,6 +55,8 @@ void main() {
         ballAngle: 0,
         targetAngle: 0,
         didAdvanceLevel: false,
+        tierLevel: 1,
+        tierMaxPrecisionPoints: 100,
       );
 
       expect(result.awardedPP, 0);

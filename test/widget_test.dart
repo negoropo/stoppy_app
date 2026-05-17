@@ -4,6 +4,8 @@ import 'package:stoppy_app/features/auth/data/mock_auth_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:stoppy_app/features/auth/presentation/screens/register_screen.dart';
+import 'package:stoppy_app/features/ads/data/mock_ad_repository.dart';
+import 'package:stoppy_app/features/ads/domain/models/ad_type.dart';
 import 'package:stoppy_app/features/game/domain/economy/run_mode.dart';
 import 'package:stoppy_app/features/game/domain/models/difficulty_state.dart';
 import 'package:stoppy_app/features/game/domain/models/game_level_config.dart';
@@ -152,9 +154,10 @@ void main() {
     final customPaint = tester.widget<CustomPaint>(_gameAreaPainterFinder());
 
     expect(customPaint.painter, isA<GameAreaPainter>());
+    expect(find.text('Max PP\n100'), findsOneWidget);
   });
 
-  testWidgets('Tapping the game screen shows summary before reward overlay', (
+  testWidgets('Tapping the game screen shows PP summary before next level', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -181,52 +184,21 @@ void main() {
     await tester.pump();
 
     expect(find.text('Reward Summary'), findsNothing);
-    expect(find.text('Reward'), findsNothing);
-    expect(find.text('Next level'), findsNothing);
+    expect(find.text('Next Level'), findsNothing);
 
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Reward Summary'), findsOneWidget);
-    expect(find.text('Safe Zone RP earned: 3'), findsOneWidget);
-    expect(find.text('Target RP bonus earned: 0'), findsOneWidget);
-    expect(find.text('Total RP earned: 3'), findsOneWidget);
-    expect(find.text('Next level'), findsNothing);
+    expect(find.textContaining('PP earned:'), findsOneWidget);
+    expect(find.textContaining('Total PP:'), findsOneWidget);
+    expect(find.textContaining('Target hit! Next level max PP:'), findsNothing);
+    expect(find.text('Next Level'), findsOneWidget);
 
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('Next Level'));
     await tester.pump();
 
     expect(find.text('Reward Summary'), findsNothing);
-    expect(find.text('Accumulated RP: 3'), findsOneWidget);
-    expect(find.textContaining('Accumulated PP:'), findsOneWidget);
-    expect(find.textContaining('RP gained:'), findsNothing);
-    expect(find.text('Precision Points'), findsNothing);
-    expect(find.text('Next level'), findsOneWidget);
-    expect(find.text('Do not increase difficulty'), findsOneWidget);
-    expect(find.text('Decrease random difficulty'), findsOneWidget);
-    expect(find.text('Buy life'), findsOneWidget);
-    expect(find.text('Decrease chosen difficulty (15 RP)'), findsOneWidget);
-    expect(find.text('Increase ball speed (0)'), findsOneWidget);
-    expect(find.text('Increase ball size (0)'), findsOneWidget);
-    expect(find.text('Increase stop time (0)'), findsOneWidget);
-    expect(find.text('Increase safe zone size (0)'), findsOneWidget);
-    expect(find.text('Increase safe zone speed (0)'), findsOneWidget);
-    expect(find.text('Increase target speed (0)'), findsOneWidget);
-    expect(find.text('Ball speed (0)'), findsOneWidget);
-    expect(find.text('Ball size (0)'), findsOneWidget);
-    expect(find.text('Stop time (0)'), findsOneWidget);
-    expect(find.text('Safe zone size (0)'), findsOneWidget);
-    expect(find.text('Safe zone speed (0)'), findsOneWidget);
-    expect(find.text('Target speed (0)'), findsOneWidget);
-    expect(find.text('last increased: none'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Increase ball speed (0)'));
-    await tester.tap(find.text('Increase ball speed (0)'));
-    await tester.pump();
-
-    expect(find.text('Reward'), findsNothing);
-    expect(find.text('Next level'), findsNothing);
     expect(find.text('Level: 2'), findsOneWidget);
-    expect(find.text('ballSpeedLevel: 1'), findsOneWidget);
   });
 
   testWidgets('Game screen shows the temporary difficulty debug overlay', (
@@ -244,11 +216,10 @@ void main() {
     expect(find.text('safeZoneSizeLevel: 0'), findsOneWidget);
     expect(find.text('safeZoneSpeedLevel: 0'), findsOneWidget);
     expect(find.text('targetSpeedLevel: 0'), findsOneWidget);
-    expect(find.text('lives: 0'), findsOneWidget);
     expect(find.text('last increased: none'), findsOneWidget);
   });
 
-  testWidgets('Safe zone edge hit with no RP still shows reward summary', (
+  testWidgets('Safe zone edge hit still shows PP reward summary', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -279,18 +250,13 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Reward Summary'), findsOneWidget);
-    expect(find.text('Safe Zone RP earned: 0'), findsOneWidget);
-    expect(find.text('Target RP bonus earned: 0'), findsOneWidget);
-    expect(find.text('Total RP earned: 0'), findsOneWidget);
-    expect(find.text('Reward'), findsNothing);
+    expect(find.textContaining('PP earned:'), findsOneWidget);
     expect(find.text('Game Over'), findsNothing);
 
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('Next Level'));
     await tester.pump();
 
-    expect(find.text('Accumulated RP: 0'), findsOneWidget);
-    expect(find.text('RP gained: 0'), findsNothing);
-    expect(find.text('Precision Points'), findsNothing);
+    expect(find.text('Level: 2'), findsOneWidget);
   });
 
   testWidgets('Target hit outside safe zone succeeds and opens summary first', (
@@ -325,35 +291,19 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Reward Summary'), findsOneWidget);
-    expect(find.text('Safe Zone RP earned: 0'), findsOneWidget);
-    expect(find.text('Target RP bonus earned: 10'), findsOneWidget);
-    expect(find.text('Total RP earned: 10'), findsOneWidget);
-    expect(
-      find.text('1000 PP × Level Multiplier 1.01 = 1010 PP'),
-      findsOneWidget,
-    );
-    expect(
-      find.text(
-        'Perfect hit! You stopped the center of the ball exactly on the '
-        'target and earned +10 RP.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Reward'), findsNothing);
+    expect(find.text('PP earned: 100 / 100'), findsOneWidget);
+    expect(find.text('Target hit! Next level max PP: 200'), findsOneWidget);
     expect(find.text('Game Over'), findsNothing);
 
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('Next Level'));
     await tester.pump();
 
-    expect(find.text('Reward'), findsOneWidget);
-    expect(find.text('Accumulated RP: 10'), findsOneWidget);
-    expect(find.text('Accumulated PP: 1010'), findsOneWidget);
-    expect(find.text('Precision Points'), findsNothing);
     expect(find.text('Game Over'), findsNothing);
-    expect(find.text('Level: 1'), findsOneWidget);
+    expect(find.text('Level: 2'), findsOneWidget);
+    expect(find.text('PP: 100'), findsWidgets);
   });
 
-  testWidgets('Safe Zone and Target RP rewards are combined in summary', (
+  testWidgets('Safe Zone and Target success shows PP summary', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -380,12 +330,80 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Reward Summary'), findsOneWidget);
-    expect(find.text('Safe Zone RP earned: 3'), findsOneWidget);
-    expect(find.text('Target RP bonus earned: 10'), findsOneWidget);
-    expect(find.text('Total RP earned: 13'), findsOneWidget);
+    expect(find.textContaining('PP earned:'), findsOneWidget);
+    expect(find.text('Target hit! Next level max PP: 200'), findsOneWidget);
   });
 
-  testWidgets('Failed hit with no lives shows game over and can restart', (
+  testWidgets('Completing level 60 finalizes the run instead of level 61', (
+    WidgetTester tester,
+  ) async {
+    final adRepository = MockAdRepository(
+      preloadDelay: Duration.zero,
+      showDelay: Duration.zero,
+    );
+    final leagueRepository = _FakeLeagueRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            gamePoints: 5,
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          adRepository: adRepository,
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialRunLevel: 60,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: const GameLevelConfig(
+            ballRotationDuration: Duration(seconds: 3),
+            ballRadius: 18,
+            stopTimeLimit: Duration(seconds: 30),
+            safeZoneSweepAngle: 1,
+            safeZoneRotationDuration: null,
+            targetRotationDuration: null,
+            ballStartAngle: 0,
+            safeZoneStartAngle: -0.05,
+            targetStartAngle: 0,
+            ballDirection: MovementDirection.clockwise,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    await tester.tap(find.byType(GameScreen));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Reward Summary'), findsOneWidget);
+
+    await tester.tap(find.text('Next Level'));
+    await tester.pump();
+
+    expect(find.text('Calculating your score... 🚀'), findsOneWidget);
+    expect(find.text('Level: 60'), findsOneWidget);
+    expect(find.text('Level: 61'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump();
+
+    expect(find.text('Game Over'), findsOneWidget);
+    expect(find.text('Completed level 60.'), findsOneWidget);
+    expect(find.text('PP: 100'), findsWidgets);
+    expect(find.text('Completion GP: 1'), findsOneWidget);
+    expect(find.text('Daily GP: 2'), findsOneWidget);
+    expect(find.text('Current total GP: 8'), findsOneWidget);
+    expect(leagueRepository.submittedRuns, hasLength(1));
+    expect(leagueRepository.submittedRuns.single.score, 6100);
+    expect(adRepository.showCounts[AdType.interstitial], 1);
+  });
+
+  testWidgets('Failed hit shows game over and can restart', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -413,10 +431,10 @@ void main() {
 
     expect(find.text('Game Over'), findsOneWidget);
     expect(find.text('Missed safe zone and target.'), findsOneWidget);
-    expect(find.text('No lives left. Game Over!'), findsOneWidget);
+    expect(find.text('Game Over!'), findsOneWidget);
     expect(find.text('Watch ad to continue'), findsOneWidget);
     expect(find.text('Exit run'), findsOneWidget);
-    expect(find.text('Reward'), findsNothing);
+    expect(find.text('Reward Summary'), findsNothing);
 
     await _exitRunAndShowFinalResults(tester);
 
@@ -431,12 +449,56 @@ void main() {
     await tester.pump();
 
     expect(find.text('Game Over'), findsNothing);
-    expect(find.text('total RP: 0'), findsNothing);
-    expect(find.text('lives: 0'), findsOneWidget);
     expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
   });
 
-  testWidgets('Stop time expiry with no lives shows timeout game over', (
+  testWidgets('Rewarded continue can be used only once per run', (
+    WidgetTester tester,
+  ) async {
+    final adRepository = MockAdRepository(
+      preloadDelay: Duration.zero,
+      showDelay: Duration.zero,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          adRepository: adRepository,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    await tester.tap(find.byType(GameScreen));
+    await tester.pump();
+    expect(find.text('Watch ad to continue'), findsOneWidget);
+
+    await tester.tap(find.text('Watch ad to continue'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.text('Game Over'), findsNothing);
+    expect(find.text('Level: 1'), findsOneWidget);
+    expect(adRepository.showCounts[AdType.rewarded], 1);
+
+    await tester.tap(find.byType(GameScreen));
+    await tester.pump();
+
+    expect(find.text('Watch ad to continue'), findsNothing);
+    expect(find.text('Calculating your score... 🚀'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump();
+
+    expect(find.text('Restart run'), findsOneWidget);
+    expect(adRepository.showCounts[AdType.rewarded], 1);
+    expect(adRepository.showCounts[AdType.interstitial], 1);
+  });
+
+  testWidgets('Stop time expiry shows timeout game over', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -465,8 +527,8 @@ void main() {
 
     expect(find.text('Time: 0s'), findsOneWidget);
     expect(find.text('Game Over'), findsOneWidget);
-    expect(find.text("Time's up! No lives left. Game Over!"), findsOneWidget);
-    expect(find.text('Reward'), findsNothing);
+    expect(find.text("Time's up! Game Over!"), findsOneWidget);
+    expect(find.text('Reward Summary'), findsNothing);
 
     await _exitRunAndShowFinalResults(tester);
 

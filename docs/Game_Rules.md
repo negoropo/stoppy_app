@@ -2,26 +2,16 @@ O JOGO
 Um círculo com uma bola que se move na sua linha. Nessa linha existe:
 
 Safe Zone — se o jogador parar a bola nesta zona, avança de nível.
-Target — posição especial na linha; parar a bola sobre ele também faz passar de nível. Se o jogador
-parar a bola no target vai ganhar RP sendo que o nº de RP ganhos vai depender dos seguintes cenários:
-No caso do jogador parar a bola no target e os PP = 1000 então o jogador ganha + 10 RP extra.
-Se o jogador parar a bola no target e os PP>=997 e PP <= 999 então o jogador ganha + 5 RP extra.
-Se o jogador parar a bola no target e os PP>=990 e PP <= 996 então o jogador ganha + 3 RP extra.
-Se o jogador parar a bola no target e os PP<990 então o jogador ganha + 2 RP extra.
+Target — posição especial na linha; parar a bola sobre ele também faz passar de nível.
 
 
 O jogador perde se parar a bola fora da Safe Zone e também fora do Target ou exceder o tempo limite para acabar uma run que é 1 hora.
 Após 1 hora desde o início, a run acaba e o jogador fica com a pontuação que tinha no final, mesmo que esteja em pause.
-Safe Zone dividida em zonas (por percentagem da safe zone):
 
-Gold: primeiros 10% + últimos 10%
-Silver: seguintes 15% + anteriores 15%
-Bronze: 50% centrais
-
-Cada zona da safe zone vale Run Points (RP): Gold=3, Silver=2, Bronze=1
-O centro da bola determina os RP ganhos. Mas o jogador passa de nível se qualquer parte da bola tocar a Safe Zone. 
-Se o centro estiver fora da Safe Zone mas a bola tocar nela, o jogador passa mas não ganha RP — mostrar mensagem e fazer zoom para mostrar posição exata.
+O jogador passa de nível se qualquer parte da bola tocar a Safe Zone. 
 Para o Target: considera acerto se qualquer parte da bola tocar o Target.
+
+O último nível que o jogador pode jogar é o nível 60.
 
 SISTEMA DE DIFICULDADE
 6 variáveis, cada uma com 11 níveis (0 a 10). A cada nível passado, apenas 1 variável aumenta aleatoriamente.
@@ -61,27 +51,88 @@ A velocidade do Target nível 10 é superior à velocidade da Safe Zone nível 1
 O objetivo é que a velocidade do Target nunca seja igual à da Safe Zone em nenhum nível
 
 
-RUN POINTS (RP) e MENU ENTRE NÍVEIS
-RP acumulam durante a run e podem ser gastos no menu que aparece após cada nível:
-
-Next level — sobe dificuldade numa variável aleatória, mantém RP (grátis)
-Aumentar dificuldade numa variável específica escolhida pelo jogador — 2 RP cada (6 opções)
-Não aumentar dificuldade — 5 RP
-Diminuir dificuldade numa variável aleatória — 10 RP
-Diminuir dificuldade numa variável à escolha — 15 RP (mostra nível atual de cada variável)
-Comprar uma vida — 20 RP (permite repetir o nível se perder; sem limite de vidas)
+MENU ENTRE NÍVEIS
+Após cada nível deve ser mostrado quanto o jogador ganhou de PP, bem como o novo total de PP acumulado.
+Se o jogador acertou no target deve mostrar o valor máximo de PP do próximo tier.
+Deve ser mostrado um único botão a dizer Next Level.
+Next level — sobe dificuldade numa variável aleatória,
 
 
 PRECISION POINTS (PP) — Pontuação de Competição
 
-Pontuação máxima: 1000 PP quando o centro da bola coincide exatamente com o Target
-Quando para na Safe Zone ou acerta no target independentemente de onde ele estiver: PP calculados pela
-distância do centro da bola ao Target
+A pontuação máxima vai aumentando à medida que vamos acertando no target durante a run.
+No primeiro nível a pontuação máxima é 100. 
+Sempre que o jogador acerta no target, avança de nível e no nível seguinte vai ter um novo tier de valor de pontuação máxima de PP.
+Se o jogador passar de nível por ter acertado na safe zone sem ter acertado no target, vai manter o tier de valor máximo de pontuação de PP no nível seguinte.
+
+PP_Tier_1 - 100 PP
+PP_Tier_2 - 200 PP
+PP_Tier_3 - 300 PP
+PP_Tier_4 - 500 PP
+PP_Tier_5 - 750 PP
+PP_Tier_6 - 1000 PP
+PP_Tier_7 - 1250 PP
+PP_Tier_8 - 1500 PP
+PP_Tier_9 - 1750 PP
+PP_Tier_10 - 2000 PP
+PP_Tier_11 - 2300 PP
+PP_Tier_12 - 2600 PP
+PP_Tier_13 - 2900 PP
+PP_Tier_14 - 3200 PP
+PP_Tier_15 - 3500 PP
+PP_Tier_16 - 3800 PP
+PP_Tier_17 - 4100 PP
+PP_Tier_18 - 4400 PP
+PP_Tier_19 - 4700 PP
+PP_Tier_20 - 5000 PP
+PP_Tier_21 - 5500 PP
+PP_Tier_22 - 6000 PP
+PP_Tier_23 - 6500 PP
+PP_Tier_24 - 7000 PP
+PP_Tier_25 - 7500 PP
+PP_Tier_26 - 8000 PP
+PP_Tier_27 - 8500 PP
+PP_Tier_28 - 9000 PP
+PP_Tier_29 - 9500 PP
+PP_Tier_30 - 10000 PP
+PP_Tier_31 - 11000 PP
+PP_Tier_32 - 12000 PP
+PP_Tier_33 - 13000 PP
+PP_Tier_34 - 14000 PP
+PP_Tier_35 - 15000 PP
+PP_Tier_36 - 16000 PP
+PP_Tier_37 - 17000 PP
+PP_Tier_38 - 18000 PP
+PP_Tier_39 - 19000 PP
+PP_Tier_40 - 20000 PP
+PP_Tier_41 - 23000 PP
+PP_Tier_42 - 26000 PP
+PP_Tier_43 - 29000 PP
+PP_Tier_44 - 32000 PP
+PP_Tier_45 - 35000 PP
+PP_Tier_46 - 38000 PP
+PP_Tier_47 - 41000 PP
+PP_Tier_48 - 44000 PP
+PP_Tier_49 - 47000 PP
+PP_Tier_50 - 50000 PP
+PP_Tier_51 - 55000 PP
+PP_Tier_52 - 60000 PP
+PP_Tier_53 - 65000 PP
+PP_Tier_54 - 70000 PP
+PP_Tier_55 - 75000 PP
+PP_Tier_56 - 80000 PP
+PP_Tier_57 - 85000 PP
+PP_Tier_58 - 90000 PP
+PP_Tier_59 - 95000 PP
+PP_Tier_60 - 100000 PP
+
+Pontuação máxima: é ganha quando o centro da bola coincide exatamente com o Target
+Quando acerta na Safe Zone ou acerta no target independentemente de onde ele estiver: PP calculados pela
+distância do centro da bola ao Target tendo como referência para calcular o valor máximo do tier em que o jogador está.
 PP acumulam durante toda a run e são sempre visíveis no ecrã
-PP ganhos ganhos num nível são o total PP base (distância do centro da bola ao 
-    Target) * ( 1 + (nível * 0.01) )
+PP ganhos num nível são o total PP base (distância do centro da bola ao Target)
 Se parar fora da Safe Zone e fora do Target: perde, PP=0 para esse nível
-Pontuação final da Run são o total de PP ganhos + Pontos Bónus de níveis (nível atingido * 100)
+Pontuação final da Run são o total de PP ganhos
 
 Pontuação semanal:
 

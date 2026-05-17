@@ -2311,7 +2311,7 @@ Implement player-facing weekly league history, personal records, and weekly run 
 
 ### 📌 Next Session
 
-Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+Session 16.1 — Gameplay Simplification + PP Tier System
 
 ---
 
@@ -2334,11 +2334,193 @@ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
 * ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
 * ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
 * ✅ Session 16 — Weekly League History + Personal Records (completed)
+* 🔄 Session 16.1 — Gameplay Simplification + PP Tier System
+
+---
+
+### 🧭 Current State
+
+Current session: Session 16.1 — Gameplay Simplification + PP Tier System
+Status: Ready ⏳
+
+---
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 16.1 — Gameplay Simplification + PP Tier System
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Simplify core gameplay by removing Run Points, lives, RP-based decisions, and segmented Safe Zone rewards, while introducing a tier-based Precision Points progression system.
+
+---
+
+### 📦 Deliverables
+
+* [x] Run Points system removed from active gameplay
+* [x] RP HUD removed
+* [x] RP reward calculations removed from runtime flow
+* [x] RP-based reward menu removed
+* [x] Life purchase system removed
+* [x] Lives-based retry system removed
+* [x] Rewarded continue flow updated to one continue per run
+* [x] Safe Zone simplified to a single green zone
+* [x] Gold / Silver / Bronze Safe Zone segmentation removed
+* [x] PP tier system implemented
+* [x] 60 authored PP tiers implemented
+* [x] PP tier starts at Tier 1 with 100 max PP
+* [x] Target hit increases next level PP tier
+* [x] Safe Zone-only success preserves current PP tier
+* [x] PP calculation updated to use current tier max PP
+* [x] Old PP level multiplier removed
+* [x] Between-level reward summary simplified
+* [x] Target hit next-tier message added
+* [x] Current max PP displayed in the center of the game circle
+* [x] Final playable level capped at level 60
+* [x] Run finalizes after completing level 60
+* [x] Number formatting added for large PP values
+* [x] Tests updated for new PP summary format
+
+---
+
+### 🛠️ Work Done
+
+* Added `PrecisionPointTier`
+* Added `PrecisionPointTierService`
+* Added authored max PP values for tiers 1–60
+* Updated `PrecisionPointCalculator` to calculate PP from angular distance using the current tier max value
+* Ensured successful hits award at least 1 PP
+* Ensured failed hits and timeouts award 0 PP
+* Removed old PP run-level multiplier logic
+* Refactored successful hit flow:
+  * Player stops the ball
+  * PP is calculated from distance to target
+  * Reward Summary appears
+  * Player confirms with `Next Level`
+  * Difficulty increases randomly by one variable
+  * Run level advances
+* Added target-hit tier progression:
+  * Target hit advances PP tier for the next level
+  * Safe Zone-only success keeps the same PP tier
+  * Tier progression is clamped at Tier 60
+* Updated Reward Summary overlay to show:
+  * PP earned
+  * Total PP
+  * Target hit next-level max PP message when applicable
+  * `Next Level` button only
+* Added in-game center display:
+  * `Max PP`
+  * current tier max PP value
+* Simplified Safe Zone rendering:
+  * removed Gold/Silver/Bronze visual segmentation
+  * kept one green Safe Zone arc
+* Removed RP-dependent gameplay decisions:
+  * no RP gain
+  * no RP spending
+  * no difficulty choice menu
+  * no life purchases
+* Updated failure flow:
+  * no lives
+  * first failure can offer one rewarded continue
+  * rewarded continue resumes the same failed level
+  * second failure finalizes the run
+* Added maximum level behavior:
+  * level 60 is playable
+  * successful completion of level 60 finalizes the run
+  * level 61 is never reached
+* Added readable number formatting for PP displays:
+  * Reward Summary earned PP
+  * Total PP
+  * Target next max PP
+  * center Max PP display
+  * Final Score display
+* Updated widget tests to match the new PP summary text format
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Gameplay is now centered on precision and level progression, not run economy management
+* RP is no longer part of active gameplay
+* GP remains unchanged as the external economy
+* Rewarded ads remain optional and only provide one continue opportunity per run
+* Rewarded continue does not grant lives
+* Safe Zone success still advances the run level
+* Target hit is the only action that increases PP tier
+* Target hit and Safe Zone hit can both be true on the same stop
+* PP tier increases after confirming the reward summary, not immediately on stop
+* Current max PP display always reflects the active tier for the current level
+* Final score still uses the existing final score flow unless separately refactored
+* League, GP, purchase, and ads systems remain compatible with the simplified gameplay flow
+* Backend anti-cheat validation will need to validate PP tier progression in the future
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] RP no longer appears in active gameplay UI
+* [x] Safe Zone renders as a single green zone
+* [x] Safe Zone-only success keeps the current PP tier
+* [x] Target hit advances the next level PP tier
+* [x] PP tier clamps at Tier 60
+* [x] PP calculation uses current tier max PP
+* [x] Old PP multiplier no longer applies
+* [x] Reward Summary displays earned PP and total PP
+* [x] Target hit message displays next level max PP
+* [x] Center circle displays current max PP
+* [x] Rewarded continue can only be used once per run
+* [x] Rewarded continue resumes the same failed level
+* [x] Second failure finalizes the run
+* [x] Level 60 can be played
+* [x] Completing level 60 finalizes the run
+* [x] Level 61 is never reached
+* [x] Number formatting displays large PP values correctly
+* [x] League run submission still works after run finalization
+* [x] GP reward calculation still works after run finalization
+
+---
+
+### 📌 Next Session
+
+Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
 * 🔄 Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (ready)
 
 ---
 
 ### 🧭 Current State
 
-Current session: Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+Current session: Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow  
 Status: Ready ⏳

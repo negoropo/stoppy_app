@@ -6,16 +6,21 @@ class PrecisionPointCalculator {
   const PrecisionPointCalculator();
 
   static const double fullCircleRadians = math.pi * 2;
-  static const int maxPrecisionPoints = 1000;
-
   PrecisionPointResult calculate({
     required double ballAngle,
     required double targetAngle,
     required bool didAdvanceLevel,
+    required int tierLevel,
+    required int tierMaxPrecisionPoints,
   }) {
+    assert(tierLevel >= 1);
+    assert(tierMaxPrecisionPoints > 0);
+
     if (!didAdvanceLevel) {
-      return const PrecisionPointResult(
+      return PrecisionPointResult(
         awardedPP: 0,
+        tierLevel: tierLevel,
+        tierMaxPrecisionPoints: tierMaxPrecisionPoints,
         angularDistance: 0,
         normalizedPrecision: 0,
       );
@@ -30,7 +35,12 @@ class PrecisionPointCalculator {
     final normalizedPrecision = 1 - (clampedDistance / math.pi);
 
     return PrecisionPointResult(
-      awardedPP: (normalizedPrecision * (maxPrecisionPoints - 1)).round() + 1,
+      // Every successful level awards at least 1 PP, while a perfect target
+      // center match awards the full ceiling for the current authored tier.
+      awardedPP:
+          (normalizedPrecision * (tierMaxPrecisionPoints - 1)).round() + 1,
+      tierLevel: tierLevel,
+      tierMaxPrecisionPoints: tierMaxPrecisionPoints,
       angularDistance: clampedDistance,
       normalizedPrecision: normalizedPrecision,
     );

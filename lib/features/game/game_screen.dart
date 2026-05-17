@@ -21,19 +21,13 @@ import 'domain/economy/warmup_availability_policy.dart';
 import 'domain/level_generator.dart';
 import 'domain/models/difficulty_state.dart';
 import 'domain/models/game_level_config.dart';
-import 'domain/models/reward_menu_action.dart';
-import 'engine/combined_run_point_reward_result.dart';
 import 'engine/game_collision_validator.dart';
 import 'engine/game_motion_calculator.dart';
 import 'engine/hit_validation_result.dart';
 import 'engine/precision_point_calculator.dart';
 import 'engine/precision_point_result.dart';
-import 'engine/run_point_reward_calculator.dart';
-import 'engine/run_point_reward_result.dart';
-import 'engine/run_point_reward_tier.dart';
-import 'engine/target_run_point_bonus_calculator.dart';
+import 'engine/precision_point_tier_service.dart';
 import 'rendering/game_area_painter.dart';
-import 'widgets/post_hit_reward_overlay.dart';
 import 'widgets/reward_summary_overlay.dart';
 
 class GameScreen extends StatefulWidget {
@@ -48,6 +42,7 @@ class GameScreen extends StatefulWidget {
     this.adRepository,
     this.leagueRepository,
     this.initialRunMode,
+    this.initialRunLevel = 1,
     this.now,
   });
 
@@ -60,6 +55,7 @@ class GameScreen extends StatefulWidget {
   final AdRepository? adRepository;
   final LeagueRepository? leagueRepository;
   final RunMode? initialRunMode;
+  final int initialRunLevel;
   final DateTime Function()? now;
 
   @override
@@ -68,25 +64,19 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   static const Duration _maximumRunDuration = Duration(hours: 1);
+  static const int _maximumPlayableRunLevel = 60;
   static const Duration _rewardSummaryDelay = Duration(seconds: 1);
   static const GameGeometryConfig _baseGeometry = GameGeometryConfig();
   static const double _gameAreaPadding = 24;
   static const GameMotionCalculator _motionCalculator = GameMotionCalculator();
-  static const RunPointRewardCalculator _rpRewardCalculator =
-      RunPointRewardCalculator();
-  static const TargetRunPointBonusCalculator _targetRpBonusCalculator =
-      TargetRunPointBonusCalculator();
   static const PrecisionPointCalculator _precisionPointCalculator =
       PrecisionPointCalculator();
+  static const PrecisionPointTierService _precisionPointTierService =
+      PrecisionPointTierService();
   static const GamePointRewardCalculator _gpRewardCalculator =
       GamePointRewardCalculator();
   static const WarmupAvailabilityPolicy _warmupAvailabilityPolicy =
       WarmupAvailabilityPolicy();
-  static const RunPointRewardResult _noRpRewardResult = RunPointRewardResult(
-    rewardTier: RunPointRewardTier.none,
-    rpAmount: 0,
-    rewarded: false,
-  );
   late final LevelGenerator _levelGenerator;
   late DifficultyState _difficultyState;
   late GameLevelConfig _levelConfig;
@@ -97,22 +87,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   AnimationController? _safeZoneController;
   AnimationController? _targetController;
 
-  HitValidationResult? _lastHitResult;
-  RunPointRewardResult? _lastRpRewardResult;
-  CombinedRunPointRewardResult? _pendingRunPointRewardResult;
   PrecisionPointResult? _pendingPrecisionPointResult;
+  bool _pendingLevelHitTarget = false;
   DifficultyVariable? _lastChangedVariable;
   bool _lastChangeWasIncrease = true;
-  int _totalRunPoints = 0;
   int _totalPrecisionPoints = 0;
-  int _lives = 0;
-  int _currentRunLevel = 1;
-  int _committedRunPoints = 0;
+  int _currentPrecisionPointTier = 1;
+  late int _currentRunLevel;
   int _currentGamePoints = 0;
-  bool _isRewardOverlayVisible = false;
   bool _isProcessingHit = false;
   bool _isGameOver = false;
-  String? _failureMessage;
   List<String> _gameOverMessages = const [];
   PlayerProfile? _playerProfile;
   GamePointRewardResult? _lastGamePointRewardResult;
@@ -121,12 +105,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late DateTime _runStartedAt;
   int _lastBannerLoadedRunLevel = 1;
   int _remainingStopTimeSeconds = 0;
-  Timer? _feedbackTimer;
   Timer? _rewardSummaryTimer;
   Timer? _stopTimeTimer;
   Timer? _runDurationTimer;
   Timer? _scoreTransitionTimer;
   bool _isExtraLifeOfferVisible = false;
+  bool _hasUsedRewardedContinue = false;
   bool _isScoreTransitionVisible = false;
   bool _isFinalResultsVisible = false;
   bool _isShowingRewardedAd = false;
@@ -143,6 +127,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _levelConfig =
         widget.initialLevelConfig ??
         _levelGenerator.generateLevelConfig(_difficultyState);
+    _currentRunLevel = widget.initialRunLevel.clamp(
+      1,
+      _maximumPlayableRunLevel,
+    );
     _playerProfile = widget.playerProfile;
     _currentGamePoints = _playerProfile?.gamePoints ?? 0;
     _runMode =
@@ -170,7 +158,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _feedbackTimer?.cancel();
     _rewardSummaryTimer?.cancel();
     _scoreTransitionTimer?.cancel();
     _stopStopTimeCountdown();
@@ -336,11 +323,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _validateCurrentBallPosition(double circleRadius) {
-    if (_failureMessage != null ||
-        _isGameOver ||
-        _isRewardSummaryVisible ||
-        _isRewardOverlayVisible ||
-        _isProcessingHit) {
+    if (_isGameOver || _isRewardSummaryVisible || _isProcessingHit) {
       return;
     }
 
@@ -363,32 +346,22 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
-    final precisionPointResult = _precisionPointResultForCurrentRunLevel(
-      _precisionPointCalculator.calculate(
-        ballAngle: result.ballAngle,
-        targetAngle: currentTargetAngle,
-        // PP is awarded for every successful action that advances the run
-        // level. Failures and timeouts do not reach this branch and therefore
-        // award 0.
-        didAdvanceLevel: isLevelSuccess,
-      ),
+    final currentPrecisionPointTier = _precisionPointTierService.tierForLevel(
+      _currentPrecisionPointTier,
     );
-
-    final safeZoneRpRewardResult = _rpRewardCalculator.calculate(result);
-    final targetRpBonusResult = _targetRpBonusCalculator.calculate(
-      isTargetHit: result.isTargetHit,
-      basePrecisionPoints: precisionPointResult.basePP,
-    );
-    final combinedRpRewardResult = CombinedRunPointRewardResult(
-      safeZoneRewardResult: safeZoneRpRewardResult,
-      targetBonusResult: targetRpBonusResult,
+    final precisionPointResult = _precisionPointCalculator.calculate(
+      ballAngle: result.ballAngle,
+      targetAngle: currentTargetAngle,
+      // PP is awarded for every successful action that advances the run level.
+      // Failures and timeouts do not reach this branch and therefore award 0.
+      didAdvanceLevel: isLevelSuccess,
+      tierLevel: currentPrecisionPointTier.level,
+      tierMaxPrecisionPoints: currentPrecisionPointTier.maxPrecisionPoints,
     );
 
     setState(() {
-      _lastHitResult = result;
-      _lastRpRewardResult = safeZoneRpRewardResult;
-      _pendingRunPointRewardResult = combinedRpRewardResult;
       _pendingPrecisionPointResult = precisionPointResult;
+      _pendingLevelHitTarget = result.isTargetHit;
     });
 
     if (result.isInsideSafeZone) {
@@ -402,7 +375,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _scheduleRewardSummary() {
     _rewardSummaryTimer?.cancel();
     _rewardSummaryTimer = Timer(_rewardSummaryDelay, () {
-      if (!mounted) {
+      if (!mounted || _isGameOver) {
         return;
       }
 
@@ -435,164 +408,119 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _handleStopTimeExpired() {
     _stopStopTimeCountdown();
-    if (_failureMessage != null ||
-        _isGameOver ||
-        _isRewardSummaryVisible ||
-        _isRewardOverlayVisible ||
-        _isProcessingHit) {
+    if (_isGameOver || _isRewardSummaryVisible || _isProcessingHit) {
       return;
     }
 
     _isProcessingHit = true;
 
-    if (_lives > 0) {
-      _showTimeoutWithLifeFeedback();
-      return;
-    }
-
     _triggerTimeoutGameOver();
-  }
-
-  void _showTimeoutWithLifeFeedback() {
-    _stopAnimations();
-    _feedbackTimer?.cancel();
-
-    setState(() {
-      _lastHitResult = null;
-      _lastRpRewardResult = null;
-      _pendingRunPointRewardResult = null;
-      _pendingPrecisionPointResult = null;
-      _failureMessage = "Time's up! Using 1 life...";
-    });
   }
 
   void _triggerTimeoutGameOver() {
     _stopAnimations();
     _stopRunDurationTimer();
-    _feedbackTimer?.cancel();
-    _showGameOverOffer(
-      messages: const ["Time's up! No lives left. Game Over!"],
-    );
+    _showGameOverOffer(messages: const ["Time's up! Game Over!"]);
   }
 
   void _triggerRunDurationGameOver() {
     _stopAnimations();
     _stopRunDurationTimer();
-    _feedbackTimer?.cancel();
-
     _showGameOverOffer(
       messages: const ['Run duration limit reached.', 'Game Over!'],
     );
   }
 
   void _confirmRewardSummary() {
-    final pendingRunPointRewardResult = _pendingRunPointRewardResult;
     final pendingPrecisionPointResult = _pendingPrecisionPointResult;
 
-    if (pendingRunPointRewardResult == null ||
-        pendingPrecisionPointResult == null) {
+    if (pendingPrecisionPointResult == null) {
       return;
     }
 
+    if (_currentRunLevel >= _maximumPlayableRunLevel) {
+      _completeMaximumRunLevel(pendingPrecisionPointResult);
+      return;
+    }
+
+    _advanceToNextLevel();
+    _commitPendingPrecisionPoints(pendingPrecisionPointResult);
+
     setState(() {
-      _totalRunPoints += pendingRunPointRewardResult.totalRpAmount;
-      _totalPrecisionPoints += pendingPrecisionPointResult.awardedPP;
-
-      _committedRunPoints = _totalRunPoints;
-      _pendingRunPointRewardResult = null;
-
+      if (_pendingLevelHitTarget) {
+        _currentPrecisionPointTier = _precisionPointTierService.nextTierLevel(
+          _currentPrecisionPointTier,
+        );
+      }
+      _currentRunLevel += 1;
       _isRewardSummaryVisible = false;
-      _isRewardOverlayVisible = true;
+      _pendingPrecisionPointResult = null;
+      _pendingLevelHitTarget = false;
+      _isProcessingHit = false;
     });
+  }
+
+  void _commitPendingPrecisionPoints(
+    PrecisionPointResult pendingPrecisionPointResult,
+  ) {
+    _totalPrecisionPoints += pendingPrecisionPointResult.awardedPP;
+  }
+
+  void _completeMaximumRunLevel(
+    PrecisionPointResult pendingPrecisionPointResult,
+  ) {
+    _commitPendingPrecisionPoints(pendingPrecisionPointResult);
+    _stopRunDurationTimer();
+
+    setState(() {
+      _isGameOver = true;
+      _gameOverMessages = const ['Completed level 60.'];
+      _isRewardSummaryVisible = false;
+      _pendingPrecisionPointResult = null;
+      _pendingLevelHitTarget = false;
+      _isProcessingHit = false;
+      _isExtraLifeOfferVisible = false;
+      _isScoreTransitionVisible = true;
+      _isFinalResultsVisible = false;
+      _extraLifeMessage = null;
+    });
+
+    _scheduleScoreTransitionToFinalResults();
   }
 
   bool _isLevelSuccess(HitValidationResult result) {
     return result.isInsideSafeZone || result.isTargetHit;
   }
 
-  PrecisionPointResult _precisionPointResultForCurrentRunLevel(
-    PrecisionPointResult baseResult,
-  ) {
-    final levelMultiplier = 1 + (_currentRunLevel * 0.01);
-
-    // The engine calculator remains responsible for circular precision. The
-    // run-level multiplier is applied here because it depends on UI/controller
-    // run state and should only affect the pending reward for this level.
-    return PrecisionPointResult(
-      basePP: baseResult.awardedPP,
-      levelMultiplier: levelMultiplier,
-      awardedPP: (baseResult.awardedPP * levelMultiplier).round(),
-      angularDistance: baseResult.angularDistance,
-      normalizedPrecision: baseResult.normalizedPrecision,
-    );
-  }
-
   void _handleFailedHit(HitValidationResult result) {
-    if (_lives > 0) {
-      _showFailureFeedback(result);
-      return;
-    }
-
     _triggerGameOver(result);
-  }
-
-  void _showFailureFeedback(HitValidationResult result) {
-    _stopAnimations();
-    _feedbackTimer?.cancel();
-
-    setState(() {
-      _lastHitResult = result;
-      _lastRpRewardResult = _noRpRewardResult;
-      _pendingRunPointRewardResult = null;
-      _pendingPrecisionPointResult = null;
-      _failureMessage = 'Missed safe zone and target. Using 1 life.';
-    });
-  }
-
-  void _confirmLifeUsageAndRetry() {
-    _resetStopTimeCountdown();
-
-    setState(() {
-      _lives -= 1;
-      _lastHitResult = null;
-      _lastRpRewardResult = null;
-      _pendingRunPointRewardResult = null;
-      _pendingPrecisionPointResult = null;
-      _failureMessage = null;
-      _isRewardOverlayVisible = false;
-      _isProcessingHit = false;
-    });
-
-    _restartCurrentLevelAnimations();
-    _startStopTimeCountdown();
   }
 
   void _triggerGameOver(HitValidationResult result) {
     _stopAnimations();
     _stopRunDurationTimer();
-    _feedbackTimer?.cancel();
 
-    setState(() {
-      _lastHitResult = result;
-      _lastRpRewardResult = _noRpRewardResult;
-    });
+    setState(() {});
     _showGameOverOffer(
-      messages: const [
-        'Missed safe zone and target.',
-        'No lives left. Game Over!',
-      ],
+      messages: const ['Missed safe zone and target.', 'Game Over!'],
     );
   }
 
   void _showGameOverOffer({required List<String> messages}) {
     _rewardSummaryTimer?.cancel();
 
+    // Rewarded continuation is a once-per-run rescue. Later failures are true
+    // run endings, so they skip the offer and follow the same finalization path
+    // as any other completed run.
+    if (_hasUsedRewardedContinue) {
+      _startFinalResultsFlow(messages: messages);
+      return;
+    }
+
     setState(() {
       _isGameOver = true;
-      _pendingRunPointRewardResult = null;
       _pendingPrecisionPointResult = null;
-      _failureMessage = null;
-      _isRewardOverlayVisible = false;
+      _pendingLevelHitTarget = false;
       _isRewardSummaryVisible = false;
       _isProcessingHit = false;
       _isExtraLifeOfferVisible = true;
@@ -604,7 +532,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _acceptRewardedContinue() async {
-    if (_isShowingRewardedAd) return;
+    if (_isShowingRewardedAd || _hasUsedRewardedContinue) return;
     _isShowingRewardedAd = true;
 
     try {
@@ -635,15 +563,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
       _resetStopTimeCountdown();
       setState(() {
+        _hasUsedRewardedContinue = true;
         _isGameOver = false;
         _isExtraLifeOfferVisible = false;
         _isScoreTransitionVisible = false;
         _isFinalResultsVisible = false;
         _gameOverMessages = const [];
-        _lastHitResult = null;
-        _lastRpRewardResult = null;
-        _pendingRunPointRewardResult = null;
         _pendingPrecisionPointResult = null;
+        _pendingLevelHitTarget = false;
         _isProcessingHit = false;
       });
 
@@ -656,12 +583,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _declineRewardedExtraLifeAndExit() {
+    _startFinalResultsFlow(messages: _gameOverMessages);
+  }
+
+  void _startFinalResultsFlow({required List<String> messages}) {
     setState(() {
+      _isGameOver = true;
       _isExtraLifeOfferVisible = false;
       _isScoreTransitionVisible = true;
+      _isFinalResultsVisible = false;
       _extraLifeMessage = null;
+      _gameOverMessages = messages;
     });
 
+    _scheduleScoreTransitionToFinalResults();
+  }
+
+  void _scheduleScoreTransitionToFinalResults() {
     _scoreTransitionTimer?.cancel();
     _scoreTransitionTimer = Timer(
       const Duration(milliseconds: 1500),
@@ -711,7 +649,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     _totalPrecisionPoints = finalizedPrecisionPoints;
     _pendingPrecisionPointResult = null;
-    _pendingRunPointRewardResult = null;
+    _pendingLevelHitTarget = false;
     _lastGamePointRewardResult = gpRewardResult;
     _currentGamePoints = updatedGamePoints;
     _isRunFinalized = true;
@@ -826,7 +764,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _restartRun() {
-    _feedbackTimer?.cancel();
     _scoreTransitionTimer?.cancel();
     _stopStopTimeCountdown();
     _stopRunDurationTimer();
@@ -866,17 +803,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
 
     setState(() {
-      _totalRunPoints = 0;
       _totalPrecisionPoints = 0;
-      _committedRunPoints = 0;
-      _lives = 0;
-      _currentRunLevel = 1;
-      _lastHitResult = null;
-      _lastRpRewardResult = null;
-      _pendingRunPointRewardResult = null;
+      _currentPrecisionPointTier = _precisionPointTierService.firstTierLevel;
+      _currentRunLevel = widget.initialRunLevel.clamp(
+        1,
+        _maximumPlayableRunLevel,
+      );
       _pendingPrecisionPointResult = null;
-      _failureMessage = null;
-      _isRewardOverlayVisible = false;
+      _pendingLevelHitTarget = false;
       _isRewardSummaryVisible = false;
       _isProcessingHit = false;
       _isGameOver = false;
@@ -885,6 +819,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _isRunFinalized = false;
       _leagueRunSubmitted = false;
       _isExtraLifeOfferVisible = false;
+      _hasUsedRewardedContinue = false;
       _isScoreTransitionVisible = false;
       _isFinalResultsVisible = false;
       _extraLifeMessage = null;
@@ -894,17 +829,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _preloadAdsForRun();
   }
 
-  void _advanceToNextDebugLevel({required RewardMenuAction action}) {
-    final (nextDifficultyState, changedVariable) = _nextDifficultyForAction(
-      action,
-    );
+  void _advanceToNextLevel() {
+    final advanceResult = _levelGenerator.advanceDifficulty(_difficultyState);
+    final nextDifficultyState = advanceResult.difficultyState;
+    final changedVariable = advanceResult.increasedVariable;
     final nextLevelConfig = _levelGenerator.generateLevelConfig(
       nextDifficultyState,
     );
 
     _difficultyState = nextDifficultyState;
     _lastChangedVariable = changedVariable;
-    _lastChangeWasIncrease = !action.isDifficultyDecrease;
+    _lastChangeWasIncrease = true;
     _levelConfig = nextLevelConfig;
     _ballController.duration = nextLevelConfig.ballRotationDuration;
     _ballController
@@ -929,58 +864,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _startStopTimeCountdown();
   }
 
-  (DifficultyState, DifficultyVariable?) _nextDifficultyForAction(
-    RewardMenuAction action,
-  ) {
-    if (action == RewardMenuAction.nextLevel) {
-      final advanceResult = _levelGenerator.advanceDifficulty(_difficultyState);
-      return (advanceResult.difficultyState, advanceResult.increasedVariable);
-    }
-
-    if (action == RewardMenuAction.decreaseRandomDifficulty) {
-      final decreaseResult = _levelGenerator.decreaseRandomDifficulty(
-        _difficultyState,
-      );
-      return (decreaseResult.difficultyState, decreaseResult.decreasedVariable);
-    }
-
-    final variable = action.variable;
-    if (variable == null) {
-      return (_difficultyState, null);
-    }
-
-    if (action.isChosenDifficultyDecrease) {
-      return (_difficultyState.decreaseVariable(variable), variable);
-    }
-
-    return (_difficultyState.increaseVariable(variable), variable);
-  }
-
-  void _selectRewardOption(RewardMenuAction action) {
-    if (action == RewardMenuAction.buyLife) {
-      setState(() {
-        _totalRunPoints -= action.rpCost;
-        _lives += 1;
-      });
-      return;
-    }
-
-    _advanceToNextDebugLevel(action: action);
-
-    setState(() {
-      _currentRunLevel += 1;
-      _totalRunPoints -= action.rpCost;
-      _committedRunPoints = _totalRunPoints;
-      _isRewardOverlayVisible = false;
-      _lastHitResult = null;
-      _lastRpRewardResult = null;
-      _pendingRunPointRewardResult = null;
-      _pendingPrecisionPointResult = null;
-      _failureMessage = null;
-      _isProcessingHit = false;
-    });
-  }
-
   void _submitLeagueRunIfNeeded({
     required PlayerProfile? playerProfile,
     required DateTime runEndedAt,
@@ -1001,21 +884,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     unawaited(
       leagueRepository
           .submitLeagueRun(
-        WeeklyLeagueRun(
-          playerId: playerProfile.id,
-          score: finalScore,
-          completedAt: runEndedAt,
-        ),
-      )
+            WeeklyLeagueRun(
+              playerId: playerProfile.id,
+              score: finalScore,
+              completedAt: runEndedAt,
+            ),
+          )
           .then((submissionResult) {
-        if (!submissionResult.accepted) {
-          // Future backend validation can surface rejection reasons here.
-          return;
-        }
+            if (!submissionResult.accepted) {
+              // Future backend validation can surface rejection reasons here.
+              return;
+            }
 
-        // Future UI/state sync can use:
-        // submissionResult.playerRecords
-      }),
+            // Future UI/state sync can use:
+            // submissionResult.playerRecords
+          }),
     );
   }
 
@@ -1024,6 +907,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     required int runLevel,
   }) {
     return totalPrecisionPoints + (runLevel * 100);
+  }
+
+  int get _currentTierMaxPrecisionPoints {
+    return _precisionPointTierService
+        .tierForLevel(_currentPrecisionPointTier)
+        .maxPrecisionPoints;
+  }
+
+  int? get _pendingNextTierMaxPrecisionPoints {
+    if (!_pendingLevelHitTarget) {
+      return null;
+    }
+
+    final nextTierLevel = _precisionPointTierService.nextTierLevel(
+      _currentPrecisionPointTier,
+    );
+    return _precisionPointTierService
+        .tierForLevel(nextTierLevel)
+        .maxPrecisionPoints;
   }
 
   @override
@@ -1077,13 +979,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
+                      IgnorePointer(
+                        child: _CurrentTierMaxPrecisionPointsOverlay(
+                          maxPrecisionPoints: _currentTierMaxPrecisionPoints,
+                        ),
+                      ),
                       Positioned(
                         top: 16,
                         right: 16,
                         child: _RunStatusOverlay(
                           runLevel: _currentRunLevel,
                           totalPrecisionPoints: _totalPrecisionPoints,
-                          totalRunPoints: _committedRunPoints,
                           totalGamePoints: _currentGamePoints,
                           runMode: _runMode,
                           remainingSeconds: _remainingStopTimeSeconds,
@@ -1109,28 +1015,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             child: const Text('League'),
                           ),
                         ),
-                      if (_failureMessage != null)
-                        _FailureFeedbackOverlay(
-                          message: _failureMessage!,
-                          result: _lastHitResult,
-                          rpRewardResult: _lastRpRewardResult,
-                          totalRunPoints: _totalRunPoints,
-                          onConfirm: _confirmLifeUsageAndRetry,
-                        ),
                       if (_isRewardSummaryVisible &&
-                          _pendingRunPointRewardResult != null &&
                           _pendingPrecisionPointResult != null)
                         RewardSummaryOverlay(
-                          runPointRewardResult: _pendingRunPointRewardResult!,
                           precisionPointResult: _pendingPrecisionPointResult!,
+                          totalPrecisionPoints:
+                              _totalPrecisionPoints +
+                              _pendingPrecisionPointResult!.awardedPP,
+                          nextTierMaxPrecisionPoints:
+                              _pendingNextTierMaxPrecisionPoints,
                           onConfirm: _confirmRewardSummary,
-                        ),
-                      if (_isRewardOverlayVisible)
-                        PostHitRewardOverlay(
-                          difficultyState: _difficultyState,
-                          totalRunPoints: _totalRunPoints,
-                          accumulatedPrecisionPoints: _totalPrecisionPoints,
-                          onSelected: _selectRewardOption,
                         ),
                       if (_isGameOver && _isExtraLifeOfferVisible)
                         _ExtraLifeOfferOverlay(
@@ -1159,7 +1053,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           child: IgnorePointer(
                             child: _DebugDifficultyOverlay(
                               difficultyState: _difficultyState,
-                              lives: _lives,
                               lastChangedVariable: _lastChangedVariable,
                               lastChangeWasIncrease: _lastChangeWasIncrease,
                             ),
@@ -1180,13 +1073,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 class _DebugDifficultyOverlay extends StatelessWidget {
   const _DebugDifficultyOverlay({
     required this.difficultyState,
-    required this.lives,
     required this.lastChangedVariable,
     required this.lastChangeWasIncrease,
   });
 
   final DifficultyState difficultyState;
-  final int lives;
   final DifficultyVariable? lastChangedVariable;
   final bool lastChangeWasIncrease;
 
@@ -1225,7 +1116,6 @@ class _DebugDifficultyOverlay extends StatelessWidget {
               Text('safeZoneSizeLevel: ${difficultyState.safeZoneSizeLevel}'),
               Text('safeZoneSpeedLevel: ${difficultyState.safeZoneSpeedLevel}'),
               Text('targetSpeedLevel: ${difficultyState.targetSpeedLevel}'),
-              Text('lives: $lives'),
               const SizedBox(height: 6),
               Text(
                 '${lastChangeWasIncrease ? 'last increased' : 'last decreased'}: '
@@ -1243,7 +1133,6 @@ class _RunStatusOverlay extends StatelessWidget {
   const _RunStatusOverlay({
     required this.runLevel,
     required this.totalPrecisionPoints,
-    required this.totalRunPoints,
     required this.totalGamePoints,
     required this.runMode,
     required this.remainingSeconds,
@@ -1251,7 +1140,6 @@ class _RunStatusOverlay extends StatelessWidget {
 
   final int runLevel;
   final int totalPrecisionPoints;
-  final int totalRunPoints;
   final int totalGamePoints;
   final RunMode runMode;
   final int remainingSeconds;
@@ -1281,12 +1169,41 @@ class _RunStatusOverlay extends StatelessWidget {
               Text('Level: $runLevel'),
               Text('Mode: ${runMode.label}'),
               Text('PP: $totalPrecisionPoints'),
-              Text('RP: $totalRunPoints'),
               Text('GP: $totalGamePoints'),
               Text('Time: ${remainingSeconds}s'),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CurrentTierMaxPrecisionPointsOverlay extends StatelessWidget {
+  const _CurrentTierMaxPrecisionPointsOverlay({
+    required this.maxPrecisionPoints,
+  });
+
+  final int maxPrecisionPoints;
+
+  String _formatPoints(int value) {
+    return value.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (match) => ',',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Max PP\n${_formatPoints(maxPrecisionPoints)}',
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: Color(0xFFD6DEE8),
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+        height: 1.2,
+        letterSpacing: 0,
       ),
     );
   }
@@ -1429,9 +1346,16 @@ class _GameOverOverlay extends StatelessWidget {
   final int currentGamePoints;
   final VoidCallback onRestart;
 
+  String _formatPoints(int value) {
+    return value.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (match) => ',',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final finalScore = totalPrecisionPoints + (runLevel * 100);
+    final finalScore = totalPrecisionPoints;
     final bonusPoints = runLevel * 100;
 
     return DecoratedBox(
@@ -1475,7 +1399,7 @@ class _GameOverOverlay extends StatelessWidget {
             const SizedBox(height: 16),
 
             const Text(
-              'Final Score = PP + Bonus',
+              'Final Score',
               style: TextStyle(
                 color: Color(0xFFFFD166),
                 fontSize: 16,
@@ -1486,7 +1410,7 @@ class _GameOverOverlay extends StatelessWidget {
             const SizedBox(height: 6),
 
             Text(
-              '$finalScore',
+              _formatPoints(finalScore),
               style: const TextStyle(
                 color: Color(0xFF7CC7FF),
                 fontSize: 28,
@@ -1494,27 +1418,7 @@ class _GameOverOverlay extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 10),
 
-            Text(
-              'PP: $totalPrecisionPoints',
-              style: const TextStyle(
-                color: Color(0xFFD6DEE8),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-
-            const SizedBox(height: 4),
-
-            Text(
-              'Bonus (Level $runLevel × 100): $bonusPoints',
-              style: const TextStyle(
-                color: Color(0xFFFFD166),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
 
             if (gpRewardResult != null) ...[
               const SizedBox(height: 16),
@@ -1596,148 +1500,6 @@ class _GameOverOverlay extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _FailureFeedbackOverlay extends StatelessWidget {
-  const _FailureFeedbackOverlay({
-    required this.message,
-    required this.result,
-    required this.rpRewardResult,
-    required this.totalRunPoints,
-    required this.onConfirm,
-  });
-
-  final String message;
-  final HitValidationResult? result;
-  final RunPointRewardResult? rpRewardResult;
-  final int totalRunPoints;
-  final VoidCallback onConfirm;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xCC101418),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFFD166)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFFFFD166),
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (result != null && rpRewardResult != null) ...[
-              _DebugHitFeedback(
-                result: result!,
-                rpRewardResult: rpRewardResult!,
-                totalRunPoints: totalRunPoints,
-              ),
-              const SizedBox(height: 12),
-            ],
-            FilledButton(onPressed: onConfirm, child: const Text('OK')),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DebugHitFeedback extends StatelessWidget {
-  const _DebugHitFeedback({
-    required this.result,
-    required this.rpRewardResult,
-    required this.totalRunPoints,
-  });
-
-  final HitValidationResult result;
-  final RunPointRewardResult rpRewardResult;
-  final int totalRunPoints;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xCC101418),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF3A424C)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              result.isInsideSafeZone ? 'HIT SAFE ZONE' : 'MISS SAFE ZONE',
-              style: _feedbackTextStyle(
-                result.isInsideSafeZone
-                    ? const Color(0xFF39D98A)
-                    : const Color(0xFFFF6B6B),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              result.isTargetHit ? 'TARGET HIT' : 'TARGET MISS',
-              style: _feedbackTextStyle(
-                result.isTargetHit
-                    ? const Color(0xFFFFD166)
-                    : const Color(0xFFD6DEE8),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              result.relativePositionInSafeZone == null
-                  ? 'CENTER OUTSIDE SAFE ZONE'
-                  : 'CENTER IN SAFE ZONE',
-              style: _feedbackTextStyle(
-                result.relativePositionInSafeZone == null
-                    ? const Color(0xFFD6DEE8)
-                    : const Color(0xFF39D98A),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'RP tier: ${rpRewardResult.rewardTier.name}',
-              style: _feedbackTextStyle(const Color(0xFFD6DEE8)),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'RP gained: ${rpRewardResult.rpAmount}',
-              style: _feedbackTextStyle(
-                rpRewardResult.rewarded
-                    ? const Color(0xFF39D98A)
-                    : const Color(0xFFD6DEE8),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'total RP: $totalRunPoints',
-              style: _feedbackTextStyle(const Color(0xFFFFD166)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  TextStyle _feedbackTextStyle(Color color) {
-    return TextStyle(
-      color: color,
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0,
     );
   }
 }
