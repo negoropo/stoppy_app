@@ -2443,6 +2443,19 @@ Simplify core gameplay by removing Run Points, lives, RP-based decisions, and se
   * center Max PP display
   * Final Score display
 * Updated widget tests to match the new PP summary text format
+* Moved current Max PP display outside the circle area
+* Added centered stop-time countdown inside the circle
+* Added dynamic countdown urgency states:
+  * ≤10 seconds:
+    * yellow warning color
+    * larger font
+  * ≤5 seconds:
+    * red danger color
+    * even larger font
+* Improved gameplay readability by prioritizing stop timing visually
+* Added formatted PP values with thousands separators across gameplay UI
+* Removed level bonus contribution from final score calculation
+* League submissions now use pure PP score only
 
 ---
 
@@ -2461,6 +2474,11 @@ Simplify core gameplay by removing Run Points, lives, RP-based decisions, and se
 * Final score still uses the existing final score flow unless separately refactored
 * League, GP, purchase, and ads systems remain compatible with the simplified gameplay flow
 * Backend anti-cheat validation will need to validate PP tier progression in the future
+* Final score is now equal to total accumulated PP only
+* Run level no longer grants hidden bonus score
+* League rankings now reflect pure precision performance
+* Stop-time countdown is now the central gameplay focus element inside the circle
+* Max PP was moved outside the circle to reduce visual competition with gameplay timing
 
 ---
 
@@ -2487,6 +2505,12 @@ Simplify core gameplay by removing Run Points, lives, RP-based decisions, and se
 * [x] Number formatting displays large PP values correctly
 * [x] League run submission still works after run finalization
 * [x] GP reward calculation still works after run finalization
+* [x] Final score uses PP only
+* [x] League submission uses PP-only final score
+* [x] Countdown warning states trigger correctly at 10s and 5s
+* [x] Countdown color transitions validated
+* [x] Countdown size transitions validated
+* [x] Max PP display positioning validated
 
 ---
 

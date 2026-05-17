@@ -906,7 +906,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     required int totalPrecisionPoints,
     required int runLevel,
   }) {
-    return totalPrecisionPoints + (runLevel * 100);
+    return totalPrecisionPoints;
   }
 
   int get _currentTierMaxPrecisionPoints {
@@ -964,8 +964,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             ]),
                             builder: (context, child) {
                               final animatedGeometry = _geometry.copyWith(
-                                safeZoneStartAngle:
-                                    _currentSafeZoneStartAngle(),
+                                safeZoneStartAngle: _currentSafeZoneStartAngle(),
                                 targetAngle: _currentTargetAngle(),
                               );
 
@@ -979,11 +978,22 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-                      IgnorePointer(
-                        child: _CurrentTierMaxPrecisionPointsOverlay(
-                          maxPrecisionPoints: _currentTierMaxPrecisionPoints,
+
+                      Positioned(
+                        top: 180,
+                        child: IgnorePointer(
+                          child: _CurrentTierMaxPrecisionPointsOverlay(
+                            maxPrecisionPoints: _currentTierMaxPrecisionPoints,
+                          ),
                         ),
                       ),
+
+                      IgnorePointer(
+                        child: _StopTimeCenterOverlay(
+                          remainingSeconds: _remainingStopTimeSeconds,
+                        ),
+                      ),
+
                       Positioned(
                         top: 16,
                         right: 16,
@@ -995,6 +1005,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           remainingSeconds: _remainingStopTimeSeconds,
                         ),
                       ),
+
+                      // daqui para baixo fica igual ao que já tinhas
                       if (_playerProfile != null &&
                           widget.purchaseRepository != null)
                         Positioned(
@@ -1170,7 +1182,6 @@ class _RunStatusOverlay extends StatelessWidget {
               Text('Mode: ${runMode.label}'),
               Text('PP: $totalPrecisionPoints'),
               Text('GP: $totalGamePoints'),
-              Text('Time: ${remainingSeconds}s'),
             ],
           ),
         ),
@@ -1203,6 +1214,53 @@ class _CurrentTierMaxPrecisionPointsOverlay extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w800,
         height: 1.2,
+        letterSpacing: 0,
+      ),
+    );
+  }
+}
+
+class _StopTimeCenterOverlay extends StatelessWidget {
+  const _StopTimeCenterOverlay({
+    required this.remainingSeconds,
+  });
+
+  final int remainingSeconds;
+
+  Color get _color {
+    if (remainingSeconds <= 5) {
+      return const Color(0xFFFF6B6B);
+    }
+
+    if (remainingSeconds <= 10) {
+      return const Color(0xFFFFD166);
+    }
+
+    return const Color(0xFFD6DEE8);
+  }
+
+  double get _fontSize {
+    if (remainingSeconds <= 5) {
+      return 34;
+    }
+
+    if (remainingSeconds <= 10) {
+      return 28;
+    }
+
+    return 24;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '${remainingSeconds}s',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: _color,
+        fontSize: _fontSize,
+        fontWeight: FontWeight.w900,
+        height: 1,
         letterSpacing: 0,
       ),
     );
