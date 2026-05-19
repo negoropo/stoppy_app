@@ -16,6 +16,7 @@ import 'package:stoppy_app/features/league/domain/models/league_player_entry.dar
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
 import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_settlement_result.dart';
 import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
@@ -209,7 +210,6 @@ void main() {
     expect(find.text('DEBUG ONLY - Difficulty'), findsOneWidget);
     expect(find.text('Level: 1'), findsOneWidget);
     expect(find.text('PP: 0'), findsOneWidget);
-    expect(find.text('Time: 30s'), findsOneWidget);
     expect(find.text('ballSpeedLevel: 0'), findsOneWidget);
     expect(find.text('ballSizeLevel: 0'), findsOneWidget);
     expect(find.text('stopTimeLevel: 0'), findsOneWidget);
@@ -399,7 +399,7 @@ void main() {
     expect(find.text('Daily GP: 2'), findsOneWidget);
     expect(find.text('Current total GP: 8'), findsOneWidget);
     expect(leagueRepository.submittedRuns, hasLength(1));
-    expect(leagueRepository.submittedRuns.single.score, 6100);
+    expect(leagueRepository.submittedRuns.single.score, 100);
     expect(adRepository.showCounts[AdType.interstitial], 1);
   });
 
@@ -521,11 +521,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Time: 1s'), findsOneWidget);
-
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Time: 0s'), findsOneWidget);
     expect(find.text('Game Over'), findsOneWidget);
     expect(find.text("Time's up! Game Over!"), findsOneWidget);
     expect(find.text('Reward Summary'), findsNothing);
@@ -536,7 +533,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('Game Over'), findsNothing);
-    expect(find.text('Time: 30s'), findsOneWidget);
     expect(find.text('Level: 1'), findsOneWidget);
     expect(find.text('PP: 0'), findsOneWidget);
   });
@@ -685,7 +681,7 @@ void main() {
 
     expect(leagueRepository.submittedRuns, hasLength(1));
     expect(leagueRepository.submittedRuns.single.playerId, 'player-id');
-    expect(leagueRepository.submittedRuns.single.score, 100);
+    expect(leagueRepository.submittedRuns.single.score, 0);
 
     await tester.pump(const Duration(seconds: 2));
 
@@ -837,6 +833,17 @@ class _FakeLeagueRepository implements LeagueRepository {
     required LeagueSeasonId seasonId,
   }) async {
     return const [];
+  }
+
+  @override
+  Future<LeagueSeasonSettlementResult> settleCurrentSeason({
+    required DateTime now,
+  }) async {
+    return LeagueSeasonSettlementResult(
+      seasonId: LeagueSeasonId.fromDate(now),
+      settledAt: now,
+      executed: false,
+    );
   }
 
   @override

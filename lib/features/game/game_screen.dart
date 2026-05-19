@@ -964,7 +964,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             ]),
                             builder: (context, child) {
                               final animatedGeometry = _geometry.copyWith(
-                                safeZoneStartAngle: _currentSafeZoneStartAngle(),
+                                safeZoneStartAngle:
+                                    _currentSafeZoneStartAngle(),
                                 targetAngle: _currentTargetAngle(),
                               );
 
@@ -1200,7 +1201,7 @@ class _CurrentTierMaxPrecisionPointsOverlay extends StatelessWidget {
   String _formatPoints(int value) {
     return value.toString().replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (match) => ',',
+      (match) => ',',
     );
   }
 
@@ -1221,9 +1222,7 @@ class _CurrentTierMaxPrecisionPointsOverlay extends StatelessWidget {
 }
 
 class _StopTimeCenterOverlay extends StatelessWidget {
-  const _StopTimeCenterOverlay({
-    required this.remainingSeconds,
-  });
+  const _StopTimeCenterOverlay({required this.remainingSeconds});
 
   final int remainingSeconds;
 
@@ -1407,14 +1406,13 @@ class _GameOverOverlay extends StatelessWidget {
   String _formatPoints(int value) {
     return value.toString().replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (match) => ',',
+      (match) => ',',
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final finalScore = totalPrecisionPoints;
-    final bonusPoints = runLevel * 100;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -1475,8 +1473,6 @@ class _GameOverOverlay extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-
-
 
             if (gpRewardResult != null) ...[
               const SizedBox(height: 16),

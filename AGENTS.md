@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 16.1 completed.
+Session 17 completed.
 
-Current session: Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+Current session: Session 18 — Last Division Expansion + League Re-entry Flow
 
 ---
 

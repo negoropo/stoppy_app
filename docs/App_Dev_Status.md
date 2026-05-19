@@ -2347,8 +2347,8 @@ Status: Ready ⏳
 
 ---
 
-## 🔄 Session Update
 
+## 🔄 Session Update
 ### Session: Session 16.1 — Gameplay Simplification + PP Tier System
 
 ### Status:
@@ -2547,4 +2547,194 @@ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
 ### 🧭 Current State
 
 Current session: Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow  
+Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the full weekly league settlement runtime, inactive player handling, updated ranking tie-breakers, promotion/relegation flow, reserved-slot management, and player-facing settlement visibility.
+
+---
+
+### 📦 Deliverables
+
+* [x] Weekly entry cost system set to 10 GP
+* [x] Inactive unpaid player state implemented
+* [x] Active players ranked above inactive players
+* [x] Updated active-player tie-breaker chain implemented
+* [x] Updated inactive-player tie-breaker chain implemented
+* [x] Regular division bottom-40% relegation implemented
+* [x] Regular division promotion flow implemented
+* [x] Penultimate ↔ last division special rules implemented
+* [x] Last division closure logic implemented
+* [x] Reserved slot loss rules implemented
+* [x] Weekly settlement runtime implemented
+* [x] Duplicate settlement protection implemented
+* [x] Weekly settlement schedule implemented (Sunday 23:59 Europe/Lisbon)
+* [x] Weekly league history generation implemented
+* [x] Settlement visibility added to LeagueHomeScreen
+* [x] Inactive player UI indicators implemented
+* [x] Weekly settlement history states implemented
+* [x] Mock repository runtime settlement flow implemented
+* [x] Weekly runs cleanup after settlement implemented
+* [x] Domain tests updated
+* [x] Repository tests updated
+* [x] Widget tests updated
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
+
+---
+
+### 🛠️ Work Done
+
+* Updated `LeagueRankingCalculator`:
+
+  * Active players now rank before inactive players
+  * Removed obsolete second/third-best-run tie-breakers
+  * Added new Session 17 tie-breaker chain:
+
+    * Weekly score
+    * Weekly active days
+    * Weekly run count
+    * Weekly average run score
+    * Weekly best individual run
+    * Lifetime run count
+    * Lifetime average score
+    * Oldest registration date
+* Added inactive-player tie-breaker chain:
+
+  * Lifetime run count
+  * Lifetime average score
+  * Oldest registration date
+* Updated `LeagueSeasonSettlementCalculator`:
+
+  * Bottom 40% relegation for regular divisions
+  * Promotion flow aligned with division structure
+  * Penultimate ↔ last division special settlement logic
+  * Last division closure support
+* Added `WeeklyLeagueSettlementSchedule`
+
+  * Weekly settlement fixed to Sunday 23:59
+  * Added backend timezone comments for future Europe/Lisbon authority
+* Added `LeagueSeasonSettlementResult`
+* Updated `WeeklyLeagueHistoryEntry`
+
+  * Added:
+
+    * `removedFromLeague`
+    * `lostReservedSlot`
+* Updated `WeeklyLeagueHistoryGenerator`
+
+  * Settlement-based history generation
+* Updated `MockLeagueRepository`
+
+  * Runtime settlement execution
+  * Duplicate settlement protection
+  * Promotion/relegation application
+  * Reserved slot management
+  * Division closure cleanup
+  * Weekly entry reset
+  * Weekly run cleanup
+  * History persistence
+* Updated `LeagueHomeScreen`
+
+  * Settlement information card
+  * Settlement history visibility
+  * Inactive player indicators
+  * Europe/Lisbon settlement wording
+  * Active/inactive entry status UI
+* Updated tests:
+
+  * Domain tests
+  * Repository tests
+  * Widget tests
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Active players are always ranked above inactive players
+* Inactive players remain in league rankings until reservation loss/removal rules apply
+* Regular divisions:
+
+  * bottom 40% are relegated
+  * promotion count structurally matches relegation count
+* Penultimate ↔ last division uses special settlement rules
+* Last division may close when not enough active promotion candidates exist
+* Active players always preserve reserved slots
+* Inactive players in the last division lose reserved slots
+* Players removed from closed last divisions must re-enter the league manually
+* Weekly settlement currently uses app runtime clock
+* Future backend should enforce explicit Europe/Lisbon timezone authority
+* UI settlement display is repository/domain-driven only
+* No settlement calculations are performed inside widgets
+* Weekly runs are cleared after settlement execution
+* Duplicate settlement execution is blocked per season
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Active players rank above inactive players
+* [x] Updated tie-breaker chain validated
+* [x] Bottom 40% relegation validated
+* [x] Promotion flow validated
+* [x] Penultimate ↔ last division rules validated
+* [x] Last division closure validated
+* [x] Reserved slot loss rules validated
+* [x] Duplicate settlement prevention validated
+* [x] Weekly run cleanup validated
+* [x] History generation validated
+* [x] Settlement visibility validated
+* [x] Inactive UI indicators validated
+
+---
+
+### 📌 Next Session
+
+Session 18 — Last Division Expansion + League Re-entry Flow
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* 🔄 Session 18 — Last Division Expansion + League Re-entry Flow (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 18 — Last Division Expansion + League Re-entry Flow
 Status: Ready ⏳

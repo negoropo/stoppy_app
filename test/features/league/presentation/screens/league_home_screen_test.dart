@@ -6,6 +6,7 @@ import 'package:stoppy_app/features/league/domain/models/league_player_entry.dar
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
 import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_settlement_result.dart';
 import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
@@ -85,6 +86,7 @@ void main() {
           finalDivision: 2,
           result: WeeklyLeagueSeasonResult.promoted,
           finalWeeklyScore: 1400,
+          seasonEndedAt: DateTime(2026, 5, 3, 23, 59),
         ),
       ],
       weeklyRuns: [
@@ -133,7 +135,20 @@ void main() {
     expect(find.text('2026-05-16 14:30'), findsOneWidget);
     expect(find.text('1100'), findsOneWidget);
     expect(find.text('2026-05-15 09:05'), findsOneWidget);
-    expect(find.text('#7 Inactive Player - inactive'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Weekly Settlement'),
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(
+      find.text('Next weekly settlement: Sunday 23:59 Europe/Lisbon time'),
+      findsOneWidget,
+    );
+    expect(find.text('Last settlement: 2026-05-03'), findsOneWidget);
+    expect(find.text('Result: promoted'), findsOneWidget);
+    expect(find.text('Final division: 2'), findsOneWidget);
+    expect(find.text('Final rank: #3'), findsOneWidget);
+    expect(find.text('Final weekly score: 1400'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Nearby Ranking'),
       200,
@@ -152,6 +167,90 @@ void main() {
     );
     expect(
       find.text('2026-04-27 - Division 2 - #3 - promoted - 1400'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows reserved slot loss settlement result', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      currentLeagueDivision: 2,
+      hasWeeklyLeagueEntry: false,
+    );
+    final currentEntry = _entry('current', 'Current Player', entryPaid: false);
+    final repository = _LeagueScreenRepository(
+      storedEntry: currentEntry,
+      ranking: const [],
+      snapshot: LeagueRankingSnapshot(
+        currentPlayerRank: 1,
+        currentPlayerEntry: LeagueRankingEntry(
+          rank: 1,
+          playerEntry: currentEntry,
+          weeklyScore: WeeklyLeagueScore(
+            playerId: 'current',
+            isActive: false,
+            runCount: 0,
+            activeDays: 0,
+            activityMultiplier: 0,
+            baseScore: 0,
+            finalScore: 0,
+            bonusPoints: 0,
+            countedRunScores: [],
+            allRunScores: [],
+          ),
+        ),
+        playersAbove: const [],
+        playersBelow: const [],
+        scoreNeededForPromotionZone: null,
+        scoreNeededToStayInDivision: null,
+        promotionZoneEndRank: null,
+        relegationZoneStartRank: null,
+      ),
+      records: PlayerLeagueRecords.empty('current'),
+      history: [
+        WeeklyLeagueHistoryEntry(
+          playerId: 'current',
+          seasonId: LeagueSeasonId.fromDate(DateTime(2026, 4, 27)),
+          finalRank: 14,
+          finalDivision: 3,
+          result: WeeklyLeagueSeasonResult.lostReservedSlot,
+          finalWeeklyScore: 0,
+          seasonEndedAt: DateTime(2026, 5, 3, 23, 59),
+        ),
+      ],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: MockAuthRepository(),
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Weekly Settlement'),
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+
+    expect(find.text('Result: lost reserved slot'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('League History'),
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(
+      find.text('2026-04-27 - Division 3 - #14 - lost reserved slot - 0'),
       findsOneWidget,
     );
   });
@@ -276,6 +375,17 @@ class _LeagueScreenRepository implements LeagueRepository {
     required LeagueSeasonId seasonId,
   }) async {
     return weeklyRuns;
+  }
+
+  @override
+  Future<LeagueSeasonSettlementResult> settleCurrentSeason({
+    required DateTime now,
+  }) async {
+    return LeagueSeasonSettlementResult(
+      seasonId: LeagueSeasonId.fromDate(now),
+      settledAt: now,
+      executed: false,
+    );
   }
 
   @override

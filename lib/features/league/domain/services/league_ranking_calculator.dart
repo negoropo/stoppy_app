@@ -145,18 +145,6 @@ class LeagueRankingCalculator {
         )
         .ifEqual(
           _compareDescending(
-            a.weeklyScore.bestRunAt(1),
-            b.weeklyScore.bestRunAt(1),
-          ),
-        )
-        .ifEqual(
-          _compareDescending(
-            a.weeklyScore.bestRunAt(2),
-            b.weeklyScore.bestRunAt(2),
-          ),
-        )
-        .ifEqual(
-          _compareDescending(
             a.playerEntry.lifetimeLeagueTournamentRuns,
             b.playerEntry.lifetimeLeagueTournamentRuns,
           ),

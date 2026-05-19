@@ -46,6 +46,12 @@ class WeeklyLeagueHistoryEntry {
   }
 }
 
-enum WeeklyLeagueSeasonResult { promoted, relegated, stayed }
+enum WeeklyLeagueSeasonResult {
+  promoted,
+  relegated,
+  stayed,
+  removedFromLeague,
+  lostReservedSlot,
+}
 
 const Object _sentinel = Object();

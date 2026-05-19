@@ -26,28 +26,19 @@ class LeagueSeasonSettlementCalculator {
       return const [];
     }
 
-    final inactiveEntries = rankedEntries
-        .where((entry) => entry.isInactive)
-        .toList();
-    final activeEntries = rankedEntries
-        .where((entry) => !entry.isInactive)
-        .toList();
-    final minimumRelegation = minimumRelegationCount(division);
-    final neededActiveRelegations = math.max(
-      0,
-      minimumRelegation - inactiveEntries.length,
-    );
-    final worstActiveEntries = activeEntries.reversed.take(
-      neededActiveRelegations,
+    final regularRelegationCount = math.min(
+      minimumRelegationCount(division),
+      rankedEntries.length,
     );
 
-    // Inactive players always relegate. If they exceed the 40% floor, the
-    // whole inactive set moves down because an unpaid reserved slot should not
-    // protect a player from weekly league movement.
-    return [
-      ...inactiveEntries.map((entry) => entry.playerEntry.playerId),
-      ...worstActiveEntries.map((entry) => entry.playerEntry.playerId),
-    ];
+    // Session 17 ranks active players before inactive unpaid players, then
+    // relegates the bottom 40% slice for regular divisions. Inactive players are
+    // still naturally exposed because they sort after active players, but the
+    // whole inactive group is no longer force-relegated when it exceeds 40%.
+    return rankedEntries.reversed
+        .take(regularRelegationCount)
+        .map((entry) => entry.playerEntry.playerId)
+        .toList();
   }
 
   List<String> promotedPlayerIdsForLowerDivision({
@@ -58,6 +49,10 @@ class LeagueSeasonSettlementCalculator {
     final activeEntries = lowerDivisionRankedEntries
         .where((entry) => !entry.isInactive)
         .toList();
+
+    // Normal lower divisions always offer at least their 20% promotion floor
+    // when enough active players exist, while still matching larger relegation
+    // pressure from the division above.
     final promotionCount = math.max(
       aboveDivisionRelegationCount,
       minimumPromotionCountWherePossible(lowerDivision),
@@ -118,9 +113,13 @@ class LeagueSeasonSettlementCalculator {
         .map((entry) => entry.playerEntry.playerId)
         .toSet();
 
-    // The bottom division can disappear when it has no active players to keep
-    // or promote. This avoids carrying a purely inactive last division into the
-    // next season as dead capacity.
+    final mustCloseLastDivision =
+        activeLastEntries.isEmpty ||
+        activeLastEntries.length < inactivePenultimateEntries.length;
+
+    // The bottom division disappears when it cannot provide enough active
+    // promoted players to replace inactive penultimate slots. Carrying that
+    // under-filled division forward would preserve dead reserved capacity.
     return LeagueDivisionSettlement(
       divisionNumber: penultimateDivision.number,
       promotedPlayerIds: promotionCandidates
@@ -149,7 +148,7 @@ class LeagueSeasonSettlementCalculator {
         ),
         ...inactiveLastEntries.map((entry) => entry.playerEntry.playerId),
       ],
-      closedDivision: activeLastEntries.isEmpty,
+      closedDivision: mustCloseLastDivision,
     );
   }
 }

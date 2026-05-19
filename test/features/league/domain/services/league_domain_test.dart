@@ -12,6 +12,7 @@ import 'package:stoppy_app/features/league/domain/services/league_division_polic
 import 'package:stoppy_app/features/league/domain/services/league_ranking_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/league_season_settlement_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/player_league_records_calculator.dart';
+import 'package:stoppy_app/features/league/domain/services/weekly_league_settlement_schedule.dart';
 import 'package:stoppy_app/features/league/domain/services/weekly_league_score_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/weekly_league_history_generator.dart';
 
@@ -79,13 +80,61 @@ void main() {
           divisionNumber: 1,
           promotedPlayerIds: const ['p1'],
         ),
+        seasonEndedAt: DateTime(2026, 5, 10, 23, 59),
       );
 
       expect(historyEntry.finalRank, 2);
       expect(historyEntry.finalDivision, 1);
       expect(historyEntry.result, WeeklyLeagueSeasonResult.promoted);
       expect(historyEntry.finalWeeklyScore, 1234);
+      expect(historyEntry.seasonEndedAt, DateTime(2026, 5, 10, 23, 59));
     });
+
+    test(
+      'records removed from league when relegated player loses reservation',
+      () {
+        final rankingEntry = LeagueRankingEntry(
+          rank: 9,
+          playerEntry: _entry('p1', entryPaid: false),
+          weeklyScore: _inactiveScore('p1'),
+        );
+
+        final historyEntry = generator.generate(
+          seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 4)),
+          finalRankingEntry: rankingEntry,
+          settlement: LeagueDivisionSettlement(
+            divisionNumber: 2,
+            relegatedPlayerIds: const ['p1'],
+            lostReservationPlayerIds: const ['p1'],
+          ),
+        );
+
+        expect(historyEntry.result, WeeklyLeagueSeasonResult.removedFromLeague);
+      },
+    );
+
+    test(
+      'records lost reserved slot when player stays but loses reservation',
+      () {
+        final rankingEntry = LeagueRankingEntry(
+          rank: 12,
+          playerEntry: _entry('p1', entryPaid: false),
+          weeklyScore: _inactiveScore('p1'),
+        );
+
+        final historyEntry = generator.generate(
+          seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 4)),
+          finalRankingEntry: rankingEntry,
+          settlement: LeagueDivisionSettlement(
+            divisionNumber: 3,
+            keptPlayerIds: const ['p1'],
+            lostReservationPlayerIds: const ['p1'],
+          ),
+        );
+
+        expect(historyEntry.result, WeeklyLeagueSeasonResult.lostReservedSlot);
+      },
+    );
   });
 
   group('LeagueDivisionPolicy', () {
@@ -293,7 +342,7 @@ void main() {
       ]);
     });
 
-    test('uses the full tie-breaker chain before registration date', () {
+    test('uses the active Session 17 tie-breaker chain', () {
       final entries = [
         _entry('active-days', entryPaid: true),
         _entry('more-runs', entryPaid: true),
@@ -346,6 +395,52 @@ void main() {
         'newer-registration',
       ]);
     });
+
+    test(
+      'does not use second or third best weekly run as active tie breakers',
+      () {
+        final entries = [
+          _entry('more-lifetime-runs', entryPaid: true, lifetimeRuns: 20),
+          _entry('better-second-run', entryPaid: true, lifetimeRuns: 10),
+        ];
+        final runs = [
+          ..._runs('more-lifetime-runs', [
+            100,
+            80,
+            70,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+          ]),
+          ..._runs('better-second-run', [
+            100,
+            90,
+            60,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+          ]),
+        ];
+
+        final rankedEntries = rankingCalculator.rank(
+          entries: entries,
+          runs: runs,
+          divisionNumber: 1,
+        );
+
+        expect(rankedEntries.first.playerEntry.playerId, 'more-lifetime-runs');
+      },
+    );
 
     test('active player with 0 runs ranks above inactive player', () {
       final rankedEntries = rankingCalculator.rank(
@@ -458,7 +553,7 @@ void main() {
     const settlementCalculator = LeagueSeasonSettlementCalculator();
 
     test(
-      'relegates at least 40 percent and inactive players always relegate',
+      'relegates the bottom 40 percent by ranking for regular divisions',
       () {
         const division = LeagueDivision(number: 1, capacity: 10);
         final entries = [
@@ -489,7 +584,7 @@ void main() {
     );
 
     test(
-      'relegates only inactive players when inactive count exceeds 40 percent',
+      'does not relegate every inactive player when inactive count exceeds 40 percent',
       () {
         const division = LeagueDivision(number: 1, capacity: 10);
         final entries = [
@@ -513,13 +608,14 @@ void main() {
           rankedEntries: rankedEntries,
         );
 
-        expect(relegatedIds.length, 5);
+        expect(relegatedIds.length, 4);
         expect(
           relegatedIds,
           containsAll([
-            for (var index = 0; index < 5; index += 1) 'inactive-$index',
+            for (var index = 1; index < 5; index += 1) 'inactive-$index',
           ]),
         );
+        expect(relegatedIds, isNot(contains('inactive-0')));
         expect(
           relegatedIds.any((playerId) => playerId.startsWith('active-')),
           isFalse,
@@ -732,6 +828,7 @@ void main() {
           'last-active-1',
           'last-active-2',
         ]);
+        expect(settlement.closedDivision, isTrue);
       },
     );
 
@@ -753,6 +850,44 @@ void main() {
       expect(settlement.promotedPlayerIds, isEmpty);
       expect(settlement.lostReservationPlayerIds, ['inactive-last']);
       expect(settlement.closedDivision, isTrue);
+    });
+  });
+
+  group('WeeklyLeagueSettlementSchedule', () {
+    const schedule = WeeklyLeagueSettlementSchedule();
+
+    test('opens settlement at Sunday 23:59 local Europe Lisbon time', () {
+      final seasonId = LeagueSeasonId.fromDate(DateTime(2026, 5, 13, 12));
+
+      expect(
+        schedule.isSettlementDue(
+          now: DateTime(2026, 5, 17, 23, 58),
+          seasonId: seasonId,
+        ),
+        isFalse,
+      );
+      expect(
+        schedule.isSettlementDue(
+          now: DateTime(2026, 5, 17, 23, 59),
+          seasonId: seasonId,
+        ),
+        isTrue,
+      );
+      expect(
+        schedule.isSettlementDue(
+          now: DateTime(2026, 5, 18),
+          seasonId: seasonId,
+        ),
+        isTrue,
+      );
+    });
+
+    test('returns Sunday 23:59 as the settlement time for a season week', () {
+      final seasonId = LeagueSeasonId.fromDate(DateTime(2026, 5, 13, 12));
+
+      final settlementTime = schedule.settlementTimeForSeason(seasonId);
+
+      expect(settlementTime, DateTime(2026, 5, 17, 23, 59));
     });
   });
 }
@@ -808,5 +943,20 @@ LeagueRankingEntry _rankingEntry(LeaguePlayerEntry entry, int rank) {
     rank: rank,
     playerEntry: entry,
     weeklyScore: scoreCalculator.calculate(playerEntry: entry, runs: const []),
+  );
+}
+
+WeeklyLeagueScore _inactiveScore(String playerId) {
+  return WeeklyLeagueScore(
+    playerId: playerId,
+    isActive: false,
+    runCount: 0,
+    activeDays: 0,
+    activityMultiplier: 0,
+    baseScore: 0,
+    finalScore: 0,
+    bonusPoints: 0,
+    countedRunScores: const [],
+    allRunScores: const [],
   );
 }

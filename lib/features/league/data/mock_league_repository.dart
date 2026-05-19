@@ -2,10 +2,12 @@ import 'dart:math' as math;
 
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/league/domain/models/league_division.dart';
+import 'package:stoppy_app/features/league/domain/models/league_division_settlement.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
 import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_settlement_result.dart';
 import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
@@ -14,6 +16,8 @@ import 'package:stoppy_app/features/league/domain/services/league_division_polic
 import 'package:stoppy_app/features/league/domain/services/league_ranking_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/league_season_settlement_calculator.dart';
 import 'package:stoppy_app/features/league/domain/services/player_league_records_calculator.dart';
+import 'package:stoppy_app/features/league/domain/services/weekly_league_history_generator.dart';
+import 'package:stoppy_app/features/league/domain/services/weekly_league_settlement_schedule.dart';
 
 class MockLeagueRepository implements LeagueRepository {
   MockLeagueRepository({
@@ -23,11 +27,17 @@ class MockLeagueRepository implements LeagueRepository {
         const LeagueSeasonSettlementCalculator(),
     PlayerLeagueRecordsCalculator recordsCalculator =
         const PlayerLeagueRecordsCalculator(),
+    WeeklyLeagueHistoryGenerator historyGenerator =
+        const WeeklyLeagueHistoryGenerator(),
+    WeeklyLeagueSettlementSchedule settlementSchedule =
+        const WeeklyLeagueSettlementSchedule(),
     bool seedMockData = true,
   }) : _divisionPolicy = divisionPolicy,
        _rankingCalculator = rankingCalculator,
        _settlementCalculator = settlementCalculator,
-       _recordsCalculator = recordsCalculator {
+       _recordsCalculator = recordsCalculator,
+       _historyGenerator = historyGenerator,
+       _settlementSchedule = settlementSchedule {
     if (seedMockData) {
       _seedMockLeague();
     }
@@ -37,12 +47,15 @@ class MockLeagueRepository implements LeagueRepository {
   final LeagueRankingCalculator _rankingCalculator;
   final LeagueSeasonSettlementCalculator _settlementCalculator;
   final PlayerLeagueRecordsCalculator _recordsCalculator;
+  final WeeklyLeagueHistoryGenerator _historyGenerator;
+  final WeeklyLeagueSettlementSchedule _settlementSchedule;
 
   final List<LeagueDivision> _divisions = [];
   final Map<String, LeaguePlayerEntry> _entriesByPlayerId = {};
   final List<WeeklyLeagueRun> _runs = [];
   final Map<String, PlayerLeagueRecords> _recordsByPlayerId = {};
   final Map<String, List<WeeklyLeagueHistoryEntry>> _historyByPlayerId = {};
+  final Set<String> _settledSeasonIds = {};
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
@@ -127,7 +140,10 @@ class MockLeagueRepository implements LeagueRepository {
   Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(
     String playerId,
   ) async {
-    return List.unmodifiable(_historyByPlayerId[playerId] ?? const []);
+    final history = [...?_historyByPlayerId[playerId]]
+      ..sort((a, b) => _historySortDate(b).compareTo(_historySortDate(a)));
+
+    return List.unmodifiable(history);
   }
 
   @override
@@ -184,6 +200,34 @@ class MockLeagueRepository implements LeagueRepository {
     );
   }
 
+  @override
+  Future<LeagueSeasonSettlementResult> settleCurrentSeason({
+    required DateTime now,
+  }) async {
+    final seasonId = LeagueSeasonId.fromDate(now);
+
+    if (_settledSeasonIds.contains(seasonId.value) ||
+        !_settlementSchedule.isSettlementDue(now: now, seasonId: seasonId)) {
+      return LeagueSeasonSettlementResult(
+        seasonId: seasonId,
+        settledAt: now,
+        executed: false,
+      );
+    }
+
+    final settlements = _buildSeasonSettlements(seasonId, settledAt: now);
+    _applySeasonSettlements(settlements);
+    _clearSettledSeasonRuns(seasonId);
+    _settledSeasonIds.add(seasonId.value);
+
+    return LeagueSeasonSettlementResult(
+      seasonId: seasonId,
+      settledAt: now,
+      executed: true,
+      divisionSettlements: settlements,
+    );
+  }
+
   LeagueDivision _divisionForNumber(int divisionNumber) {
     return _divisions.firstWhere(
       (division) => division.number == divisionNumber,
@@ -207,6 +251,204 @@ class MockLeagueRepository implements LeagueRepository {
 
     _recordsByPlayerId[run.playerId] = updatedRecords;
     return updatedRecords;
+  }
+
+  List<LeagueDivisionSettlement> _buildSeasonSettlements(
+    LeagueSeasonId seasonId, {
+    required DateTime settledAt,
+  }) {
+    final sortedDivisions = [..._divisions]
+      ..sort((a, b) => a.number.compareTo(b.number));
+
+    if (sortedDivisions.isEmpty) {
+      return const [];
+    }
+
+    final seasonRuns = _runs
+        .where(
+          (run) =>
+              LeagueSeasonId.fromDate(run.completedAt).value == seasonId.value,
+        )
+        .toList();
+    final rankedByDivision = {
+      for (final division in sortedDivisions)
+        division.number: _rankingCalculator.rank(
+          entries: _entriesByPlayerId.values.toList(),
+          runs: seasonRuns,
+          divisionNumber: division.number,
+        ),
+    };
+
+    if (sortedDivisions.length == 1) {
+      final division = sortedDivisions.single;
+      final rankedEntries = rankedByDivision[division.number] ?? const [];
+      final settlement = LeagueDivisionSettlement(
+        divisionNumber: division.number,
+        keptPlayerIds: rankedEntries
+            .map((entry) => entry.playerEntry.playerId)
+            .toList(),
+      );
+      _recordHistoryEntries(
+        seasonId: seasonId,
+        rankedEntries: rankedEntries,
+        settlement: settlement,
+        settledAt: settledAt,
+      );
+      return [settlement];
+    }
+
+    final settlements = <LeagueDivisionSettlement>[];
+    final promotedIds = <String>{};
+    final relegatedIds = <String>{};
+
+    for (var index = 0; index < sortedDivisions.length - 2; index += 1) {
+      final division = sortedDivisions[index];
+      final lowerDivision = sortedDivisions[index + 1];
+      final rankedEntries = rankedByDivision[division.number] ?? const [];
+      final lowerRankedEntries =
+          rankedByDivision[lowerDivision.number] ?? const [];
+      final relegatedPlayerIds = _settlementCalculator
+          .relegatedPlayerIdsForDivision(
+            division: division,
+            isLastDivision: false,
+            rankedEntries: rankedEntries,
+          );
+      final promotedPlayerIds = _settlementCalculator
+          .promotedPlayerIdsForLowerDivision(
+            lowerDivision: lowerDivision,
+            aboveDivisionRelegationCount: relegatedPlayerIds.length,
+            lowerDivisionRankedEntries: lowerRankedEntries,
+          );
+      final settlement = LeagueDivisionSettlement(
+        divisionNumber: division.number,
+        promotedPlayerIds: promotedPlayerIds,
+        relegatedPlayerIds: relegatedPlayerIds,
+        keptPlayerIds: rankedEntries
+            .map((entry) => entry.playerEntry.playerId)
+            .where((playerId) => !relegatedPlayerIds.contains(playerId))
+            .toList(),
+      );
+
+      settlements.add(settlement);
+      promotedIds.addAll(promotedPlayerIds);
+      relegatedIds.addAll(relegatedPlayerIds);
+      _recordHistoryEntries(
+        seasonId: seasonId,
+        rankedEntries: rankedEntries,
+        settlement: settlement,
+        settledAt: settledAt,
+      );
+    }
+
+    final penultimateDivision = sortedDivisions[sortedDivisions.length - 2];
+    final lastDivision = sortedDivisions.last;
+    final specialSettlement = _settlementCalculator
+        .settlePenultimateAndLastDivision(
+          penultimateDivision: penultimateDivision,
+          lastDivision: lastDivision,
+          penultimateRankedEntries:
+              rankedByDivision[penultimateDivision.number] ?? const [],
+          lastRankedEntries: rankedByDivision[lastDivision.number] ?? const [],
+        );
+    settlements.add(specialSettlement);
+    promotedIds.addAll(specialSettlement.promotedPlayerIds);
+    relegatedIds.addAll(specialSettlement.relegatedPlayerIds);
+    _recordHistoryEntries(
+      seasonId: seasonId,
+      rankedEntries: [
+        ...?rankedByDivision[penultimateDivision.number],
+        ...?rankedByDivision[lastDivision.number],
+      ],
+      settlement: specialSettlement,
+      settledAt: settledAt,
+    );
+
+    return settlements;
+  }
+
+  void _recordHistoryEntries({
+    required LeagueSeasonId seasonId,
+    required List<LeagueRankingEntry> rankedEntries,
+    required LeagueDivisionSettlement settlement,
+    required DateTime settledAt,
+  }) {
+    for (final rankedEntry in rankedEntries) {
+      final historyEntry = _historyGenerator.generate(
+        seasonId: seasonId,
+        finalRankingEntry: rankedEntry,
+        settlement: settlement,
+        seasonEndedAt: settledAt,
+      );
+      _historyByPlayerId
+          .putIfAbsent(historyEntry.playerId, () => [])
+          .add(historyEntry);
+    }
+  }
+
+  DateTime _historySortDate(WeeklyLeagueHistoryEntry entry) {
+    return entry.seasonEndedAt ?? entry.seasonId.weekStartDate;
+  }
+
+  void _applySeasonSettlements(List<LeagueDivisionSettlement> settlements) {
+    final lostReservationIds = <String>{
+      for (final settlement in settlements)
+        ...settlement.lostReservationPlayerIds,
+    };
+    final activePlayerIds = _entriesByPlayerId.values
+        .where((entry) => entry.isActive)
+        .map((entry) => entry.playerId)
+        .toSet();
+
+    for (final settlement in settlements) {
+      for (final playerId in settlement.promotedPlayerIds) {
+        _movePlayer(playerId: playerId, divisionDelta: -1);
+      }
+      for (final playerId in settlement.relegatedPlayerIds) {
+        _movePlayer(playerId: playerId, divisionDelta: 1);
+      }
+    }
+
+    final closedDivisionNumbers = settlements
+        .where((settlement) => settlement.closedDivision)
+        .map((settlement) => settlement.divisionNumber + 1)
+        .toSet();
+    _divisions.removeWhere(
+      (division) => closedDivisionNumbers.contains(division.number),
+    );
+    _entriesByPlayerId.removeWhere(
+      (_, entry) => closedDivisionNumbers.contains(entry.divisionNumber),
+    );
+
+    _entriesByPlayerId.updateAll((_, entry) {
+      // Entry payment is reset for the next week, but reservation rights depend
+      // on settlement status. Active players keep their slot after moving;
+      // inactive players marked by settlement lose reservation unless they were
+      // already removed because their division closed.
+      return entry.copyWith(
+        entryPaid: false,
+        hasReservedSlot:
+            activePlayerIds.contains(entry.playerId) ||
+            !lostReservationIds.contains(entry.playerId),
+      );
+    });
+  }
+
+  void _movePlayer({required String playerId, required int divisionDelta}) {
+    final entry = _entriesByPlayerId[playerId];
+    if (entry == null) {
+      return;
+    }
+
+    _entriesByPlayerId[playerId] = entry.copyWith(
+      divisionNumber: math.max(1, entry.divisionNumber + divisionDelta),
+      hasReservedSlot: true,
+    );
+  }
+
+  void _clearSettledSeasonRuns(LeagueSeasonId seasonId) {
+    _runs.removeWhere(
+      (run) => LeagueSeasonId.fromDate(run.completedAt).value == seasonId.value,
+    );
   }
 
   void _seedMockLeague() {

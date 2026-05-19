@@ -11,6 +11,7 @@ import '../../domain/models/weekly_league_history_entry.dart';
 import '../../domain/models/weekly_league_run.dart';
 import '../../domain/repositories/league_repository.dart';
 import '../../domain/services/league_division_policy.dart';
+import '../../domain/services/weekly_league_settlement_schedule.dart';
 
 class LeagueHomeScreen extends StatefulWidget {
   const LeagueHomeScreen({
@@ -32,6 +33,8 @@ class LeagueHomeScreen extends StatefulWidget {
 
 class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
   static const int _rankingPreviewCount = 5;
+  static const WeeklyLeagueSettlementSchedule _settlementSchedule =
+      WeeklyLeagueSettlementSchedule();
 
   late PlayerProfile _playerProfile;
   LeaguePlayerEntry? _currentEntry;
@@ -178,8 +181,10 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
     final entry = _currentEntry;
     final divisionNumber =
         entry?.divisionNumber ?? _playerProfile.currentLeagueDivision ?? 2;
-    final hasActiveEntry =
-        entry?.isActive ?? _playerProfile.hasWeeklyLeagueEntry;
+    final hasActiveEntry = entry?.isActive ?? false;
+    final nextSettlementTime = _settlementSchedule.settlementTimeForSeason(
+      LeagueSeasonId.fromDate(DateTime.now()),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
@@ -210,6 +215,13 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
                   ],
                   const SizedBox(height: 12),
                   _WeeklyRunsCard(runs: _weeklyRuns),
+                  const SizedBox(height: 12),
+                  _SettlementInfoCard(
+                    latestHistoryEntry: _history.isEmpty
+                        ? null
+                        : _history.first,
+                    nextSettlementTime: nextSettlementTime,
+                  ),
                   if (_snapshot != null) ...[
                     const SizedBox(height: 12),
                     _WeeklyScoreBreakdownCard(
@@ -262,7 +274,7 @@ class _LeagueSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            hasActiveEntry ? 'Entry: active' : 'Entry: not paid',
+            hasActiveEntry ? 'Entry status: active' : 'Entry status: inactive',
             style: _LeagueTextStyles.body,
           ),
           if (message != null) ...[
@@ -296,15 +308,17 @@ class _RankingPreviewCard extends StatelessWidget {
           if (entries.isEmpty)
             const Text('No ranking entries yet.', style: _LeagueTextStyles.body)
           else
-            ...entries.map(
-              (entry) => Padding(
+            ...entries.map((entry) {
+              final inactiveLabel = entry.isInactive ? ' (inactive)' : '';
+
+              return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
-                  '#${entry.rank} ${entry.playerEntry.username} - ${entry.displayScore}',
+                  '#${entry.rank} ${entry.playerEntry.username}$inactiveLabel - ${entry.displayScore}',
                   style: _LeagueTextStyles.body,
                 ),
-              ),
-            ),
+              );
+            }),
         ],
       ),
     );
@@ -357,40 +371,38 @@ class _WeeklyRunsCard extends StatelessWidget {
               style: _LeagueTextStyles.body,
             )
           else
-            ...runs.asMap().entries.map(
-                  (entry) {
-                final index = entry.key;
-                final run = entry.value;
+            ...runs.asMap().entries.map((entry) {
+              final index = entry.key;
+              final run = entry.value;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 34,
-                        child: Text(
-                          '${index + 1}º',
-                          style: _LeagueTextStyles.highlight,
-                        ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 34,
+                      child: Text(
+                        '${index + 1}º',
+                        style: _LeagueTextStyles.highlight,
                       ),
-                      SizedBox(
-                        width: 60,
-                        child: Text(
-                          '${run.score}',
-                          textAlign: TextAlign.right,
-                          style: _LeagueTextStyles.body,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        _completedAtText(run.completedAt),
+                    ),
+                    SizedBox(
+                      width: 60,
+                      child: Text(
+                        '${run.score}',
+                        textAlign: TextAlign.right,
                         style: _LeagueTextStyles.body,
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      _completedAtText(run.completedAt),
+                      style: _LeagueTextStyles.body,
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -432,7 +444,7 @@ class _LeagueHistoryCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
                   '${entry.seasonId.value} - Division ${entry.finalDivision} - '
-                  '#${entry.finalRank} - ${_resultLabel(entry.result)} - '
+                  '#${entry.finalRank} - ${_settlementResultLabel(entry.result)} - '
                   '${entry.finalWeeklyScore.round()}',
                   style: _LeagueTextStyles.body,
                 ),
@@ -442,14 +454,104 @@ class _LeagueHistoryCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  String _resultLabel(WeeklyLeagueSeasonResult result) {
-    return switch (result) {
-      WeeklyLeagueSeasonResult.promoted => 'promoted',
-      WeeklyLeagueSeasonResult.relegated => 'relegated',
-      WeeklyLeagueSeasonResult.stayed => 'stayed',
+class _SettlementInfoCard extends StatelessWidget {
+  const _SettlementInfoCard({
+    required this.latestHistoryEntry,
+    required this.nextSettlementTime,
+  });
+
+  final WeeklyLeagueHistoryEntry? latestHistoryEntry;
+  final DateTime nextSettlementTime;
+
+  @override
+  Widget build(BuildContext context) {
+    final historyEntry = latestHistoryEntry;
+
+    return _LeagueCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Weekly Settlement', style: _LeagueTextStyles.title),
+          const SizedBox(height: 10),
+          Text(
+            'Next weekly settlement: ${_settlementTimeText(nextSettlementTime)} Europe/Lisbon time',
+            style: _LeagueTextStyles.body,
+          ),
+          const SizedBox(height: 10),
+          if (historyEntry == null)
+            const Text(
+              'Last settlement: none yet.',
+              style: _LeagueTextStyles.body,
+            )
+          else ...[
+            Text(
+              'Last settlement: ${_historyDateText(historyEntry)}',
+              style: _LeagueTextStyles.body,
+            ),
+            Text(
+              'Result: ${_settlementResultLabel(historyEntry.result)}',
+              style: _LeagueTextStyles.body,
+            ),
+            Text(
+              'Final division: ${historyEntry.finalDivision}',
+              style: _LeagueTextStyles.body,
+            ),
+            Text(
+              'Final rank: #${historyEntry.finalRank}',
+              style: _LeagueTextStyles.body,
+            ),
+            Text(
+              'Final weekly score: ${historyEntry.finalWeeklyScore.round()}',
+              style: _LeagueTextStyles.body,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _settlementTimeText(DateTime settlementTime) {
+    final local = settlementTime.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+
+    return '${_weekdayName(local.weekday)} $hour:$minute';
+  }
+
+  String _weekdayName(int weekday) {
+    return switch (weekday) {
+      DateTime.monday => 'Monday',
+      DateTime.tuesday => 'Tuesday',
+      DateTime.wednesday => 'Wednesday',
+      DateTime.thursday => 'Thursday',
+      DateTime.friday => 'Friday',
+      DateTime.saturday => 'Saturday',
+      DateTime.sunday => 'Sunday',
+      _ => 'Sunday',
     };
   }
+
+  String _historyDateText(WeeklyLeagueHistoryEntry entry) {
+    final date = (entry.seasonEndedAt ?? entry.seasonId.weekStartDate)
+        .toLocal();
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+
+    return '$year-$month-$day';
+  }
+}
+
+String _settlementResultLabel(WeeklyLeagueSeasonResult result) {
+  return switch (result) {
+    WeeklyLeagueSeasonResult.promoted => 'promoted',
+    WeeklyLeagueSeasonResult.relegated => 'relegated',
+    WeeklyLeagueSeasonResult.stayed => 'stayed',
+    WeeklyLeagueSeasonResult.removedFromLeague => 'removed from league',
+    WeeklyLeagueSeasonResult.lostReservedSlot => 'lost reserved slot',
+  };
 }
 
 class _PlayerSnapshotCard extends StatelessWidget {
@@ -630,7 +732,8 @@ class _NearbyRankingRow extends StatelessWidget {
           Expanded(
             child: Text(
               '#${entry.rank} ${entry.playerEntry.username}'
-              '${isCurrentPlayer ? ' (You)' : ''}',
+                  '${entry.isInactive ? ' (inactive)' : ''}'
+                  '${isCurrentPlayer ? ' (You)' : ''}',
               style: isCurrentPlayer
                   ? _LeagueTextStyles.highlight
                   : _LeagueTextStyles.body,

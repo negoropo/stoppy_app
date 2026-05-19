@@ -217,31 +217,54 @@ Nova divisão criada automaticamente quando a última enche
 GP (Game Points):
 
 Custo semanal: 10 GP para participar
-Jogador sem GP mantém slot reservado (exceto última divisão) mas aparece como "inactive" com pontuação 0
-Se terminar a semana sem pagar: desce de divisão
+Jogador não pagante aparece na classificação como "inactive" até pagar os 10 GP para entrar na liga
 Ao pagar: pontuação passa a 0 e pode começar a jogar
 
-Regras de descida (todas as divisões exceto última):
+Classificação da divisão:
+Os jogadores em cada divisão ficam classificados de acordo com as seguintes regras:
+Primeiro os jogadores activos, depois os jogadores que não pagaram.
 
-Mínimo 40% dos jogadores desce
-Descem sempre os que não pagaram os 10 GP
-Se os não-pagantes não chegarem aos 40%, completam-se com os de menor pontuação
-Se os não-pagantes ultrapassarem 40%, descem todos na mesma
+Para os jogadores activos aplicam-se as seguintes regras de desempate(por ordem):
+Score da semana
+Maior nº de dias com atividade na semana
+Maior nº de jogadas feitas na semana
+Média de pontuação por jogada na semana
+Melhor jogada individual da semana
+Mais jogadas feitas desde sempre
+Melhor média de pontuação por jogada desde sempre
+Registo mais antigo na app
+
+Para os jogadores não pagantes dos 10 GP aplicam-se as seguintes regras de desempate(por ordem):
+Mais jogadas feitas desde sempre
+Melhor média de pontuação por jogada desde sempre
+Registo mais antigo na app
+
+
+Regras de descida (todas as divisões exceto penúltima e última):
+
+Descem sempre os últimos 40% dos jogadores de acordo com a classificação da divisão
+
+
 Jogadores que descem para a última divisão perdem a slot reservada
 
-Regras de subida:
+Regras de subida (todas as divisões excepto a última:
 
-Nº de jogadores que sobe = nº que desceu da divisão acima
-Mínimo 20% de jogadores sobe de cada divisão
+Sobem sempre os primeiros 20% de jogadores de acordo com a classificação da divisão
+
+Nº de jogadores que sobe = nº de jogadores que desceu da divisão acima
+
 
 Regras especiais penúltima ↔ última divisão:
-
-Todos os inativos da penúltima descem e perdem reserva
-Se 20% melhores da última divisão e activos > nº de inativos que descem: descem os inativos + piores ativos até igualar o nº que vai subir
-Se 20% melhores da última divisão e activos < nº de inativos que descem: sobem os melhores classificados da última e fecha-se a última divisão
-Ativos que descem para a última ficam com slot reservada
+Os jogadores inativos da penúltima divisão descem todos para última
+Todos os jogadores inativos que desçam da penúltima divisão deixam de estar na liga e têm que se inscrever novamente para começar da última divisão
+Se 20% melhores da última divisão e activos > nº de inativos que descem: descem os inativos + piores ativos até igualar o nº de jogadores que vai subir da última divisão
+Se 20% melhores da última divisão e activos < nº de inativos que descem: sobem os melhores classificados activos da última e fecha-se a última divisão
+Ativos que descem para a última ficam com slot reservada 
 Ativos que se mantêm na última ficam com slot reservada
 Só inativos que ficam ou descem para a última perdem reserva
+
+
+Fecho semanal: Domingo às 23:59 hora de Portugal (Europe/Lisbon)
 
 Visualização do ranking:
 
@@ -252,19 +275,9 @@ Pontuação mínima para não descer
 Nº de dias jogados e multiplicador atual de cada jogador visível
 Jogadores inativos mostram "inactive" em vez de pontuação
 
-Desempates (por ordem):
 
-Maior nº de dias com atividade na semana
-Maior nº de jogadas feitas na semana
-Média de pontuação por jogada
-Melhor jogada individual da semana
-Segunda melhor jogada individual
-Terceira melhor jogada individual
-Mais jogadas feitas desde sempre
-Melhor média de pontuação por jogada desde sempre
-Registo mais antigo na app
 
-Fecho semanal: Domingo às 23:59 hora de Portugal (Europe/Lisbon)
+
 
 JOGADOR
 Registo:
