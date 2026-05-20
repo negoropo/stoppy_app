@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 17 completed.
+Session 18 completed.
 
-Current session: Session 18 — Last Division Expansion + League Re-entry Flow
+Current session: Session 19 — League Polish + Edge Case Hardening
 
 ---
 

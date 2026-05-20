@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/features/auth/data/mock_auth_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
+import 'package:stoppy_app/features/auth/domain/models/auth_state.dart';
+import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
@@ -254,17 +256,157 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('shows re-entry CTA when player is outside the league', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 10,
+      currentLeagueDivision: null,
+      hasWeeklyLeagueEntry: false,
+      reservedLeagueSlot: false,
+    );
+    final reentryEntry = _entry('current', 'Current Player', divisionNumber: 3);
+    final repository = _LeagueScreenRepository(
+      storedEntry: null,
+      entryOnEnter: reentryEntry,
+      ranking: const [],
+      snapshot: _snapshotFor(reentryEntry),
+      records: PlayerLeagueRecords.empty('current'),
+      history: const [],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('League status: outside league'), findsOneWidget);
+    expect(
+      find.text(
+        'You are outside the weekly league. Re-enter to reserve a slot again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Re-enter Weekly League'), findsOneWidget);
+  });
+
+  testWidgets('re-entry deducts GP and syncs player profile', (
+    WidgetTester tester,
+  ) async {
+    PlayerProfile? updatedProfile;
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 15,
+      hasWeeklyLeagueEntry: false,
+      reservedLeagueSlot: false,
+    );
+    final repository = _LeagueScreenRepository(
+      storedEntry: null,
+      entryOnEnter: _entry('current', 'Current Player', divisionNumber: 3),
+      ranking: const [],
+      snapshot: null,
+      records: PlayerLeagueRecords.empty('current'),
+      history: const [],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (profile) {
+            updatedProfile = profile;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(updatedProfile?.gamePoints, 5);
+    expect(updatedProfile?.currentLeagueDivision, 3);
+    expect(updatedProfile?.hasWeeklyLeagueEntry, isTrue);
+    expect(updatedProfile?.reservedLeagueSlot, isTrue);
+  });
+
+  testWidgets(
+    're-entry with insufficient GP shows error without state changes',
+    (WidgetTester tester) async {
+      PlayerProfile? updatedProfile;
+      final playerProfile = PlayerProfile(
+        id: 'current',
+        username: 'Current Player',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 9,
+        hasWeeklyLeagueEntry: false,
+        reservedLeagueSlot: false,
+      );
+      final repository = _LeagueScreenRepository(
+        storedEntry: null,
+        entryOnEnter: _entry('current', 'Current Player', divisionNumber: 3),
+        ranking: const [],
+        snapshot: null,
+        records: PlayerLeagueRecords.empty('current'),
+        history: const [],
+        weeklyRuns: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: _UpdatingAuthRepository(playerProfile),
+            leagueRepository: repository,
+            onPlayerProfileUpdated: (profile) {
+              updatedProfile = profile;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-enter Weekly League'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('You need 10 GP to enter the weekly league.'),
+        findsOneWidget,
+      );
+      expect(updatedProfile, isNull);
+      expect(repository.enterCallCount, 0);
+    },
+  );
 }
 
 LeaguePlayerEntry _entry(
   String playerId,
   String username, {
   bool entryPaid = true,
+  int divisionNumber = 2,
 }) {
   return LeaguePlayerEntry(
     playerId: playerId,
     username: username,
-    divisionNumber: 2,
+    divisionNumber: divisionNumber,
     registeredAt: DateTime(2026, 5, 1),
     entryPaid: entryPaid,
   );
@@ -288,6 +430,33 @@ LeagueRankingEntry _rankingEntry(
       baseScore: finalScore,
       finalScore: finalScore,
     ),
+  );
+}
+
+LeagueRankingSnapshot _snapshotFor(LeaguePlayerEntry entry) {
+  final rankingEntry = LeagueRankingEntry(
+    rank: 1,
+    playerEntry: entry,
+    weeklyScore: _score(
+      entry.playerId,
+      runCount: 0,
+      bestRunsCount: 0,
+      activeDays: 0,
+      activityMultiplier: 0,
+      baseScore: 0,
+      finalScore: 0,
+    ),
+  );
+
+  return LeagueRankingSnapshot(
+    currentPlayerRank: 1,
+    currentPlayerEntry: rankingEntry,
+    playersAbove: const [],
+    playersBelow: const [],
+    scoreNeededForPromotionZone: null,
+    scoreNeededToStayInDivision: null,
+    promotionZoneEndRank: null,
+    relegationZoneStartRank: null,
   );
 }
 
@@ -318,6 +487,7 @@ WeeklyLeagueScore _score(
 class _LeagueScreenRepository implements LeagueRepository {
   _LeagueScreenRepository({
     required this.storedEntry,
+    this.entryOnEnter,
     required this.ranking,
     required this.snapshot,
     required this.records,
@@ -325,12 +495,14 @@ class _LeagueScreenRepository implements LeagueRepository {
     required this.weeklyRuns,
   });
 
-  final LeaguePlayerEntry storedEntry;
+  LeaguePlayerEntry? storedEntry;
+  final LeaguePlayerEntry? entryOnEnter;
   final List<LeagueRankingEntry> ranking;
-  final LeagueRankingSnapshot snapshot;
+  final LeagueRankingSnapshot? snapshot;
   final PlayerLeagueRecords records;
   final List<WeeklyLeagueHistoryEntry> history;
   final List<WeeklyLeagueRun> weeklyRuns;
+  int enterCallCount = 0;
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
@@ -339,7 +511,9 @@ class _LeagueScreenRepository implements LeagueRepository {
 
   @override
   Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) async {
-    return storedEntry;
+    enterCallCount += 1;
+    storedEntry = entryOnEnter ?? storedEntry;
+    return storedEntry!;
   }
 
   @override
@@ -354,7 +528,7 @@ class _LeagueScreenRepository implements LeagueRepository {
     required String playerId,
     required int divisionNumber,
   }) async {
-    return snapshot;
+    return snapshot!;
   }
 
   @override
@@ -391,5 +565,41 @@ class _LeagueScreenRepository implements LeagueRepository {
   @override
   Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
     return LeagueRunSubmissionResult(accepted: true, playerRecords: records);
+  }
+}
+
+class _UpdatingAuthRepository implements AuthRepository {
+  _UpdatingAuthRepository(this.playerProfile);
+
+  PlayerProfile playerProfile;
+
+  @override
+  Future<AuthState> currentAuthState() async {
+    return AuthState.authenticated(playerProfile);
+  }
+
+  @override
+  Future<PlayerProfile> login({
+    required String username,
+    required String password,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<PlayerProfile> register({
+    required String username,
+    required String password,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PlayerProfile> updatePlayerProfile(PlayerProfile playerProfile) async {
+    this.playerProfile = playerProfile;
+    return playerProfile;
   }
 }

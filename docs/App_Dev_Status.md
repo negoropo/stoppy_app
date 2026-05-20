@@ -2738,3 +2738,154 @@ Session 18 — Last Division Expansion + League Re-entry Flow
 
 Current session: Session 18 — Last Division Expansion + League Re-entry Flow
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 18 — Last Division Expansion + League Re-entry Flow
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement automatic last division expansion and manual weekly league re-entry flow for players who lose their reserved slot after weekly settlement.
+
+---
+
+### 📦 Deliverables
+
+* [x] Manual weekly league re-entry flow implemented
+* [x] Re-entry requires weekly entry cost (10 GP)
+* [x] Re-entry places player in current last division
+* [x] Automatic last division creation when full
+* [x] Division capacity scaling preserved
+* [x] Players without reserved slot shown as outside the league
+* [x] Re-entry CTA implemented in LeagueHomeScreen
+* [x] PlayerProfile synchronization after entry/re-entry implemented
+* [x] Duplicate league entry prevention implemented
+* [x] GP validation added before entry/re-entry
+* [x] Lost reserved slot entries excluded from division capacity usage
+* [x] Stable division ordering added
+* [x] Repository tests updated
+* [x] Domain tests updated
+* [x] Widget tests updated
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
+
+---
+
+### 🛠️ Work Done
+
+* Updated `MockLeagueRepository`
+
+  * Added re-entry handling for players without reserved slots
+  * Added automatic last division expansion
+  * Added safe division insertion ordering
+  * Preserved settlement cleanup compatibility
+  * Preserved duplicate-entry protection
+* Updated `LeagueDivisionPolicy`
+
+  * Lost reserved slot entries no longer count toward last division capacity
+  * Preserved dynamic division growth rules
+* Updated `LeagueHomeScreen`
+
+  * Added outside league state
+  * Added re-entry messaging
+  * Added dynamic CTA:
+
+    * `Enter Weekly League`
+    * `Re-enter Weekly League`
+  * Added GP validation before entry
+  * Added PlayerProfile synchronization after entry
+  * Added safer division fallback handling
+  * Added GP clamp protection
+* Updated repository tests
+
+  * Re-entry after reserved slot loss
+  * Automatic last division creation
+  * Reserved slot capacity handling
+  * Division expansion behavior
+* Updated widget tests
+
+  * Outside league UI state
+  * Re-entry CTA
+  * GP validation
+  * PlayerProfile synchronization
+* Updated domain tests
+
+  * Dynamic division placement validation
+  * Reserved slot exclusion validation
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Players without reserved slots are considered outside the league
+* Re-entry always places the player into the current last division
+* New last divisions are created automatically when full
+* Division capacities continue doubling from Division 1
+* Lost reserved slot players do not occupy division capacity
+* Duplicate active entries are blocked
+* GP deduction remains outside domain policy ownership
+* Repository remains mock-first and backend-ready
+* No division calculations are performed inside widgets
+* UI remains repository/domain-driven only
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Re-entry flow validated
+* [x] Automatic division expansion validated
+* [x] Reserved slot exclusion validated
+* [x] GP validation validated
+* [x] Duplicate entry prevention validated
+* [x] Outside league UI validated
+* [x] PlayerProfile synchronization validated
+* [x] Settlement compatibility validated
+
+---
+
+### 📌 Next Session
+
+Session 19 — League Polish + Edge Case Hardening
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* 🔄 Session 19 — League Polish + Edge Case Hardening (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 19 — League Polish + Edge Case Hardening
+Status: Ready ⏳

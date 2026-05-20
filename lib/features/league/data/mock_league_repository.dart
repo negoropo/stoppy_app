@@ -82,11 +82,23 @@ class MockLeagueRepository implements LeagueRepository {
         return existingEntry;
       }
 
-      final activeEntry = _divisionPolicy.activateWeeklyEntry(existingEntry);
+      if (existingEntry.hasReservedSlot) {
+        final activeEntry = _divisionPolicy.activateWeeklyEntry(existingEntry);
+        _entriesByPlayerId[profile.id] = activeEntry;
+        return activeEntry;
+      }
+
+      final activeEntry = _createEntryInAvailableLastDivision(profile);
       _entriesByPlayerId[profile.id] = activeEntry;
       return activeEntry;
     }
 
+    final entry = _createEntryInAvailableLastDivision(profile);
+    _entriesByPlayerId[profile.id] = entry;
+    return entry;
+  }
+
+  LeaguePlayerEntry _createEntryInAvailableLastDivision(PlayerProfile profile) {
     final division = _divisionPolicy.placeNewPlayer(
       divisions: _divisions,
       entries: _entriesByPlayerId.values.toList(),
@@ -94,18 +106,17 @@ class MockLeagueRepository implements LeagueRepository {
 
     if (!_divisions.any((existing) => existing.number == division.number)) {
       _divisions.add(division);
+      _divisions.sort((a, b) => a.number.compareTo(b.number));
     }
 
-    final entry = LeaguePlayerEntry(
+    return LeaguePlayerEntry(
       playerId: profile.id,
       username: profile.username,
       divisionNumber: division.number,
       registeredAt: profile.createdAt,
+      hasReservedSlot: true,
       entryPaid: true,
     );
-
-    _entriesByPlayerId[profile.id] = entry;
-    return entry;
   }
 
   @override

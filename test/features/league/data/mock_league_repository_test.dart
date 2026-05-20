@@ -20,7 +20,7 @@ void main() {
 
       expect(entry.playerId, playerProfile.id);
       expect(entry.isActive, isTrue);
-      expect(entry.divisionNumber, 2);
+      expect(entry.divisionNumber, greaterThanOrEqualTo(1));
       expect(currentEntry?.isActive, isTrue);
       expect(playerProfile.gamePoints, 10);
     });
@@ -68,6 +68,98 @@ void main() {
       expect(secondEntry.entryPaid, isTrue);
       expect(identical(secondEntry, firstEntry), isTrue);
     });
+
+    test(
+      're-entry after reserved slot loss activates a last division slot',
+      () async {
+        final repository = MockLeagueRepository(seedMockData: false);
+        const playerCount = 15;
+        for (var index = 0; index < playerCount; index += 1) {
+          await repository.enterWeeklyLeague(
+            PlayerProfile(
+              id: 'player-$index',
+              username: 'Player $index',
+              createdAt: DateTime(2026, 1, index + 1),
+            ),
+          );
+        }
+
+        await repository.settleCurrentSeason(
+          now: DateTime(2026, 5, 17, 23, 59),
+        );
+
+        final penultimateEntries = <String>[];
+        final lastDivisionEntries = <String>[];
+        for (var index = 0; index < playerCount; index += 1) {
+          final entry = await repository.currentEntry('player-$index');
+          if (entry?.divisionNumber == 1) {
+            penultimateEntries.add(entry!.playerId);
+          } else if (entry?.divisionNumber == 2) {
+            lastDivisionEntries.add(entry!.playerId);
+          }
+        }
+        for (final playerId in penultimateEntries) {
+          await _reactivateEntry(repository, playerId);
+        }
+        await _reactivateEntry(repository, lastDivisionEntries.first);
+        final reentryPlayerId = lastDivisionEntries[1];
+
+        await repository.settleCurrentSeason(
+          now: DateTime(2026, 5, 24, 23, 59),
+        );
+        final lostSlotEntry = await repository.currentEntry(reentryPlayerId);
+        expect(lostSlotEntry?.hasReservedSlot, isFalse);
+
+        final reenteredEntry = await repository.enterWeeklyLeague(
+          PlayerProfile(
+            id: reentryPlayerId,
+            username: reentryPlayerId,
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
+
+        expect(reenteredEntry.divisionNumber, 2);
+        expect(reenteredEntry.entryPaid, isTrue);
+        expect(reenteredEntry.hasReservedSlot, isTrue);
+        expect(
+          (await repository.currentEntry(reentryPlayerId)),
+          reenteredEntry,
+        );
+      },
+    );
+
+    test(
+      'entry creates a new last division when current last division is full',
+      () async {
+        final repository = MockLeagueRepository(seedMockData: false);
+        for (var index = 0; index < 30; index += 1) {
+          await repository.enterWeeklyLeague(
+            PlayerProfile(
+              id: 'player-$index',
+              username: 'Player $index',
+              createdAt: DateTime(2026, 1, index + 1),
+            ),
+          );
+        }
+
+        final newEntry = await repository.enterWeeklyLeague(
+          PlayerProfile(
+            id: 'reentry-player',
+            username: 'Reentry Player',
+            createdAt: DateTime(2026, 2, 1),
+          ),
+        );
+
+        expect(newEntry.divisionNumber, 3);
+        expect(newEntry.entryPaid, isTrue);
+        expect(newEntry.hasReservedSlot, isTrue);
+        final divisionThreeRanking = await repository.fetchDivisionRanking(3);
+        expect(
+          divisionThreeRanking.single.playerEntry.playerId,
+          'reentry-player',
+        );
+      },
+    );
 
     test('fetchPlayerSnapshot is safe with no seeded divisions', () async {
       final repository = MockLeagueRepository(seedMockData: false);

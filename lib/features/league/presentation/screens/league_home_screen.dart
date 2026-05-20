@@ -54,10 +54,12 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
     _loadLeagueState();
   }
 
-  Future<void> _loadLeagueState() async {
+  Future<void> _loadLeagueState({bool clearMessage = true}) async {
     setState(() {
       _isLoading = true;
-      _message = null;
+      if (clearMessage) {
+        _message = null;
+      }
     });
 
     final entry = await widget.leagueRepository.currentEntry(_playerProfile.id);
@@ -139,9 +141,9 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
         _playerProfile,
       );
       final updatedProfile = _playerProfile.copyWith(
-        gamePoints:
-            _playerProfile.gamePoints -
-            LeagueDivisionPolicy.weeklyEntryCostGamePoints,
+        gamePoints: (_playerProfile.gamePoints -
+            LeagueDivisionPolicy.weeklyEntryCostGamePoints)
+            .clamp(0, 999999999),
         currentLeagueDivision: entry.divisionNumber,
         hasWeeklyLeagueEntry: true,
         reservedLeagueSlot: entry.hasReservedSlot,
@@ -158,7 +160,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
         _currentEntry = entry;
         _message = 'Weekly league entry confirmed.';
       });
-      await _loadLeagueState();
+      await _loadLeagueState(clearMessage: false);
     } catch (_) {
       if (!mounted) {
         return;
@@ -180,8 +182,9 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
   Widget build(BuildContext context) {
     final entry = _currentEntry;
     final divisionNumber =
-        entry?.divisionNumber ?? _playerProfile.currentLeagueDivision ?? 2;
+        entry?.divisionNumber ?? _playerProfile.currentLeagueDivision ?? 1;
     final hasActiveEntry = entry?.isActive ?? false;
+    final hasReservedSlot = entry?.hasReservedSlot ?? false;
     final nextSettlementTime = _settlementSchedule.settlementTimeForSeason(
       LeagueSeasonId.fromDate(DateTime.now()),
     );
@@ -203,6 +206,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
                     divisionNumber: divisionNumber,
                     gamePoints: _playerProfile.gamePoints,
                     hasActiveEntry: hasActiveEntry,
+                    hasReservedSlot: hasReservedSlot,
                     message: _message,
                     isEntering: _isEntering,
                     onEnter: hasActiveEntry ? null : _enterWeeklyLeague,
@@ -246,6 +250,7 @@ class _LeagueSummaryCard extends StatelessWidget {
     required this.divisionNumber,
     required this.gamePoints,
     required this.hasActiveEntry,
+    required this.hasReservedSlot,
     required this.message,
     required this.isEntering,
     required this.onEnter,
@@ -254,6 +259,7 @@ class _LeagueSummaryCard extends StatelessWidget {
   final int divisionNumber;
   final int gamePoints;
   final bool hasActiveEntry;
+  final bool hasReservedSlot;
   final String? message;
   final bool isEntering;
   final VoidCallback? onEnter;
@@ -273,10 +279,14 @@ class _LeagueSummaryCard extends StatelessWidget {
             style: _LeagueTextStyles.body,
           ),
           const SizedBox(height: 4),
-          Text(
-            hasActiveEntry ? 'Entry status: active' : 'Entry status: inactive',
-            style: _LeagueTextStyles.body,
-          ),
+          Text(_statusText(), style: _LeagueTextStyles.body),
+          if (!hasReservedSlot) ...[
+            const SizedBox(height: 4),
+            const Text(
+              'You are outside the weekly league. Re-enter to reserve a slot again.',
+              style: _LeagueTextStyles.body,
+            ),
+          ],
           if (message != null) ...[
             const SizedBox(height: 10),
             Text(message!, style: _LeagueTextStyles.message),
@@ -284,11 +294,31 @@ class _LeagueSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           FilledButton(
             onPressed: isEntering ? null : onEnter,
-            child: Text(hasActiveEntry ? 'Entered' : 'Enter Weekly League'),
+            child: Text(_actionText()),
           ),
         ],
       ),
     );
+  }
+
+  String _statusText() {
+    if (hasActiveEntry) {
+      return 'Entry status: active';
+    }
+
+    if (hasReservedSlot) {
+      return 'Entry status: reserved, entry not paid';
+    }
+
+    return 'League status: outside league';
+  }
+
+  String _actionText() {
+    if (hasActiveEntry) {
+      return 'Entered';
+    }
+
+    return hasReservedSlot ? 'Enter Weekly League' : 'Re-enter Weekly League';
   }
 }
 
@@ -732,8 +762,8 @@ class _NearbyRankingRow extends StatelessWidget {
           Expanded(
             child: Text(
               '#${entry.rank} ${entry.playerEntry.username}'
-                  '${entry.isInactive ? ' (inactive)' : ''}'
-                  '${isCurrentPlayer ? ' (You)' : ''}',
+              '${entry.isInactive ? ' (inactive)' : ''}'
+              '${isCurrentPlayer ? ' (You)' : ''}',
               style: isCurrentPlayer
                   ? _LeagueTextStyles.highlight
                   : _LeagueTextStyles.body,

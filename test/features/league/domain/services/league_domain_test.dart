@@ -185,6 +185,28 @@ void main() {
       expect(placement.capacity, 40);
     });
 
+    test(
+      'does not count lost reserved slots when checking last division capacity',
+      () {
+        const divisions = [
+          LeagueDivision(number: 1, capacity: 10),
+          LeagueDivision(number: 2, capacity: 20),
+        ];
+        final entries = [
+          for (var index = 0; index < 20; index += 1)
+            _entry('d2-$index', divisionNumber: 2, hasReservedSlot: index != 0),
+        ];
+
+        final placement = policy.placeNewPlayer(
+          divisions: divisions,
+          entries: entries,
+        );
+
+        expect(placement.number, 2);
+        expect(placement.capacity, 20);
+      },
+    );
+
     test('places new player after full division 1 and full division 2', () {
       const divisions = [
         LeagueDivision(number: 1, capacity: 10),
@@ -896,6 +918,7 @@ LeaguePlayerEntry _entry(
   String playerId, {
   int divisionNumber = 1,
   bool entryPaid = true,
+  bool hasReservedSlot = true,
   DateTime? registeredAt,
   int lifetimeRuns = 0,
   double lifetimeAverage = 0,
@@ -905,6 +928,7 @@ LeaguePlayerEntry _entry(
     username: playerId,
     divisionNumber: divisionNumber,
     entryPaid: entryPaid,
+    hasReservedSlot: hasReservedSlot,
     registeredAt: registeredAt ?? DateTime(2026, 1, 1, 12),
     lifetimeLeagueTournamentRuns: lifetimeRuns,
     lifetimeAverageScorePerRun: lifetimeAverage,
