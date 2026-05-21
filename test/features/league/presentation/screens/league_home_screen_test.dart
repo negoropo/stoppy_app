@@ -302,6 +302,86 @@ void main() {
     expect(find.text('Re-enter Weekly League'), findsOneWidget);
   });
 
+  testWidgets(
+    'stale weekly-entry profile still shows re-entry when repository has no slot',
+    (WidgetTester tester) async {
+      final playerProfile = PlayerProfile(
+        id: 'current',
+        username: 'Current Player',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 10,
+        currentLeagueDivision: 2,
+        hasWeeklyLeagueEntry: true,
+        reservedLeagueSlot: true,
+      );
+      final repository = _LeagueScreenRepository(
+        storedEntry: null,
+        entryOnEnter: _entry('current', 'Current Player', divisionNumber: 3),
+        ranking: const [],
+        snapshot: null,
+        records: PlayerLeagueRecords.empty('current'),
+        history: const [],
+        weeklyRuns: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: _UpdatingAuthRepository(playerProfile),
+            leagueRepository: repository,
+            onPlayerProfileUpdated: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('League status: outside league'), findsOneWidget);
+      expect(find.text('Re-enter Weekly League'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'entry without reserved slot does not request a player snapshot',
+    (WidgetTester tester) async {
+      final playerProfile = PlayerProfile(
+        id: 'current',
+        username: 'Current Player',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 10,
+        currentLeagueDivision: 2,
+      );
+      final repository = _LeagueScreenRepository(
+        storedEntry: _entry(
+          'current',
+          'Current Player',
+          entryPaid: false,
+          hasReservedSlot: false,
+        ),
+        ranking: const [],
+        snapshot: null,
+        records: PlayerLeagueRecords.empty('current'),
+        history: const [],
+        weeklyRuns: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: _UpdatingAuthRepository(playerProfile),
+            leagueRepository: repository,
+            onPlayerProfileUpdated: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('League status: outside league'), findsOneWidget);
+      expect(repository.snapshotRequestCount, 0);
+    },
+  );
+
   testWidgets('re-entry deducts GP and syncs player profile', (
     WidgetTester tester,
   ) async {
@@ -402,6 +482,7 @@ LeaguePlayerEntry _entry(
   String username, {
   bool entryPaid = true,
   int divisionNumber = 2,
+  bool hasReservedSlot = true,
 }) {
   return LeaguePlayerEntry(
     playerId: playerId,
@@ -409,6 +490,7 @@ LeaguePlayerEntry _entry(
     divisionNumber: divisionNumber,
     registeredAt: DateTime(2026, 5, 1),
     entryPaid: entryPaid,
+    hasReservedSlot: hasReservedSlot,
   );
 }
 
@@ -503,6 +585,7 @@ class _LeagueScreenRepository implements LeagueRepository {
   final List<WeeklyLeagueHistoryEntry> history;
   final List<WeeklyLeagueRun> weeklyRuns;
   int enterCallCount = 0;
+  int snapshotRequestCount = 0;
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
@@ -528,6 +611,7 @@ class _LeagueScreenRepository implements LeagueRepository {
     required String playerId,
     required int divisionNumber,
   }) async {
+    snapshotRequestCount += 1;
     return snapshot!;
   }
 

@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 18 completed.
+Session 19 completed.
 
-Current session: Session 19 — League Polish + Edge Case Hardening
+Current session: Session 20 — Knockout Structure + Registration Flow
 
 ---
 

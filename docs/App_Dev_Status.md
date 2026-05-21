@@ -2889,3 +2889,168 @@ Session 19 — League Polish + Edge Case Hardening
 
 Current session: Session 19 — League Polish + Edge Case Hardening
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 19 — League Polish + Edge Case Hardening
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Polish and harden the weekly league system before advancing to Knockout development.
+
+Focus areas:
+- ranking integrity
+- reserved slot consistency
+- stale state handling
+- re-entry robustness
+- settlement edge cases
+- runtime validation safety
+
+---
+
+### 📦 Deliverables
+
+* [x] Reserved slot ranking filtering implemented
+* [x] Invalid league run submission protection implemented
+* [x] Outside-league player handling implemented
+* [x] Snapshot request guards implemented
+* [x] Stale PlayerProfile recovery implemented
+* [x] Re-entry flow hardened
+* [x] Ranking integrity protections added
+* [x] Settlement edge-case handling improved
+* [x] LeagueHomeScreen runtime consistency improved
+* [x] Repository tests expanded
+* [x] Domain tests expanded
+* [x] Widget tests expanded
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
+
+---
+
+### 🛠️ Work Done
+
+* Updated `MockLeagueRepository`
+
+  * Players without reserved slots can no longer submit league runs
+  * Players without reserved slots are excluded from runtime league participation
+  * Re-entry flow now safely restores active participation
+  * Settlement/runtime consistency improved
+  * Ranking safety preserved after slot removal
+* Updated `LeagueRankingCalculator`
+
+  * Added reserved slot filtering inside ranking domain logic
+  * Players outside the league are no longer ranked
+  * Ranking consistency improved across:
+    * runtime
+    * snapshots
+    * settlement
+    * UI
+  * Preserved deterministic tie-breaker chain
+* Updated `LeagueHomeScreen`
+
+  * UI no longer trusts stale local `PlayerProfile` league state
+  * Repository state is now authoritative
+  * Added safer snapshot request guards
+  * Outside-league UI handling improved
+  * Re-entry flow recovery improved
+  * Snapshot loading for invalid league states prevented
+* Updated repository tests
+
+  * Reserved slot loss submission rejection
+  * Ranking exclusion after slot loss
+  * Re-entry after slot removal
+  * Settlement/runtime edge cases
+  * Division cleanup compatibility
+* Updated domain tests
+
+  * Reserved slot ranking exclusion
+  * Snapshot threshold validation
+  * Tie-breaker integrity validation
+  * Settlement edge-case validation
+  * Last division consistency validation
+* Updated widget tests
+
+  * Outside-league rendering
+  * Re-entry recovery
+  * Snapshot suppression validation
+  * Stale profile recovery
+  * GP synchronization validation
+  * Reserved slot loss rendering
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Players without reserved slots are fully considered outside the weekly league
+* Ranking validity is enforced inside domain/repository logic
+* LeagueHomeScreen now relies on repository runtime state instead of stale local profile flags
+* Snapshot requests are prevented for invalid league states
+* Invalid run submissions are rejected before runtime insertion
+* Tie-breaker determinism remains preserved for future backend authoritative validation
+* Repository remains backend-ready and mock-first
+* UI remains repository/domain-driven only
+* Settlement compatibility preserved across all edge cases
+* No competitive calculations moved into widgets
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Reserved slot exclusion validated
+* [x] Invalid submission protection validated
+* [x] Re-entry recovery validated
+* [x] Outside league UI validated
+* [x] Snapshot suppression validated
+* [x] Stale profile recovery validated
+* [x] Ranking consistency validated
+* [x] Settlement compatibility validated
+
+---
+
+### 📌 Next Session
+
+Session 20 — Knockout Structure + Registration Flow
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* 🔄 Session 20 — Knockout Structure + Registration Flow (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 20 — Knockout Structure + Registration Flow
+Status: Ready ⏳

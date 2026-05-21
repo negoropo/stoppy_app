@@ -479,6 +479,23 @@ void main() {
       expect(rankedEntries.last.weeklyScore.displayScore, 'inactive');
     });
 
+    test('excludes players without reserved slot from rankings', () {
+      final rankedEntries = rankingCalculator.rank(
+        entries: [
+          _entry('active', entryPaid: true),
+          _entry('inactive-reserved', entryPaid: false),
+          _entry('outside-league', entryPaid: false, hasReservedSlot: false),
+        ],
+        runs: [_run('outside-league', 9999), _run('active', 100)],
+        divisionNumber: 1,
+      );
+
+      expect(rankedEntries.map((entry) => entry.playerEntry.playerId), [
+        'active',
+        'inactive-reserved',
+      ]);
+    });
+
     test('returns snapshot around current player', () {
       final entries = List.generate(
         12,

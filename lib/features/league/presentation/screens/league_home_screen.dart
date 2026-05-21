@@ -79,7 +79,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
       playerId: _playerProfile.id,
       seasonId: LeagueSeasonId.fromDate(DateTime.now()),
     );
-    final snapshotFuture = entry == null
+    final snapshotFuture = entry == null || !entry.hasReservedSlot
         ? Future<LeagueRankingSnapshot?>.value()
         : widget.leagueRepository.fetchPlayerSnapshot(
             playerId: _playerProfile.id,
@@ -116,7 +116,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
   }
 
   Future<void> _enterWeeklyLeague() async {
-    if (_currentEntry?.isActive ?? _playerProfile.hasWeeklyLeagueEntry) {
+    if (_currentEntry?.isActive ?? false) {
       setState(() {
         _message = 'Weekly league entry already active.';
       });
@@ -141,9 +141,10 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
         _playerProfile,
       );
       final updatedProfile = _playerProfile.copyWith(
-        gamePoints: (_playerProfile.gamePoints -
-            LeagueDivisionPolicy.weeklyEntryCostGamePoints)
-            .clamp(0, 999999999),
+        gamePoints:
+            (_playerProfile.gamePoints -
+                    LeagueDivisionPolicy.weeklyEntryCostGamePoints)
+                .clamp(0, 999999999),
         currentLeagueDivision: entry.divisionNumber,
         hasWeeklyLeagueEntry: true,
         reservedLeagueSlot: entry.hasReservedSlot,

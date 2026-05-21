@@ -126,7 +126,7 @@ class MockLeagueRepository implements LeagueRepository {
         _recordsByPlayerId[run.playerId] ??
         PlayerLeagueRecords.empty(run.playerId);
 
-    if (entry == null || !entry.isActive) {
+    if (entry == null || !entry.hasReservedSlot || !entry.isActive) {
       return LeagueRunSubmissionResult(
         accepted: false,
         playerRecords: previousRecords,

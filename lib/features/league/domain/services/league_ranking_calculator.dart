@@ -22,6 +22,10 @@ class LeagueRankingCalculator {
     final rankingEntries =
         entries
             .where((entry) => entry.divisionNumber == divisionNumber)
+            // A player without a reserved slot is outside the weekly league.
+            // Keeping that filter in the ranking domain avoids UI-specific
+            // checks and keeps future backend ranking validation reproducible.
+            .where((entry) => entry.hasReservedSlot)
             .map(
               (entry) => LeagueRankingEntry(
                 rank: 1,

@@ -129,6 +129,68 @@ void main() {
     );
 
     test(
+      'league run submission is rejected after reserved slot loss',
+      () async {
+        final repository = MockLeagueRepository(seedMockData: false);
+        const playerCount = 15;
+        for (var index = 0; index < playerCount; index += 1) {
+          await repository.enterWeeklyLeague(
+            PlayerProfile(
+              id: 'player-$index',
+              username: 'Player $index',
+              createdAt: DateTime(2026, 1, index + 1),
+            ),
+          );
+        }
+
+        await repository.settleCurrentSeason(
+          now: DateTime(2026, 5, 17, 23, 59),
+        );
+
+        final penultimateEntries = <String>[];
+        final lastDivisionEntries = <String>[];
+        for (var index = 0; index < playerCount; index += 1) {
+          final entry = await repository.currentEntry('player-$index');
+          if (entry?.divisionNumber == 1) {
+            penultimateEntries.add(entry!.playerId);
+          } else if (entry?.divisionNumber == 2) {
+            lastDivisionEntries.add(entry!.playerId);
+          }
+        }
+        for (final playerId in penultimateEntries) {
+          await _reactivateEntry(repository, playerId);
+        }
+        await _reactivateEntry(repository, lastDivisionEntries.first);
+        final outsideLeaguePlayerId = lastDivisionEntries[1];
+
+        await repository.settleCurrentSeason(
+          now: DateTime(2026, 5, 24, 23, 59),
+        );
+        expect(
+          (await repository.currentEntry(
+            outsideLeaguePlayerId,
+          ))?.hasReservedSlot,
+          isFalse,
+        );
+
+        final submission = await repository.submitLeagueRun(
+          WeeklyLeagueRun(
+            playerId: outsideLeaguePlayerId,
+            score: 5000,
+            completedAt: DateTime(2026, 5, 25),
+          ),
+        );
+
+        expect(submission.accepted, isFalse);
+        final ranking = await repository.fetchDivisionRanking(2);
+        expect(
+          ranking.map((entry) => entry.playerEntry.playerId),
+          isNot(contains(outsideLeaguePlayerId)),
+        );
+      },
+    );
+
+    test(
       'entry creates a new last division when current last division is full',
       () async {
         final repository = MockLeagueRepository(seedMockData: false);
