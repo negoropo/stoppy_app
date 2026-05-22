@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 19 completed.
+Session 20 completed.
 
-Current session: Session 20 — Knockout Structure + Registration Flow
+Current session: Session 21 — Active Knockout Runtime + Duel Progression
 
 ---
 

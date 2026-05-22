@@ -235,7 +235,7 @@ Melhor média de pontuação por jogada desde sempre
 Registo mais antigo na app
 
 Para os jogadores não pagantes dos 10 GP aplicam-se as seguintes regras de desempate(por ordem):
-Mais jogadas feitas desde sempre
+Mais jogadas (runs) feitas desde sempre
 Melhor média de pontuação por jogada desde sempre
 Registo mais antigo na app
 
@@ -296,10 +296,10 @@ Warmup:
 Permite fazer runs e ganhar GP sem custo de entrada
 
 
-Torneios:
+Torneios Knockout:
 
 Todos os meses há um torneio knockout sendo que a inscrição para o torneio de um determinado mês é aberta desde o dia seguinte
-ao final do torneio do mês anterior até ao último dia do mês anterior. 
+ao final do torneio do mês anterior até ao último dia do mês anterior e o preço de entrada é 25 GP.
 
 Cada duelo tem a duração de 1 dia em que cada jogador pode fazer o nº de jogadas que quiser e o sistema de pontuação é igual 
 ao da liga: 1 a 5 jogadas conta a melhor pontuação dessas jogadas. De 6 a 10 jogadas conta a média das duas melhores jogadas 
@@ -319,8 +319,10 @@ tenham adversário nos dias seguintes até ser determinado o vencedor. Neste exe
 dia (emparelhando aleatoriamente 6 jogadores) para termos no dia seguinte 32 jogadores, depois 16, depois 8 e assim sucessivamente 
 até encontrarmos o vencedor. Se houver um duelo em que nenhum jogador faz uma run, tem de se ir repescar o jogador com melhor 
 pontuação nos duelos desse dia que não tenha sido apurado para a ronda seguinte. Caso não haja jogadores suficientes com pontuação 
-para serem repescados, repesca-se o jogador com mais runs feitas na aplicação, caso haja empate vai-se buscar o jogador com 
-registo há mais tempo na aplicação.
+para serem repescados, repesca-se o jogador por esta ordem:
+Mais jogadas (runs) feitas desde sempre
+Melhor média de pontuação por jogada desde sempre
+Registo mais antigo na app
 
 
 Histórico do jogador:

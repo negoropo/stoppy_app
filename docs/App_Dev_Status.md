@@ -3017,9 +3017,19 @@ Focus areas:
 
 ---
 
-### 📌 Next Session
+### 📌 Current Session
 
 Session 20 — Knockout Structure + Registration Flow
+
+Official knockout assumptions aligned:
+
+* One monthly knockout tournament
+* Registration cost is always 25 GP
+* Registration uses explicit open / closed / in-progress lifecycle states
+* Daily duels settle at 23:59 Europe/Lisbon
+* Brackets support unlimited registrations, byes and dynamic opening eliminations
+* Knockout duel scoring reuses league best-runs block logic without activity multipliers or bonus points
+* Repechage preparation follows eliminated score, lifetime runs, lifetime average score and oldest registration tie-breakers
 
 ---
 
@@ -3046,11 +3056,187 @@ Session 20 — Knockout Structure + Registration Flow
 * ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
 * ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
 * ✅ Session 19 — League Polish + Edge Case Hardening (completed)
-* 🔄 Session 20 — Knockout Structure + Registration Flow (ready)
+* 🔄 Session 20 — Knockout Structure + Registration Flow (in progress)
 
 ---
 
 ### 🧭 Current State
 
 Current session: Session 20 — Knockout Structure + Registration Flow
+Status: Official tournament foundation aligned 🔄
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 20 — Knockout Foundation + Tournament Lifecycle
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the complete Knockout tournament foundation, including monthly registration lifecycle, dynamic bracket generation, knockout scoring rules, tournament runtime preparation, and repository/UI integration.
+
+---
+
+### 📦 Deliverables
+
+* [x] Knockout feature architecture implemented
+* [x] Monthly tournament lifecycle implemented
+* [x] Tournament registration windows implemented
+* [x] 25 GP entry cost implemented
+* [x] Registration open / closed / in progress states implemented
+* [x] Tournament schedule service implemented
+* [x] Knockout repository contract implemented
+* [x] Mock knockout repository implemented
+* [x] Knockout registration validation implemented
+* [x] Duplicate registration prevention implemented
+* [x] GP validation implemented
+* [x] Explicit tournament start flow implemented
+* [x] Automatic in-progress protection without bracket implemented
+* [x] Dynamic knockout bracket generation implemented
+* [x] Unlimited registration support implemented
+* [x] Opening elimination round generation implemented
+* [x] Bye distribution implemented
+* [x] 35→32 opening round reduction logic implemented
+* [x] Knockout round model implemented
+* [x] Knockout match model implemented
+* [x] Knockout run model implemented
+* [x] Knockout duel score model implemented
+* [x] Knockout scoring calculator implemented
+* [x] League-style best-runs block scoring implemented
+* [x] Knockout no-bonus scoring rule implemented
+* [x] Repechage selector implemented
+* [x] Official repechage tie-breaker chain implemented
+* [x] KnockoutHomeScreen implemented
+* [x] Tournament structure preview implemented
+* [x] Registration state UI implemented
+* [x] Knockout navigation integrated into GameScreen
+* [x] StoppyApp dependency injection updated
+* [x] AuthGate dependency injection updated
+* [x] Repository tests updated
+* [x] Domain tests updated
+* [x] Widget tests updated
+* [x] Bracket generation tests added
+* [x] Repechage tests added
+* [x] Tournament lifecycle tests added
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
+
+---
+
+### 🛠️ Work Done
+
+* Added complete `knockout` feature structure
+* Added `KnockoutTournament`
+* Added `KnockoutRound`
+* Added `KnockoutMatch`
+* Added `KnockoutRun`
+* Added `KnockoutDuelScore`
+* Added `KnockoutPlayerEntry`
+* Added `KnockoutRegistrationResult`
+* Added `KnockoutTournamentSchedule`
+* Added `KnockoutBracketPlanner`
+* Added `KnockoutDuelScoreCalculator`
+* Added `KnockoutRepechageSelector`
+* Added `KnockoutRepository`
+* Added `MockKnockoutRepository`
+* Added explicit monthly tournament lifecycle
+* Added registration open/close runtime handling
+* Added deterministic opening-round bracket generation
+* Added unlimited player registration support
+* Added support for non-power-of-two tournaments
+* Added automatic bye generation
+* Added repository protections against invalid tournament state transitions
+* Added explicit `startTournament()` runtime flow
+* Added protection against automatic `inProgress` state without rounds
+* Added KnockoutHomeScreen registration flow
+* Added tournament structure preview UI
+* Added Knockout integration into GameScreen
+* Added Knockout repository injection into app bootstrap
+* Added extensive repository/domain/widget test coverage
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Knockout tournaments are monthly
+* Registration opens before the next monthly tournament starts
+* Registration cost is fixed at 25 GP
+* Tournament progression is explicit and repository-driven
+* Tournament state cannot automatically become `inProgress` without rounds
+* Opening rounds dynamically eliminate excess players above the nearest lower power of two
+* Bye allocation is automatic and deterministic
+* Knockout scoring reuses league best-runs block logic
+* No activity multipliers or bonus points are used in knockout scoring
+* Repechage follows the official tie-breaker priority chain:
+
+  * Eliminated duel score
+  * Lifetime run count
+  * Lifetime average run score
+  * Oldest account
+* Repository remains mock-first and backend-ready
+* UI remains repository/domain-driven only
+* No bracket calculations are performed inside widgets
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Tournament lifecycle validated
+* [x] Registration flow validated
+* [x] GP deduction validated
+* [x] Duplicate registration prevention validated
+* [x] Opening-round bracket generation validated
+* [x] 35-player edge case validated
+* [x] Bye generation validated
+* [x] Repechage priority validated
+* [x] Explicit tournament start flow validated
+* [x] Knockout UI rendering validated
+
+---
+
+### 📌 Next Session
+
+Session 21 — Active Knockout Runtime + Duel Progression
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle (completed)
+* 🔄 Session 21 — Active Knockout Runtime + Duel Progression (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 21 — Active Knockout Runtime + Duel Progression
 Status: Ready ⏳

@@ -12,6 +12,7 @@ import 'package:stoppy_app/features/game/domain/models/game_level_config.dart';
 import 'package:stoppy_app/features/game/domain/models/movement_direction.dart';
 import 'package:stoppy_app/features/game/game_screen.dart';
 import 'package:stoppy_app/features/game/rendering/game_area_painter.dart';
+import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
@@ -24,6 +25,8 @@ import 'package:stoppy_app/features/league/domain/repositories/league_repository
 import 'package:stoppy_app/features/purchases/data/mock_purchase_repository.dart';
 import 'package:stoppy_app/features/purchases/presentation/screens/store_screen.dart';
 import 'package:stoppy_app/main.dart';
+import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
 
 void main() {
   Future<MockAuthRepository> authenticatedRepository() async {
@@ -141,6 +144,67 @@ void main() {
     expect(find.text('Remove Ads'), findsOneWidget);
     expect(find.textContaining('GP:'), findsAtLeastNWidgets(1));
     expect(find.text('Ads removed: No'), findsOneWidget);
+  });
+
+  testWidgets('Knockout button opens knockout registration screen', (
+    WidgetTester tester,
+  ) async {
+    final repository = await authenticatedRepository();
+
+    await tester.pumpWidget(StoppyApp(authRepository: repository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(KnockoutHomeScreen), findsOneWidget);
+    expect(find.text('Register for Knockout'), findsOneWidget);
+  });
+
+  testWidgets('Knockout screen shows generated tournament rounds after start', (
+      WidgetTester tester,
+      ) async {
+    final repository = await authenticatedRepository();
+    final knockoutRepository = MockKnockoutRepository(
+      now: () => DateTime(2026, 6),
+    );
+
+    final tournament = await knockoutRepository.fetchCurrentTournament();
+
+    for (var index = 0; index < 35; index += 1) {
+      await knockoutRepository.registerPlayer(
+        tournament: tournament,
+        playerProfile: PlayerProfile(
+          id: 'player-$index',
+          username: 'Player $index',
+          createdAt: DateTime(2026),
+          gamePoints: 100,
+        ),
+      );
+    }
+
+    final startedTournament = await knockoutRepository.startTournament(
+      tournamentId: tournament.id,
+    );
+
+    expect(startedTournament.status, KnockoutTournamentStatus.inProgress);
+
+    await tester.pumpWidget(
+      StoppyApp(
+        authRepository: repository,
+        knockoutRepository: knockoutRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(KnockoutHomeScreen), findsOneWidget);
+    expect(find.textContaining('Status:'), findsWidgets);
+    expect(find.textContaining('Round 1'), findsOneWidget);
+    expect(find.textContaining('3 matches'), findsOneWidget);
+    expect(find.textContaining('29 byes'), findsOneWidget);
   });
 
   testWidgets('Game screen uses the game area painter', (

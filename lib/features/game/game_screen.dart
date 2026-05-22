@@ -9,6 +9,8 @@ import 'package:stoppy_app/features/ads/domain/ad_controller.dart';
 import 'package:stoppy_app/features/ads/domain/repositories/ad_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
+import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 import 'package:stoppy_app/features/league/presentation/screens/league_home_screen.dart';
@@ -41,6 +43,7 @@ class GameScreen extends StatefulWidget {
     this.purchaseRepository,
     this.adRepository,
     this.leagueRepository,
+    this.knockoutRepository,
     this.initialRunMode,
     this.initialRunLevel = 1,
     this.now,
@@ -54,6 +57,7 @@ class GameScreen extends StatefulWidget {
   final PurchaseRepository? purchaseRepository;
   final AdRepository? adRepository;
   final LeagueRepository? leagueRepository;
+  final KnockoutRepository? knockoutRepository;
   final RunMode? initialRunMode;
   final int initialRunLevel;
   final DateTime Function()? now;
@@ -740,6 +744,37 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  void _openKnockout() {
+    final playerProfile = _playerProfile;
+    final authRepository = widget.authRepository;
+    final knockoutRepository = widget.knockoutRepository;
+    if (playerProfile == null ||
+        authRepository == null ||
+        knockoutRepository == null) {
+      return;
+    }
+
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) {
+          return KnockoutHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: authRepository,
+            knockoutRepository: knockoutRepository,
+            onPlayerProfileUpdated: _handleKnockoutPlayerProfileUpdated,
+          );
+        },
+      ),
+    );
+  }
+
+  void _handleKnockoutPlayerProfileUpdated(PlayerProfile playerProfile) {
+    setState(() {
+      _playerProfile = playerProfile;
+      _currentGamePoints = playerProfile.gamePoints;
+    });
+  }
+
   void _handlePurchasedPlayerProfile(PlayerProfile playerProfile) {
     setState(() {
       _playerProfile = playerProfile;
@@ -1026,6 +1061,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           child: FilledButton(
                             onPressed: _openLeague,
                             child: const Text('League'),
+                          ),
+                        ),
+                      if (_playerProfile != null &&
+                          widget.knockoutRepository != null)
+                        Positioned(
+                          left: 16,
+                          bottom: 64,
+                          child: FilledButton(
+                            onPressed: _openKnockout,
+                            child: const Text('Knockout'),
                           ),
                         ),
                       if (_isRewardSummaryVisible &&
