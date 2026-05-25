@@ -42,6 +42,40 @@ class KnockoutBracketPlanner {
     );
   }
 
+  KnockoutRound createRoundFromPlayerIds({
+    required int roundNumber,
+    required List<String> playerIds,
+    required DateTime roundStartsAt,
+    required Random random,
+  }) {
+    final shuffledPlayerIds = [...playerIds]..shuffle(random);
+    final matchablePlayerCount = shuffledPlayerIds.length.isEven
+        ? shuffledPlayerIds.length
+        : shuffledPlayerIds.length - 1;
+    final matchedPlayerIds = shuffledPlayerIds
+        .take(matchablePlayerCount)
+        .toList();
+    final byePlayerIds = shuffledPlayerIds.skip(matchablePlayerCount).toList();
+
+    return KnockoutRound(
+      roundNumber: roundNumber,
+      startsAt: roundStartsAt,
+      endsAt: schedule.roundEndsAt(roundStartsAt),
+      status: KnockoutRoundStatus.active,
+      matches: [
+        for (var index = 0; index < matchedPlayerIds.length ~/ 2; index += 1)
+          KnockoutMatch(
+            id: 'round-$roundNumber-match-${index + 1}',
+            roundNumber: roundNumber,
+            status: KnockoutMatchStatus.active,
+            playerOneId: matchedPlayerIds[index * 2],
+            playerTwoId: matchedPlayerIds[index * 2 + 1],
+          ),
+      ],
+      byePlayerIds: byePlayerIds,
+    );
+  }
+
   int openingMatchCount(int playerCount) {
     if (playerCount < 2) {
       return 0;

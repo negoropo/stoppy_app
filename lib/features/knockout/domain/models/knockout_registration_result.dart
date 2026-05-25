@@ -15,11 +15,7 @@ class KnockoutRegistrationResult {
     this.playerEntry,
     this.failureReason,
     this.message,
-  }) : assert(
-  isSuccess
-      ? playerEntry != null
-      : failureReason != null,
-  );
+  }) : assert(isSuccess ? playerEntry != null : failureReason != null);
 
   factory KnockoutRegistrationResult.success({
     required KnockoutTournament tournament,

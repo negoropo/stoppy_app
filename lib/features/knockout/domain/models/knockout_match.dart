@@ -1,9 +1,4 @@
-enum KnockoutMatchStatus {
-  pending,
-  active,
-  completed,
-  voided,
-}
+enum KnockoutMatchStatus { pending, active, completed, voided }
 
 class KnockoutMatch {
   const KnockoutMatch({
@@ -19,11 +14,11 @@ class KnockoutMatch {
     this.winnerPlayerId,
     this.repechageWinnerPlayerId,
   }) : assert(id != ''),
-        assert(roundNumber > 0),
-        assert(playerOneScore >= 0),
-        assert(playerTwoScore >= 0),
-        assert(playerOneRunCount >= 0),
-        assert(playerTwoRunCount >= 0);
+       assert(roundNumber > 0),
+       assert(playerOneScore >= 0),
+       assert(playerTwoScore >= 0),
+       assert(playerOneRunCount >= 0),
+       assert(playerTwoRunCount >= 0);
 
   final String id;
   final int roundNumber;
@@ -102,7 +97,7 @@ class KnockoutMatch {
       playerTwoRunCount: playerTwoRunCount ?? this.playerTwoRunCount,
       winnerPlayerId: winnerPlayerId ?? this.winnerPlayerId,
       repechageWinnerPlayerId:
-      repechageWinnerPlayerId ?? this.repechageWinnerPlayerId,
+          repechageWinnerPlayerId ?? this.repechageWinnerPlayerId,
     );
   }
 }

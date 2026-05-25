@@ -7,10 +7,10 @@ class KnockoutRun {
     required this.score,
     required this.completedAt,
   }) : assert(id != ''),
-        assert(playerId != ''),
-        assert(matchId != ''),
-        assert(roundNumber > 0),
-        assert(score >= 0);
+       assert(playerId != ''),
+       assert(matchId != ''),
+       assert(roundNumber > 0),
+       assert(score >= 0);
 
   final String id;
 

@@ -2,11 +2,7 @@ import 'dart:collection';
 
 import 'knockout_match.dart';
 
-enum KnockoutRoundStatus {
-  pending,
-  active,
-  completed,
-}
+enum KnockoutRoundStatus { pending, active, completed }
 
 class KnockoutRound {
   KnockoutRound({
@@ -17,9 +13,9 @@ class KnockoutRound {
     List<KnockoutMatch> matches = const [],
     List<String> byePlayerIds = const [],
   }) : assert(roundNumber > 0),
-        assert(startsAt.isBefore(endsAt)),
-        matches = UnmodifiableListView(matches),
-        byePlayerIds = UnmodifiableListView(byePlayerIds);
+       assert(startsAt.isBefore(endsAt)),
+       matches = UnmodifiableListView(matches),
+       byePlayerIds = UnmodifiableListView(byePlayerIds);
 
   final int roundNumber;
 

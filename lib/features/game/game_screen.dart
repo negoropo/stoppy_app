@@ -9,6 +9,7 @@ import 'package:stoppy_app/features/ads/domain/ad_controller.dart';
 import 'package:stoppy_app/features/ads/domain/repositories/ad_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
 import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
@@ -106,6 +107,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   GamePointRewardResult? _lastGamePointRewardResult;
   bool _isRunFinalized = false;
   bool _leagueRunSubmitted = false;
+  bool _knockoutRunSubmitted = false;
   late DateTime _runStartedAt;
   int _lastBannerLoadedRunLevel = 1;
   int _remainingStopTimeSeconds = 0;
@@ -665,6 +667,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         runLevel: _currentRunLevel,
       ),
     );
+    _submitKnockoutRunIfNeeded(
+      playerProfile: playerProfile,
+      runEndedAt: runEndedAt,
+      finalScore: _finalScoreFor(
+        totalPrecisionPoints: finalizedPrecisionPoints,
+        runLevel: _currentRunLevel,
+      ),
+    );
 
     if (playerProfile == null || widget.authRepository == null) {
       return;
@@ -853,6 +863,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _lastGamePointRewardResult = null;
       _isRunFinalized = false;
       _leagueRunSubmitted = false;
+      _knockoutRunSubmitted = false;
       _isExtraLifeOfferVisible = false;
       _hasUsedRewardedContinue = false;
       _isScoreTransitionVisible = false;
@@ -934,6 +945,54 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             // Future UI/state sync can use:
             // submissionResult.playerRecords
           }),
+    );
+  }
+
+  void _submitKnockoutRunIfNeeded({
+    required PlayerProfile? playerProfile,
+    required DateTime runEndedAt,
+    required int finalScore,
+  }) {
+    final knockoutRepository = widget.knockoutRepository;
+
+    if (_knockoutRunSubmitted ||
+        _runMode != RunMode.tournament ||
+        playerProfile == null ||
+        knockoutRepository == null) {
+      return;
+    }
+
+    unawaited(
+      knockoutRepository.fetchCurrentTournament().then((tournament) async {
+        final duel = await knockoutRepository.fetchActiveDuel(
+          tournamentId: tournament.id,
+          playerId: playerProfile.id,
+        );
+
+        if (duel == null || duel.hasBye || _knockoutRunSubmitted) {
+          return;
+        }
+
+        _knockoutRunSubmitted = true;
+
+        try {
+          await knockoutRepository.submitKnockoutRun(
+            KnockoutRun(
+              id:
+              '${playerProfile.id}-${duel.match.id}-${runEndedAt.microsecondsSinceEpoch}',
+              playerId: playerProfile.id,
+              matchId: duel.match.id,
+              roundNumber: duel.roundNumber,
+              score: finalScore,
+              completedAt: runEndedAt,
+            ),
+          );
+        } catch (_) {
+          _knockoutRunSubmitted = false;
+        }
+      }).catchError((_) {
+        _knockoutRunSubmitted = false;
+      }),
     );
   }
 

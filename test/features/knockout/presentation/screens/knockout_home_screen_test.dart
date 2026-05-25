@@ -4,6 +4,7 @@ import 'package:stoppy_app/features/auth/domain/models/auth_state.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 
 void main() {
@@ -118,6 +119,69 @@ void main() {
     expect(find.text('You need 25 GP to register.'), findsOneWidget);
     expect(updatedProfile, isNull);
     expect(find.text('You are not registered.'), findsOneWidget);
+  });
+
+  testWidgets('shows active duel score details', (WidgetTester tester) async {
+    final repository = MockKnockoutRepository(
+      now: () => DateTime(2026, 5, 22, 9),
+    );
+    final tournament = await repository.fetchCurrentTournament();
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    final opponentProfile = PlayerProfile(
+      id: 'opponent-id',
+      username: 'Opponent',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: playerProfile,
+    );
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: opponentProfile,
+    );
+    final startedTournament = await repository.startTournament(
+      tournamentId: tournament.id,
+    );
+    final duel = await repository.fetchActiveDuel(
+      tournamentId: startedTournament.id,
+      playerId: playerProfile.id,
+    );
+    await repository.submitKnockoutRun(
+      KnockoutRun(
+        id: 'run-1',
+        playerId: playerProfile.id,
+        matchId: duel!.match.id,
+        roundNumber: duel.roundNumber,
+        score: 700,
+        completedAt: DateTime(2026, 6, 1, 9),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Active Duel'), findsOneWidget);
+    expect(find.text('Opponent: Opponent'), findsOneWidget);
+    expect(find.text('Your score: 700 (1 runs)'), findsOneWidget);
+    expect(find.text('Opponent score: 0 (0 runs)'), findsOneWidget);
+    expect(find.text('Round settles: 2026-06-01 23:59'), findsOneWidget);
   });
 }
 

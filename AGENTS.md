@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 20 completed.
+Session 21 completed.
 
-Current session: Session 21 — Active Knockout Runtime + Duel Progression
+Current session: Session 22 — Knockout Duel UI Polish + Player Tournament Status
 
 ---
 

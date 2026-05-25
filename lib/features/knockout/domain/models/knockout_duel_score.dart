@@ -8,12 +8,14 @@ class KnockoutDuelScore {
     required List<int> countedRunScores,
     required List<int> allRunScores,
   }) : assert(playerId != ''),
-        assert(runCount >= 0),
-        assert(baseScore >= 0),
-        assert(countedRunScores.length <= allRunScores.length),
-        assert(runCount == allRunScores.length),
-        countedRunScores = UnmodifiableListView(countedRunScores),
-        allRunScores = UnmodifiableListView(allRunScores);
+       assert(runCount >= 0),
+       assert(baseScore >= 0),
+       assert(countedRunScores.length <= allRunScores.length),
+       assert(runCount == allRunScores.length),
+        assert(countedRunScores.every((score) => score >= 0)),
+        assert(allRunScores.every((score) => score >= 0)),
+       countedRunScores = UnmodifiableListView(countedRunScores),
+       allRunScores = UnmodifiableListView(allRunScores);
 
   final String playerId;
 
@@ -50,7 +52,7 @@ class KnockoutDuelScore {
     }
 
     return allRunScores.reduce(
-          (current, next) => current > next ? current : next,
+      (current, next) => current > next ? current : next,
     );
   }
 
@@ -65,10 +67,8 @@ class KnockoutDuelScore {
       playerId: playerId ?? this.playerId,
       runCount: runCount ?? this.runCount,
       baseScore: baseScore ?? this.baseScore,
-      countedRunScores:
-      countedRunScores ?? this.countedRunScores,
-      allRunScores:
-      allRunScores ?? this.allRunScores,
+      countedRunScores: countedRunScores ?? this.countedRunScores,
+      allRunScores: allRunScores ?? this.allRunScores,
     );
   }
 }

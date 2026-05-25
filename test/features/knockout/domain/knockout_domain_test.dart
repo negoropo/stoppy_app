@@ -110,7 +110,7 @@ void main() {
       expect(round.status, KnockoutRoundStatus.active);
       expect(
         round.matches.every(
-              (match) => match.status == KnockoutMatchStatus.active,
+          (match) => match.status == KnockoutMatchStatus.active,
         ),
         isTrue,
       );

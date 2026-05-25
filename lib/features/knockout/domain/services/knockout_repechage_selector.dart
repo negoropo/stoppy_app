@@ -18,6 +18,13 @@ class KnockoutRepechageSelector {
     required int neededCount,
   }) {
     assert(neededCount >= 0);
+    assert(
+    eliminatedCandidates
+        .map((candidate) => candidate.entry.playerId)
+        .toSet()
+        .length ==
+        eliminatedCandidates.length,
+    );
 
     if (neededCount == 0 || eliminatedCandidates.isEmpty) {
       return const [];
@@ -34,17 +41,17 @@ class KnockoutRepechageSelector {
   int _compare(KnockoutRepechageCandidate a, KnockoutRepechageCandidate b) {
     return _compareDescending(a.eliminatedScore, b.eliminatedScore)
         .ifEqual(
-      _compareDescending(
-        a.entry.lifetimeRunCount,
-        b.entry.lifetimeRunCount,
-      ),
-    )
+          _compareDescending(
+            a.entry.lifetimeRunCount,
+            b.entry.lifetimeRunCount,
+          ),
+        )
         .ifEqual(
-      _compareDescending(
-        a.entry.lifetimeAverageRunScore,
-        b.entry.lifetimeAverageRunScore,
-      ),
-    )
+          _compareDescending(
+            a.entry.lifetimeAverageRunScore,
+            b.entry.lifetimeAverageRunScore,
+          ),
+        )
         .ifEqual(a.entry.accountCreatedAt.compareTo(b.entry.accountCreatedAt));
   }
 

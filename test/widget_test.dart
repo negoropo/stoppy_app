@@ -162,8 +162,8 @@ void main() {
   });
 
   testWidgets('Knockout screen shows generated tournament rounds after start', (
-      WidgetTester tester,
-      ) async {
+    WidgetTester tester,
+  ) async {
     final repository = await authenticatedRepository();
     final knockoutRepository = MockKnockoutRepository(
       now: () => DateTime(2026, 6),
@@ -777,6 +777,68 @@ void main() {
     await _failRunAndShowFinalResults(tester);
 
     expect(leagueRepository.submittedRuns, isEmpty);
+  });
+
+  testWidgets('Tournament run finalization submits knockout score once', (
+    WidgetTester tester,
+  ) async {
+    final knockoutRepository = MockKnockoutRepository(
+      now: () => DateTime(2026, 5, 22, 10),
+    );
+    final tournament = await knockoutRepository.fetchCurrentTournament();
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 50,
+    );
+    await knockoutRepository.registerPlayer(
+      tournament: tournament,
+      playerProfile: playerProfile,
+    );
+    await knockoutRepository.registerPlayer(
+      tournament: tournament,
+      playerProfile: PlayerProfile(
+        id: 'opponent-id',
+        username: 'Opponent',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 50,
+      ),
+    );
+    final startedTournament = await knockoutRepository.startTournament(
+      tournamentId: tournament.id,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: playerProfile,
+          knockoutRepository: knockoutRepository,
+          initialRunMode: RunMode.tournament,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    await tester.pump();
+
+    final duel = await knockoutRepository.fetchActiveDuel(
+      tournamentId: startedTournament.id,
+      playerId: playerProfile.id,
+    );
+
+    expect(duel?.playerRunCount, 1);
+    expect(duel?.playerScore, 0);
+
+    await tester.pump(const Duration(seconds: 2));
+    final stillOneRunDuel = await knockoutRepository.fetchActiveDuel(
+      tournamentId: startedTournament.id,
+      playerId: playerProfile.id,
+    );
+
+    expect(stillOneRunDuel?.playerRunCount, 1);
   });
 
   testWidgets('Restart resets league run submission guard', (

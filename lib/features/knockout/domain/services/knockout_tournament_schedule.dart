@@ -52,7 +52,7 @@ class KnockoutTournamentSchedule {
     // registrationOpensAt <= now <= registrationClosesAt.
     final isInsideRegistrationWindow =
         !now.isBefore(registrationOpensAt) &&
-            !now.isAfter(registrationClosesAt);
+        !now.isAfter(registrationClosesAt);
 
     if (isInsideRegistrationWindow) {
       return KnockoutTournamentStatus.registrationOpen;

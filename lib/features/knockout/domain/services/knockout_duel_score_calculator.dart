@@ -9,6 +9,7 @@ class KnockoutDuelScoreCalculator {
     required List<KnockoutRun> runs,
   }) {
     assert(playerId != '');
+    assert(runs.every((run) => run.score >= 0));
 
     final allRunScores = runs
         .where((run) => run.playerId == playerId)

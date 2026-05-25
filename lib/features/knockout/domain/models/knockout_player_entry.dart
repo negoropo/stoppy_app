@@ -9,11 +9,11 @@ class KnockoutPlayerEntry {
     this.lifetimeRunCount = 0,
     this.lifetimeAverageRunScore = 0,
   }) : assert(playerId != ''),
-        assert(username != ''),
-        assert(tournamentId != ''),
-        assert(entryCostGamePoints >= 0),
-        assert(lifetimeRunCount >= 0),
-        assert(lifetimeAverageRunScore >= 0);
+       assert(username != ''),
+       assert(tournamentId != ''),
+       assert(entryCostGamePoints >= 0),
+       assert(lifetimeRunCount >= 0),
+       assert(lifetimeAverageRunScore >= 0);
 
   final String playerId;
   final String username;
@@ -48,15 +48,11 @@ class KnockoutPlayerEntry {
       username: username ?? this.username,
       tournamentId: tournamentId ?? this.tournamentId,
       registeredAt: registeredAt ?? this.registeredAt,
-      accountCreatedAt:
-      accountCreatedAt ?? this.accountCreatedAt,
-      entryCostGamePoints:
-      entryCostGamePoints ?? this.entryCostGamePoints,
-      lifetimeRunCount:
-      lifetimeRunCount ?? this.lifetimeRunCount,
+      accountCreatedAt: accountCreatedAt ?? this.accountCreatedAt,
+      entryCostGamePoints: entryCostGamePoints ?? this.entryCostGamePoints,
+      lifetimeRunCount: lifetimeRunCount ?? this.lifetimeRunCount,
       lifetimeAverageRunScore:
-      lifetimeAverageRunScore ??
-          this.lifetimeAverageRunScore,
+          lifetimeAverageRunScore ?? this.lifetimeAverageRunScore,
     );
   }
 }

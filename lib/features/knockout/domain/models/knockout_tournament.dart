@@ -22,13 +22,24 @@ class KnockoutTournament {
     this.status = KnockoutTournamentStatus.registrationOpen,
     List<KnockoutPlayerEntry> entries = const [],
     List<KnockoutRound> rounds = const [],
+    List<String> eliminatedPlayerIds = const [],
   }) : assert(id.trim().isNotEmpty),
-        assert(name.trim().isNotEmpty),
-        assert(entryCostGamePoints >= 0),
-        assert(registrationOpensAt.isBefore(registrationClosesAt)),
-        assert(registrationClosesAt.isBefore(startsAt)),
-        entries = UnmodifiableListView(entries),
-        rounds = UnmodifiableListView(rounds);
+       assert(name.trim().isNotEmpty),
+       assert(entryCostGamePoints >= 0),
+       assert(registrationOpensAt.isBefore(registrationClosesAt)),
+       assert(registrationClosesAt.isBefore(startsAt)),
+        assert(
+        entries.map((entry) => entry.playerId).toSet().length == entries.length,
+        ),
+        assert(
+        eliminatedPlayerIds.toSet().length == eliminatedPlayerIds.length,
+        ),
+        assert(
+        rounds.map((round) => round.roundNumber).toSet().length == rounds.length,
+        ),
+       entries = UnmodifiableListView(entries),
+       rounds = UnmodifiableListView(rounds),
+       eliminatedPlayerIds = UnmodifiableListView(eliminatedPlayerIds);
 
   final String id;
   final String name;
@@ -49,13 +60,17 @@ class KnockoutTournament {
   final KnockoutTournamentStatus status;
   final List<KnockoutPlayerEntry> entries;
   final List<KnockoutRound> rounds;
+  final List<String> eliminatedPlayerIds;
 
   bool get isRegistrationOpen {
     return status == KnockoutTournamentStatus.registrationOpen;
   }
 
+  bool get isInProgress => status == KnockoutTournamentStatus.inProgress;
+
   bool get hasStarted {
-    return status == KnockoutTournamentStatus.inProgress;
+    return status == KnockoutTournamentStatus.inProgress ||
+        status == KnockoutTournamentStatus.completed;
   }
 
   bool get isCompleted {
@@ -83,6 +98,7 @@ class KnockoutTournament {
     KnockoutTournamentStatus? status,
     List<KnockoutPlayerEntry>? entries,
     List<KnockoutRound>? rounds,
+    List<String>? eliminatedPlayerIds,
   }) {
     return KnockoutTournament(
       id: id ?? this.id,
@@ -95,6 +111,7 @@ class KnockoutTournament {
       status: status ?? this.status,
       entries: entries ?? this.entries,
       rounds: rounds ?? this.rounds,
+      eliminatedPlayerIds: eliminatedPlayerIds ?? this.eliminatedPlayerIds,
     );
   }
 }
