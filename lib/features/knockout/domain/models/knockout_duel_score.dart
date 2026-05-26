@@ -12,8 +12,8 @@ class KnockoutDuelScore {
        assert(baseScore >= 0),
        assert(countedRunScores.length <= allRunScores.length),
        assert(runCount == allRunScores.length),
-        assert(countedRunScores.every((score) => score >= 0)),
-        assert(allRunScores.every((score) => score >= 0)),
+       assert(countedRunScores.every((score) => score >= 0)),
+       assert(allRunScores.every((score) => score >= 0)),
        countedRunScores = UnmodifiableListView(countedRunScores),
        allRunScores = UnmodifiableListView(allRunScores);
 

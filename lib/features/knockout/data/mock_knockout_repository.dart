@@ -5,6 +5,7 @@ import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_score.d
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_match.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_entry.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_status.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_registration_result.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_round.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
@@ -98,11 +99,72 @@ class MockKnockoutRepository implements KnockoutRepository {
   }
 
   @override
-  Future<void> submitKnockoutRun(KnockoutRun run) async {
+  Future<KnockoutPlayerStatus> fetchPlayerStatus({
+    required String tournamentId,
+    required String playerId,
+  }) async {
+    _refreshTournamentStatus();
+    if (tournamentId != _currentTournament.id) {
+      return const KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.notRegistered,
+      );
+    }
+
+    final entry = _entriesByPlayerId[playerId];
+    if (entry == null) {
+      return const KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.notRegistered,
+      );
+    }
+
+    if (_currentTournament.championPlayerId == playerId) {
+      return const KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.champion,
+      );
+    }
+
+    if (_currentTournament.eliminatedPlayerIds.contains(playerId)) {
+      return const KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.eliminated,
+      );
+    }
+
+    if (_currentTournament.isCompleted) {
+      return const KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.tournamentCompleted,
+      );
+    }
+
+    if (!_currentTournament.hasStarted) {
+      return const KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.registeredWaitingStart,
+      );
+    }
+
+    final duelSnapshot = await fetchActiveDuel(
+      tournamentId: tournamentId,
+      playerId: playerId,
+    );
+    if (duelSnapshot == null) {
+      return const KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.byeWaitingNextRound,
+      );
+    }
+
+    return KnockoutPlayerStatus(
+      state: duelSnapshot.hasBye
+          ? KnockoutPlayerTournamentState.byeWaitingNextRound
+          : KnockoutPlayerTournamentState.activeDuel,
+      duelSnapshot: duelSnapshot,
+    );
+  }
+
+  @override
+  Future<bool> submitKnockoutRun(KnockoutRun run) async {
     _refreshTournamentStatus();
     final round = _currentTournament.currentRound;
     if (round == null || !round.isActive) {
-      return;
+      return false;
     }
 
     KnockoutMatch? match;
@@ -117,19 +179,20 @@ class MockKnockoutRepository implements KnockoutRepository {
         match.roundNumber != run.roundNumber ||
         (match.playerOneId != run.playerId &&
             match.playerTwoId != run.playerId)) {
-      return;
+      return false;
     }
 
     final alreadySubmitted = _runs.any(
-          (existingRun) => existingRun.id == run.id,
+      (existingRun) => existingRun.id == run.id,
     );
 
     if (alreadySubmitted) {
-      return;
+      return false;
     }
 
     _runs.add(run);
     _replaceMatch(round, _scoreMatch(match));
+    return true;
   }
 
   @override
@@ -167,10 +230,14 @@ class MockKnockoutRepository implements KnockoutRepository {
     }.toList();
 
     if (settlement.advancingPlayerIds.length <= 1) {
+      final championPlayerId = settlement.advancingPlayerIds.isEmpty
+          ? null
+          : settlement.advancingPlayerIds.first;
       _currentTournament = _currentTournament.copyWith(
         status: KnockoutTournamentStatus.completed,
         rounds: updatedRounds,
         eliminatedPlayerIds: eliminatedPlayerIds,
+        championPlayerId: championPlayerId,
       );
       return _currentTournament;
     }

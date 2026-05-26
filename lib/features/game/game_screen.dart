@@ -772,10 +772,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             authRepository: authRepository,
             knockoutRepository: knockoutRepository,
             onPlayerProfileUpdated: _handleKnockoutPlayerProfileUpdated,
+            onPlayTournamentRun: _startTournamentRun,
           );
         },
       ),
     );
+  }
+
+  void _startTournamentRun() {
+    Navigator.of(context).pop();
+    _restartRun(runModeOverride: RunMode.tournament);
   }
 
   void _handleKnockoutPlayerProfileUpdated(PlayerProfile playerProfile) {
@@ -808,7 +814,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       ..repeat();
   }
 
-  void _restartRun() {
+  void _restartRun({RunMode? runModeOverride}) {
     _scoreTransitionTimer?.cancel();
     _stopStopTimeCountdown();
     _stopRunDurationTimer();
@@ -824,7 +830,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _lastChangedVariable = null;
     _lastChangeWasIncrease = true;
     _runMode =
-        widget.initialRunMode ?? _defaultRunModeForPlayer(_playerProfile);
+        runModeOverride ??
+        widget.initialRunMode ??
+        _defaultRunModeForPlayer(_playerProfile);
     _runStartedAt = _now();
     _geometry = _geometryForLevelConfig(initialLevelConfig);
     _ballController.duration = initialLevelConfig.ballRotationDuration;
@@ -963,36 +971,38 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
 
     unawaited(
-      knockoutRepository.fetchCurrentTournament().then((tournament) async {
-        final duel = await knockoutRepository.fetchActiveDuel(
-          tournamentId: tournament.id,
-          playerId: playerProfile.id,
-        );
-
-        if (duel == null || duel.hasBye || _knockoutRunSubmitted) {
-          return;
-        }
-
-        _knockoutRunSubmitted = true;
-
-        try {
-          await knockoutRepository.submitKnockoutRun(
-            KnockoutRun(
-              id:
-              '${playerProfile.id}-${duel.match.id}-${runEndedAt.microsecondsSinceEpoch}',
+      knockoutRepository
+          .fetchCurrentTournament()
+          .then((tournament) async {
+            final duel = await knockoutRepository.fetchActiveDuel(
+              tournamentId: tournament.id,
               playerId: playerProfile.id,
-              matchId: duel.match.id,
-              roundNumber: duel.roundNumber,
-              score: finalScore,
-              completedAt: runEndedAt,
-            ),
-          );
-        } catch (_) {
-          _knockoutRunSubmitted = false;
-        }
-      }).catchError((_) {
-        _knockoutRunSubmitted = false;
-      }),
+            );
+
+            if (duel == null || duel.hasBye || _knockoutRunSubmitted) {
+              return;
+            }
+
+            try {
+              final accepted = await knockoutRepository.submitKnockoutRun(
+                KnockoutRun(
+                  id: '${playerProfile.id}-${duel.match.id}-${runEndedAt.microsecondsSinceEpoch}',
+                  playerId: playerProfile.id,
+                  matchId: duel.match.id,
+                  roundNumber: duel.roundNumber,
+                  score: finalScore,
+                  completedAt: runEndedAt,
+                ),
+              );
+
+              _knockoutRunSubmitted = accepted;
+            } catch (_) {
+              _knockoutRunSubmitted = false;
+            }
+          })
+          .catchError((_) {
+            _knockoutRunSubmitted = false;
+          }),
     );
   }
 

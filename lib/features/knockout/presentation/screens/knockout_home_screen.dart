@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../auth/domain/models/player_profile.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
-import '../../domain/models/knockout_duel_snapshot.dart';
 import '../../domain/models/knockout_player_entry.dart';
+import '../../domain/models/knockout_player_status.dart';
 import '../../domain/models/knockout_tournament.dart';
 import '../../domain/repositories/knockout_repository.dart';
 
@@ -14,12 +14,14 @@ class KnockoutHomeScreen extends StatefulWidget {
     required this.authRepository,
     required this.knockoutRepository,
     required this.onPlayerProfileUpdated,
+    this.onPlayTournamentRun,
   });
 
   final PlayerProfile playerProfile;
   final AuthRepository authRepository;
   final KnockoutRepository knockoutRepository;
   final ValueSetter<PlayerProfile> onPlayerProfileUpdated;
+  final VoidCallback? onPlayTournamentRun;
 
   @override
   State<KnockoutHomeScreen> createState() => _KnockoutHomeScreenState();
@@ -29,7 +31,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
   late PlayerProfile _playerProfile;
   KnockoutTournament? _tournament;
   KnockoutPlayerEntry? _playerEntry;
-  KnockoutDuelSnapshot? _duelSnapshot;
+  KnockoutPlayerStatus? _playerStatus;
   bool _isLoading = true;
   bool _isRegistering = false;
   String? _message;
@@ -54,12 +56,10 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
       tournamentId: tournament.id,
       playerId: _playerProfile.id,
     );
-    final duelSnapshot = playerEntry == null
-        ? null
-        : await widget.knockoutRepository.fetchActiveDuel(
-            tournamentId: tournament.id,
-            playerId: _playerProfile.id,
-          );
+    final playerStatus = await widget.knockoutRepository.fetchPlayerStatus(
+      tournamentId: tournament.id,
+      playerId: _playerProfile.id,
+    );
 
     if (!mounted) {
       return;
@@ -68,7 +68,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
     setState(() {
       _tournament = tournament;
       _playerEntry = playerEntry;
-      _duelSnapshot = duelSnapshot;
+      _playerStatus = playerStatus;
       _isLoading = false;
     });
   }
@@ -189,7 +189,8 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                     child: _ActiveDuelSection(
                       tournament: tournament,
                       playerId: _playerProfile.id,
-                      duelSnapshot: _duelSnapshot,
+                      playerStatus: _playerStatus,
+                      onPlayTournamentRun: widget.onPlayTournamentRun,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -225,6 +226,8 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                           child: Text(
                             playerEntry == null
                                 ? 'Register for Knockout'
+                                : tournament.isCompleted
+                                ? 'Tournament completed'
                                 : 'Registered',
                           ),
                         ),
@@ -302,84 +305,67 @@ class _ActiveDuelSection extends StatelessWidget {
   const _ActiveDuelSection({
     required this.tournament,
     required this.playerId,
-    required this.duelSnapshot,
+    required this.playerStatus,
+    this.onPlayTournamentRun,
   });
 
   final KnockoutTournament tournament;
   final String playerId;
-  final KnockoutDuelSnapshot? duelSnapshot;
+  final KnockoutPlayerStatus? playerStatus;
+  final VoidCallback? onPlayTournamentRun;
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = duelSnapshot;
-
-    if (!tournament.hasStarted) {
-      return const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Active Duel', style: _KnockoutText.title),
-          SizedBox(height: 10),
-          Text(
-            'Your duel will appear when the tournament starts.',
-            style: _KnockoutText.body,
-          ),
-        ],
-      );
-    }
-
-    if (snapshot == null) {
-      return const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Active Duel', style: _KnockoutText.title),
-          SizedBox(height: 10),
-          Text(
-            'No active duel found for this round.',
-            style: _KnockoutText.body,
-          ),
-        ],
-      );
-    }
-
-    if (snapshot.hasBye) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Active Duel', style: _KnockoutText.title),
-          const SizedBox(height: 10),
-          Text(
-            'Round ${snapshot.roundNumber}: bye advanced',
-            style: _KnockoutText.body,
-          ),
-          Text(
-            'Round settles: ${_dateText(snapshot.roundEndsAt)}',
-            style: _KnockoutText.body,
-          ),
-        ],
-      );
-    }
+    final status =
+        playerStatus ??
+        const KnockoutPlayerStatus(
+          state: KnockoutPlayerTournamentState.notRegistered,
+        );
+    final snapshot = status.duelSnapshot;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Active Duel', style: _KnockoutText.title),
+        const Text('Tournament Status', style: _KnockoutText.title),
         const SizedBox(height: 10),
-        Text('Round ${snapshot.roundNumber}', style: _KnockoutText.body),
-        Text(
-          'Opponent: ${_opponentLabel(tournament, snapshot.opponentId)}',
-          style: _KnockoutText.body,
-        ),
-        Text(
-          'Your score: ${snapshot.playerScore} (${snapshot.playerRunCount} runs)',
-          style: _KnockoutText.body,
-        ),
-        Text(
-          'Opponent score: ${snapshot.opponentScore} (${snapshot.opponentRunCount} runs)',
-          style: _KnockoutText.body,
-        ),
-        Text(
-          'Round settles: ${_dateText(snapshot.roundEndsAt)}',
-          style: _KnockoutText.body,
+        Text(status.title, style: _KnockoutText.status),
+        const SizedBox(height: 6),
+        Text(status.description, style: _KnockoutText.body),
+        if (snapshot != null) ...[
+          const SizedBox(height: 10),
+          if (snapshot.hasBye) ...[
+            Text(
+              'Round ${snapshot.roundNumber}: bye advanced',
+              style: _KnockoutText.body,
+            ),
+            Text(
+              'Round settles: ${_dateText(snapshot.roundEndsAt)}',
+              style: _KnockoutText.body,
+            ),
+          ] else ...[
+            Text('Round ${snapshot.roundNumber}', style: _KnockoutText.body),
+            Text(
+              'Opponent: ${_opponentLabel(tournament, snapshot.opponentId)}',
+              style: _KnockoutText.body,
+            ),
+            Text(
+              'Your score: ${snapshot.playerScore} (${snapshot.playerRunCount} runs)',
+              style: _KnockoutText.body,
+            ),
+            Text(
+              'Opponent score: ${snapshot.opponentScore} (${snapshot.opponentRunCount} runs)',
+              style: _KnockoutText.body,
+            ),
+            Text(
+              'Round settles: ${_dateText(snapshot.roundEndsAt)}',
+              style: _KnockoutText.body,
+            ),
+          ],
+        ],
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: status.canPlayTournamentRun ? onPlayTournamentRun : null,
+          child: const Text('Play tournament run'),
         ),
       ],
     );
@@ -423,6 +409,13 @@ class _KnockoutText {
     color: Color(0xFFD6DEE8),
     fontSize: 14,
     fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+  );
+
+  static const status = TextStyle(
+    color: Color(0xFF7CC7FF),
+    fontSize: 16,
+    fontWeight: FontWeight.w900,
     letterSpacing: 0,
   );
 

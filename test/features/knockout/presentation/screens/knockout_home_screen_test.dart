@@ -5,6 +5,7 @@ import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
 import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 
 void main() {
@@ -39,6 +40,10 @@ void main() {
     expect(find.text('Tournament starts: 2026-06-01 00:00'), findsOneWidget);
     expect(find.text('You are not registered.'), findsOneWidget);
     expect(find.text('Register for Knockout'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Matches will be generated after registration closes.'),
+      300,
+    );
     expect(
       find.text('Matches will be generated after registration closes.'),
       findsOneWidget,
@@ -177,12 +182,217 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Active Duel'), findsOneWidget);
+    expect(find.text('Tournament Status'), findsOneWidget);
+    expect(find.text('Active duel'), findsOneWidget);
     expect(find.text('Opponent: Opponent'), findsOneWidget);
     expect(find.text('Your score: 700 (1 runs)'), findsOneWidget);
     expect(find.text('Opponent score: 0 (0 runs)'), findsOneWidget);
     expect(find.text('Round settles: 2026-06-01 23:59'), findsOneWidget);
+    expect(find.text('Play tournament run'), findsOneWidget);
   });
+
+  testWidgets('shows registered waiting state before tournament start', (
+    WidgetTester tester,
+  ) async {
+    final repository = MockKnockoutRepository(
+      now: () => DateTime(2026, 5, 22, 9),
+    );
+    final tournament = await repository.fetchCurrentTournament();
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: playerProfile,
+    );
+
+    await _pumpKnockoutHome(tester, repository, playerProfile);
+
+    expect(
+      find.text('Registered - waiting for tournament start'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Your duel will appear when the tournament starts.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows bye waiting state', (WidgetTester tester) async {
+    final repository = MockKnockoutRepository(
+      now: () => DateTime(2026, 5, 22, 9),
+    );
+    final tournament = await repository.fetchCurrentTournament();
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: playerProfile,
+    );
+    await repository.startTournament(tournamentId: tournament.id);
+
+    await _pumpKnockoutHome(tester, repository, playerProfile);
+
+    expect(find.text('Bye - waiting for next round'), findsOneWidget);
+    expect(find.text('Round 1: bye advanced'), findsOneWidget);
+  });
+
+  testWidgets('shows eliminated state', (WidgetTester tester) async {
+    var now = DateTime(2026, 5, 22, 9);
+    final repository = MockKnockoutRepository(now: () => now);
+    final tournament = await repository.fetchCurrentTournament();
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    final opponentProfile = PlayerProfile(
+      id: 'opponent-id',
+      username: 'Opponent',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: playerProfile,
+    );
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: opponentProfile,
+    );
+    final startedTournament = await repository.startTournament(
+      tournamentId: tournament.id,
+    );
+    final duel = await repository.fetchActiveDuel(
+      tournamentId: startedTournament.id,
+      playerId: opponentProfile.id,
+    );
+    await repository.submitKnockoutRun(
+      KnockoutRun(
+        id: 'opponent-run',
+        playerId: opponentProfile.id,
+        matchId: duel!.match.id,
+        roundNumber: duel.roundNumber,
+        score: 1000,
+        completedAt: DateTime(2026, 6, 1, 10),
+      ),
+    );
+    now = DateTime(2026, 6, 1, 23, 59);
+    await repository.settleCurrentRound(tournamentId: startedTournament.id);
+
+    await _pumpKnockoutHome(tester, repository, playerProfile);
+
+    expect(find.text('Eliminated'), findsOneWidget);
+    expect(find.text('Your tournament run has ended.'), findsOneWidget);
+  });
+
+  testWidgets('shows champion state', (WidgetTester tester) async {
+    var now = DateTime(2026, 5, 22, 9);
+    final repository = MockKnockoutRepository(now: () => now);
+    final tournament = await repository.fetchCurrentTournament();
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    final opponentProfile = PlayerProfile(
+      id: 'opponent-id',
+      username: 'Opponent',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: playerProfile,
+    );
+    await repository.registerPlayer(
+      tournament: tournament,
+      playerProfile: opponentProfile,
+    );
+    final startedTournament = await repository.startTournament(
+      tournamentId: tournament.id,
+    );
+    final duel = await repository.fetchActiveDuel(
+      tournamentId: startedTournament.id,
+      playerId: playerProfile.id,
+    );
+    await repository.submitKnockoutRun(
+      KnockoutRun(
+        id: 'winner-run',
+        playerId: playerProfile.id,
+        matchId: duel!.match.id,
+        roundNumber: duel.roundNumber,
+        score: 1000,
+        completedAt: DateTime(2026, 6, 1, 10),
+      ),
+    );
+    now = DateTime(2026, 6, 1, 23, 59);
+    await repository.settleCurrentRound(tournamentId: startedTournament.id);
+
+    await _pumpKnockoutHome(tester, repository, playerProfile);
+
+    expect(find.text('Tournament champion'), findsOneWidget);
+    expect(find.text('You won this monthly Knockout.'), findsOneWidget);
+  });
+
+  testWidgets('keeps non-registered player as not registered after completion', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    final repository = MockKnockoutRepository(
+      initialTournament: KnockoutTournament(
+        id: '2026-06',
+        name: 'June Knockout',
+        entryCostGamePoints: 25,
+        tournamentMonth: DateTime(2026, 6),
+        registrationOpensAt: DateTime(2026, 5),
+        registrationClosesAt: DateTime(2026, 5, 31, 23, 59),
+        startsAt: DateTime(2026, 6),
+        status: KnockoutTournamentStatus.completed,
+      ),
+      now: () => DateTime(2026, 6, 30),
+    );
+
+    await _pumpKnockoutHome(tester, repository, playerProfile);
+
+    expect(find.text('Not registered'), findsOneWidget);
+    expect(
+      find.text('Register while the monthly window is open.'),
+      findsOneWidget,
+    );
+  });
+}
+
+Future<void> _pumpKnockoutHome(
+  WidgetTester tester,
+  MockKnockoutRepository repository,
+  PlayerProfile playerProfile,
+) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: KnockoutHomeScreen(
+        playerProfile: playerProfile,
+        authRepository: _UpdatingAuthRepository(playerProfile),
+        knockoutRepository: repository,
+        onPlayerProfileUpdated: (_) {},
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 class _UpdatingAuthRepository implements AuthRepository {

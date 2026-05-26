@@ -9,7 +9,9 @@ import 'package:stoppy_app/features/knockout/domain/services/knockout_duel_score
 import 'package:stoppy_app/features/knockout/domain/services/knockout_repechage_selector.dart';
 import 'package:stoppy_app/features/knockout/domain/services/knockout_tournament_schedule.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_match.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_status.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_round.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
 
 void main() {
   group('KnockoutTournamentSchedule', () {
@@ -229,6 +231,40 @@ void main() {
         'oldest-account',
         'best-lifetime-average',
       ]);
+    });
+  });
+
+  group('KnockoutPlayerStatus', () {
+    test('only active duel status can play tournament runs', () {
+      final activeStatus = KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.activeDuel,
+        duelSnapshot: KnockoutDuelSnapshot(
+          tournamentId: '2026-06',
+          roundNumber: 1,
+          roundEndsAt: DateTime(2026, 6, 1, 23, 59),
+          playerId: 'player',
+          opponentId: 'opponent',
+          match: const KnockoutMatch(
+            id: 'match-1',
+            roundNumber: 1,
+            status: KnockoutMatchStatus.active,
+            playerOneId: 'player',
+            playerTwoId: 'opponent',
+          ),
+          playerScore: 0,
+          opponentScore: 0,
+          playerRunCount: 0,
+          opponentRunCount: 0,
+        ),
+      );
+      const byeStatus = KnockoutPlayerStatus(
+        state: KnockoutPlayerTournamentState.byeWaitingNextRound,
+      );
+
+      expect(activeStatus.canPlayTournamentRun, isTrue);
+      expect(byeStatus.canPlayTournamentRun, isFalse);
+      expect(activeStatus.title, 'Active duel');
+      expect(byeStatus.title, 'Bye - waiting for next round');
     });
   });
 }

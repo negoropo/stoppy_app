@@ -2,6 +2,7 @@ import '../../../auth/domain/models/player_profile.dart';
 import '../models/knockout_player_entry.dart';
 import '../models/knockout_registration_result.dart';
 import '../models/knockout_duel_snapshot.dart';
+import '../models/knockout_player_status.dart';
 import '../models/knockout_run.dart';
 import '../models/knockout_tournament.dart';
 
@@ -27,7 +28,12 @@ abstract class KnockoutRepository {
     required String playerId,
   });
 
-  Future<void> submitKnockoutRun(KnockoutRun run);
+  Future<KnockoutPlayerStatus> fetchPlayerStatus({
+    required String tournamentId,
+    required String playerId,
+  });
+
+  Future<bool> submitKnockoutRun(KnockoutRun run);
 
   Future<KnockoutTournament> settleCurrentRound({required String tournamentId});
 }

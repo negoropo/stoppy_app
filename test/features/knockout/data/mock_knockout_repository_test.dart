@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_match.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_status.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_registration_result.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
@@ -127,8 +128,11 @@ void main() {
         completedAt: now,
       );
 
-      await repository.submitKnockoutRun(run);
-      await repository.submitKnockoutRun(run);
+      final firstAccepted = await repository.submitKnockoutRun(run);
+      final secondAccepted = await repository.submitKnockoutRun(run);
+
+      expect(firstAccepted, isTrue);
+      expect(secondAccepted, isFalse);
 
       final updatedSnapshot = await repository.fetchActiveDuel(
         tournamentId: startedTournament.id,
@@ -269,6 +273,51 @@ void main() {
       expect(duel!.roundNumber, 1);
       expect(duel.opponentId, isNotNull);
       expect(duel.match.status, KnockoutMatchStatus.active);
+
+      final status = await repository.fetchPlayerStatus(
+        tournamentId: startedTournament.id,
+        playerId: 'player-0',
+      );
+
+      expect(status.state, KnockoutPlayerTournamentState.activeDuel);
+      expect(status.canPlayTournamentRun, isTrue);
+      expect(status.duelSnapshot, isNotNull);
+    });
+
+    test('reports registered waiting status before tournament start', () async {
+      final repository = MockKnockoutRepository(
+        now: () => DateTime(2026, 5, 22),
+      );
+      final tournament = await _registerPlayers(repository, count: 1);
+
+      final status = await repository.fetchPlayerStatus(
+        tournamentId: tournament.id,
+        playerId: 'player-0',
+      );
+
+      expect(
+        status.state,
+        KnockoutPlayerTournamentState.registeredWaitingStart,
+      );
+      expect(status.canPlayTournamentRun, isFalse);
+    });
+
+    test('reports bye waiting status for bye players', () async {
+      final repository = MockKnockoutRepository(
+        now: () => DateTime(2026, 5, 22),
+      );
+      final tournament = await _registerPlayers(repository, count: 1);
+
+      final startedTournament = await repository.startTournament(
+        tournamentId: tournament.id,
+      );
+      final status = await repository.fetchPlayerStatus(
+        tournamentId: startedTournament.id,
+        playerId: 'player-0',
+      );
+
+      expect(status.state, KnockoutPlayerTournamentState.byeWaitingNextRound);
+      expect(status.duelSnapshot?.hasBye, isTrue);
     });
 
     test(
@@ -350,6 +399,51 @@ void main() {
       expect(settledTournament.rounds.length, 2);
       expect(settledTournament.eliminatedPlayerIds, contains(opponentId));
       expect(settledTournament.rounds.last.matches.length, 1);
+
+      final loserStatus = await repository.fetchPlayerStatus(
+        tournamentId: settledTournament.id,
+        playerId: opponentId,
+      );
+
+      expect(loserStatus.state, KnockoutPlayerTournamentState.eliminated);
+    });
+
+    test('rejects knockout run submission after round settlement', () async {
+      var now = DateTime(2026, 5, 22);
+      final repository = MockKnockoutRepository(now: () => now);
+      final tournament = await _registerPlayers(repository, count: 2);
+
+      final startedTournament = await repository.startTournament(
+        tournamentId: tournament.id,
+      );
+      final match = startedTournament.rounds.first.matches.first;
+
+      await repository.submitKnockoutRun(
+        KnockoutRun(
+          id: 'winner-run',
+          playerId: match.playerOneId!,
+          matchId: match.id,
+          roundNumber: match.roundNumber,
+          score: 1000,
+          completedAt: DateTime(2026, 6, 1, 10),
+        ),
+      );
+
+      now = DateTime(2026, 6, 1, 23, 59);
+      await repository.settleCurrentRound(tournamentId: startedTournament.id);
+
+      final accepted = await repository.submitKnockoutRun(
+        KnockoutRun(
+          id: 'late-run',
+          playerId: match.playerOneId!,
+          matchId: match.id,
+          roundNumber: match.roundNumber,
+          score: 2000,
+          completedAt: DateTime(2026, 6, 2, 0, 1),
+        ),
+      );
+
+      expect(accepted, isFalse);
     });
 
     test('uses repechage when a duel has no runs', () async {
@@ -397,6 +491,78 @@ void main() {
       );
       expect(settledTournament.rounds.last.matches.length, 1);
     });
+
+    test('reports champion after final settlement', () async {
+      var now = DateTime(2026, 5, 22);
+      final repository = MockKnockoutRepository(now: () => now);
+      final tournament = await _registerPlayers(repository, count: 2);
+      final startedTournament = await repository.startTournament(
+        tournamentId: tournament.id,
+      );
+      final match = startedTournament.rounds.first.matches.first;
+
+      await repository.submitKnockoutRun(
+        KnockoutRun(
+          id: 'winner',
+          playerId: match.playerOneId!,
+          matchId: match.id,
+          roundNumber: match.roundNumber,
+          score: 1000,
+          completedAt: DateTime(2026, 6, 1, 10),
+        ),
+      );
+
+      now = DateTime(2026, 6, 1, 23, 59);
+      final completedTournament = await repository.settleCurrentRound(
+        tournamentId: startedTournament.id,
+      );
+      final status = await repository.fetchPlayerStatus(
+        tournamentId: completedTournament.id,
+        playerId: match.playerOneId!,
+      );
+
+      expect(completedTournament.championPlayerId, match.playerOneId);
+      expect(status.state, KnockoutPlayerTournamentState.champion);
+    });
+
+    test('keeps non participant as not registered after tournament completion', () async {
+      var now = DateTime(2026, 5, 22);
+      final repository = MockKnockoutRepository(now: () => now);
+      final tournament = await _registerPlayers(repository, count: 2);
+
+      final startedTournament = await repository.startTournament(
+        tournamentId: tournament.id,
+      );
+      final match = startedTournament.rounds.first.matches.first;
+
+      await repository.submitKnockoutRun(
+        KnockoutRun(
+          id: 'winner',
+          playerId: match.playerOneId!,
+          matchId: match.id,
+          roundNumber: match.roundNumber,
+          score: 1000,
+          completedAt: DateTime(2026, 6, 1, 10),
+        ),
+      );
+
+      now = DateTime(2026, 6, 1, 23, 59);
+      final completedTournament = await repository.settleCurrentRound(
+        tournamentId: startedTournament.id,
+      );
+
+      final outsiderStatus = await repository.fetchPlayerStatus(
+        tournamentId: completedTournament.id,
+        playerId: 'outsider-player',
+      );
+
+      expect(
+        outsiderStatus.state,
+        KnockoutPlayerTournamentState.notRegistered,
+      );
+      expect(outsiderStatus.canPlayTournamentRun, isFalse);
+    });
+
   });
 }
 

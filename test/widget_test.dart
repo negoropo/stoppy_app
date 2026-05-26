@@ -202,6 +202,7 @@ void main() {
 
     expect(find.byType(KnockoutHomeScreen), findsOneWidget);
     expect(find.textContaining('Status:'), findsWidgets);
+    await tester.scrollUntilVisible(find.textContaining('Round 1'), 300);
     expect(find.textContaining('Round 1'), findsOneWidget);
     expect(find.textContaining('3 matches'), findsOneWidget);
     expect(find.textContaining('29 byes'), findsOneWidget);

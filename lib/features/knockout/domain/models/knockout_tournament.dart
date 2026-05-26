@@ -3,6 +3,8 @@ import 'dart:collection';
 import 'knockout_player_entry.dart';
 import 'knockout_round.dart';
 
+const Object _unset = Object();
+
 enum KnockoutTournamentStatus {
   registrationOpen,
   registrationClosed,
@@ -23,23 +25,28 @@ class KnockoutTournament {
     List<KnockoutPlayerEntry> entries = const [],
     List<KnockoutRound> rounds = const [],
     List<String> eliminatedPlayerIds = const [],
+    this.championPlayerId,
   }) : assert(id.trim().isNotEmpty),
-       assert(name.trim().isNotEmpty),
-       assert(entryCostGamePoints >= 0),
-       assert(registrationOpensAt.isBefore(registrationClosesAt)),
-       assert(registrationClosesAt.isBefore(startsAt)),
+        assert(name.trim().isNotEmpty),
+        assert(entryCostGamePoints >= 0),
+        assert(registrationOpensAt.isBefore(registrationClosesAt)),
+        assert(registrationClosesAt.isBefore(startsAt)),
         assert(
-        entries.map((entry) => entry.playerId).toSet().length == entries.length,
+        entries.map((entry) => entry.playerId).toSet().length ==
+            entries.length,
+        ),
+        assert(eliminatedPlayerIds.toSet().length == eliminatedPlayerIds.length),
+        assert(
+        rounds.map((round) => round.roundNumber).toSet().length ==
+            rounds.length,
         ),
         assert(
-        eliminatedPlayerIds.toSet().length == eliminatedPlayerIds.length,
+        championPlayerId == null ||
+            entries.any((entry) => entry.playerId == championPlayerId),
         ),
-        assert(
-        rounds.map((round) => round.roundNumber).toSet().length == rounds.length,
-        ),
-       entries = UnmodifiableListView(entries),
-       rounds = UnmodifiableListView(rounds),
-       eliminatedPlayerIds = UnmodifiableListView(eliminatedPlayerIds);
+        entries = UnmodifiableListView(entries),
+        rounds = UnmodifiableListView(rounds),
+        eliminatedPlayerIds = UnmodifiableListView(eliminatedPlayerIds);
 
   final String id;
   final String name;
@@ -61,6 +68,7 @@ class KnockoutTournament {
   final List<KnockoutPlayerEntry> entries;
   final List<KnockoutRound> rounds;
   final List<String> eliminatedPlayerIds;
+  final String? championPlayerId;
 
   bool get isRegistrationOpen {
     return status == KnockoutTournamentStatus.registrationOpen;
@@ -99,6 +107,7 @@ class KnockoutTournament {
     List<KnockoutPlayerEntry>? entries,
     List<KnockoutRound>? rounds,
     List<String>? eliminatedPlayerIds,
+    Object? championPlayerId = _unset,
   }) {
     return KnockoutTournament(
       id: id ?? this.id,
@@ -112,6 +121,9 @@ class KnockoutTournament {
       entries: entries ?? this.entries,
       rounds: rounds ?? this.rounds,
       eliminatedPlayerIds: eliminatedPlayerIds ?? this.eliminatedPlayerIds,
+      championPlayerId: championPlayerId == _unset
+          ? this.championPlayerId
+          : championPlayerId as String?,
     );
   }
 }

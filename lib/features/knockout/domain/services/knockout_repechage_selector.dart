@@ -19,11 +19,11 @@ class KnockoutRepechageSelector {
   }) {
     assert(neededCount >= 0);
     assert(
-    eliminatedCandidates
-        .map((candidate) => candidate.entry.playerId)
-        .toSet()
-        .length ==
-        eliminatedCandidates.length,
+      eliminatedCandidates
+              .map((candidate) => candidate.entry.playerId)
+              .toSet()
+              .length ==
+          eliminatedCandidates.length,
     );
 
     if (neededCount == 0 || eliminatedCandidates.isEmpty) {

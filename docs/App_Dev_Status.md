@@ -3423,3 +3423,196 @@ Session 22 — Knockout Duel UI Polish + Player Tournament Status
 
 Current session: Session 22 — Knockout Duel UI Polish + Player Tournament Status
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 22 — Knockout Duel UI Polish + Player Tournament Status
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Polish the active knockout duel UI and implement clear player-facing tournament status states for the monthly Knockout system.
+
+---
+
+### 📦 Deliverables
+
+* [x] `KnockoutPlayerStatus` domain model implemented
+* [x] Player tournament states implemented:
+  * [x] not registered
+  * [x] registered waiting for tournament start
+  * [x] active duel
+  * [x] bye waiting for next round
+  * [x] eliminated
+  * [x] tournament champion
+  * [x] tournament completed
+* [x] `fetchPlayerStatus()` added to `KnockoutRepository`
+* [x] `fetchPlayerStatus()` implemented in `MockKnockoutRepository`
+* [x] Champion tracking added to `KnockoutTournament`
+* [x] Champion persistence integrated into tournament settlement flow
+* [x] Active duel status UI added to `KnockoutHomeScreen`
+* [x] Opponent details UI added
+* [x] Duel score summary UI added
+* [x] Run count UI added
+* [x] Round settlement time UI added
+* [x] Bye state UI implemented
+* [x] Eliminated state UI implemented
+* [x] Champion state UI implemented
+* [x] Tournament completed state UI implemented
+* [x] Tournament CTA only enabled for active duel state
+* [x] Tournament run flow integrated into `GameScreen`
+* [x] `RunMode.tournament` gameplay flow connected
+* [x] Knockout run submission flow integrated into game finalization
+* [x] Duplicate knockout run submission protection implemented
+* [x] Knockout submission acceptance validation implemented
+* [x] Repository-driven tournament runtime preserved
+* [x] UI kept free of tournament calculation logic
+* [x] Repechage runtime compatibility preserved
+* [x] Bye advancement compatibility preserved
+* [x] Tournament completion semantics corrected for non-participants
+* [x] Defensive `activeDuel` snapshot assertion added
+* [x] Tournament model `copyWith()` null-reset support added
+* [x] Champion consistency assertions added
+* [x] Repository tests expanded
+* [x] Domain tests expanded
+* [x] Widget tests expanded
+* [x] Edge-case tests added:
+  * [x] duplicate knockout submissions
+  * [x] post-settlement submission rejection
+  * [x] outsider completion status
+  * [x] active duel play eligibility
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
+
+---
+
+### 🛠️ Work Done
+
+* Added `KnockoutPlayerStatus`
+* Added player-facing tournament runtime states
+* Added `fetchPlayerStatus()` to `KnockoutRepository`
+* Extended `MockKnockoutRepository` with player status runtime flow
+* Added champion tracking to `KnockoutTournament`
+* Added champion settlement integration
+* Polished `KnockoutHomeScreen`
+* Added Tournament Status section
+* Added opponent runtime details
+* Added duel score UI
+* Added run count UI
+* Added round settlement time UI
+* Added active duel CTA flow
+* Added active duel CTA gating
+* Integrated tournament gameplay flow into `GameScreen`
+* Added `RunMode.tournament` runtime integration
+* Added guarded tournament run submission flow
+* Added knockout submission acceptance validation
+* Hardened tournament runtime assertions
+* Added non-participant completion safeguards
+* Added champion consistency validation
+* Improved tournament model `copyWith()` safety
+* Added repository tests for:
+  * player runtime states
+  * champion flow
+  * outsider completion handling
+  * duplicate submission handling
+  * post-settlement rejection
+* Added domain tests for:
+  * tournament player status
+  * active duel eligibility
+  * runtime assertions
+* Added widget tests for:
+  * active duel state
+  * waiting state
+  * bye state
+  * eliminated state
+  * champion state
+  * completed state
+  * CTA enable/disable behaviour
+* Updated knockout gameplay integration tests
+* Updated `docs/App_Dev_Status.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Knockout runtime remains repository/domain-driven
+* UI layers do not calculate duel winners or tournament advancement
+* `GameScreen` only submits finalized tournament scores
+* Tournament settlement authority remains centralized in repository logic
+* Knockout gameplay remains isolated from tournament progression systems
+* Tournament CTA is only enabled for active duel states
+* Non-participants no longer receive `tournamentCompleted` status
+* Active duel states now require a valid duel snapshot
+* Champion state persists after final settlement
+* Knockout submission flow now validates accepted/rejected submissions
+* Tournament runtime remains deterministic and backend-ready
+* Repechage and bye runtime flows remain fully compatible
+* Tournament scoring intentionally excludes gameplay multipliers and bonus systems
+* No knockout tournament calculations are performed inside widgets
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Player runtime state flow validated
+* [x] Active duel runtime validated
+* [x] Tournament CTA gating validated
+* [x] Champion flow validated
+* [x] Tournament completion semantics validated
+* [x] Duplicate submission rejection validated
+* [x] Post-settlement submission rejection validated
+* [x] Active duel eligibility validated
+* [x] Knockout gameplay integration validated
+* [x] Widget runtime states validated
+
+---
+
+### 📌 Next Session
+
+Session 23 — Knockout Tournament History + Records
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle (completed)
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression (completed)
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status (completed)
+* 🔄 Session 23 — Knockout Tournament History + Records (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 23 — Knockout Tournament History + Records  
+Status: Ready ⏳
