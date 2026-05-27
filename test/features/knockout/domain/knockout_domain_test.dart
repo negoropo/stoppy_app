@@ -9,6 +9,7 @@ import 'package:stoppy_app/features/knockout/domain/services/knockout_duel_score
 import 'package:stoppy_app/features/knockout/domain/services/knockout_repechage_selector.dart';
 import 'package:stoppy_app/features/knockout/domain/services/knockout_tournament_schedule.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_match.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_records.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_status.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_round.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
@@ -266,6 +267,40 @@ void main() {
       expect(activeStatus.title, 'Active duel');
       expect(byeStatus.title, 'Bye - waiting for next round');
     });
+  });
+
+  group('KnockoutPlayerRecords', () {
+    test('creates empty records defensively', () {
+      final records = KnockoutPlayerRecords.empty('player');
+
+      expect(records.playerId, 'player');
+      expect(records.tournamentsPlayed, 0);
+      expect(records.tournamentsWon, 0);
+      expect(records.highestRoundReached, 0);
+      expect(records.bestDuelScore, 0);
+    });
+
+    test('copyWith updates only provided values', () {
+      const records = KnockoutPlayerRecords(
+        playerId: 'player',
+        tournamentsPlayed: 2,
+        tournamentsWon: 1,
+        highestRoundReached: 3,
+        bestDuelScore: 900,
+      );
+
+      final updated = records.copyWith(
+        tournamentsWon: 2,
+        bestDuelScore: 1200,
+      );
+
+      expect(updated.playerId, 'player');
+      expect(updated.tournamentsPlayed, 2);
+      expect(updated.tournamentsWon, 2);
+      expect(updated.highestRoundReached, 3);
+      expect(updated.bestDuelScore, 1200);
+    });
+
   });
 }
 

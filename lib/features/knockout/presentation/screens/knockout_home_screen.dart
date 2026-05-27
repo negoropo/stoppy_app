@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../auth/domain/models/player_profile.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../domain/models/knockout_player_entry.dart';
+import '../../domain/models/knockout_player_records.dart';
 import '../../domain/models/knockout_player_status.dart';
 import '../../domain/models/knockout_tournament.dart';
+import '../../domain/models/knockout_tournament_history_entry.dart';
 import '../../domain/repositories/knockout_repository.dart';
 
 class KnockoutHomeScreen extends StatefulWidget {
@@ -32,6 +34,8 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
   KnockoutTournament? _tournament;
   KnockoutPlayerEntry? _playerEntry;
   KnockoutPlayerStatus? _playerStatus;
+  KnockoutPlayerRecords? _playerRecords;
+  List<KnockoutTournamentHistoryEntry> _playerHistory = const [];
   bool _isLoading = true;
   bool _isRegistering = false;
   String? _message;
@@ -43,6 +47,16 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
     _loadTournamentState();
   }
 
+  @override
+  void didUpdateWidget(covariant KnockoutHomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.playerProfile != widget.playerProfile) {
+      _playerProfile = widget.playerProfile;
+      _loadTournamentState();
+    }
+  }
+
   Future<void> _loadTournamentState({bool clearMessage = true}) async {
     setState(() {
       _isLoading = true;
@@ -52,14 +66,26 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
     });
 
     final tournament = await widget.knockoutRepository.fetchCurrentTournament();
-    final playerEntry = await widget.knockoutRepository.currentEntry(
+
+    final playerEntryFuture = widget.knockoutRepository.currentEntry(
       tournamentId: tournament.id,
       playerId: _playerProfile.id,
     );
-    final playerStatus = await widget.knockoutRepository.fetchPlayerStatus(
+    final playerStatusFuture = widget.knockoutRepository.fetchPlayerStatus(
       tournamentId: tournament.id,
       playerId: _playerProfile.id,
     );
+    final playerRecordsFuture = widget.knockoutRepository.fetchPlayerRecords(
+      _playerProfile.id,
+    );
+    final playerHistoryFuture = widget.knockoutRepository.fetchPlayerHistory(
+      _playerProfile.id,
+    );
+
+    final playerEntry = await playerEntryFuture;
+    final playerStatus = await playerStatusFuture;
+    final playerRecords = await playerRecordsFuture;
+    final playerHistory = await playerHistoryFuture;
 
     if (!mounted) {
       return;
@@ -69,6 +95,8 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
       _tournament = tournament;
       _playerEntry = playerEntry;
       _playerStatus = playerStatus;
+      _playerRecords = playerRecords;
+      _playerHistory = playerHistory;
       _isLoading = false;
     });
   }
@@ -133,6 +161,25 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
     await _loadTournamentState(clearMessage: false);
   }
 
+  String _usernameForPlayerId(String? playerId) {
+    if (playerId == null) {
+      return 'Waiting';
+    }
+
+    final tournament = _tournament;
+    if (tournament == null) {
+      return playerId;
+    }
+
+    for (final entry in tournament.entries) {
+      if (entry.playerId == playerId) {
+        return entry.username;
+      }
+    }
+
+    return playerId;
+  }
+
   @override
   Widget build(BuildContext context) {
     final tournament = _tournament;
@@ -187,9 +234,10 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                   const SizedBox(height: 12),
                   _KnockoutCard(
                     child: _ActiveDuelSection(
-                      tournament: tournament,
-                      playerId: _playerProfile.id,
                       playerStatus: _playerStatus,
+                      opponentUsername: _usernameForPlayerId(
+                        _playerStatus?.duelSnapshot?.opponentId,
+                      ),
                       onPlayTournamentRun: widget.onPlayTournamentRun,
                     ),
                   ),
@@ -233,6 +281,14 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  _KnockoutCard(
+                    child: _KnockoutRecordsSection(records: _playerRecords),
+                  ),
+                  const SizedBox(height: 12),
+                  _KnockoutCard(
+                    child: _KnockoutHistorySection(history: _playerHistory),
                   ),
                   const SizedBox(height: 12),
                   _KnockoutCard(
@@ -303,24 +359,22 @@ class _KnockoutCard extends StatelessWidget {
 
 class _ActiveDuelSection extends StatelessWidget {
   const _ActiveDuelSection({
-    required this.tournament,
-    required this.playerId,
     required this.playerStatus,
+    required this.opponentUsername,
     this.onPlayTournamentRun,
   });
 
-  final KnockoutTournament tournament;
-  final String playerId;
   final KnockoutPlayerStatus? playerStatus;
+  final String opponentUsername;
   final VoidCallback? onPlayTournamentRun;
 
   @override
   Widget build(BuildContext context) {
     final status =
         playerStatus ??
-        const KnockoutPlayerStatus(
-          state: KnockoutPlayerTournamentState.notRegistered,
-        );
+            const KnockoutPlayerStatus(
+              state: KnockoutPlayerTournamentState.notRegistered,
+            );
     final snapshot = status.duelSnapshot;
 
     return Column(
@@ -345,7 +399,7 @@ class _ActiveDuelSection extends StatelessWidget {
           ] else ...[
             Text('Round ${snapshot.roundNumber}', style: _KnockoutText.body),
             Text(
-              'Opponent: ${_opponentLabel(tournament, snapshot.opponentId)}',
+              'Opponent: $opponentUsername',
               style: _KnockoutText.body,
             ),
             Text(
@@ -371,20 +425,6 @@ class _ActiveDuelSection extends StatelessWidget {
     );
   }
 
-  String _opponentLabel(KnockoutTournament tournament, String? opponentId) {
-    if (opponentId == null) {
-      return 'Waiting';
-    }
-
-    for (final entry in tournament.entries) {
-      if (entry.playerId == opponentId) {
-        return entry.username;
-      }
-    }
-
-    return opponentId;
-  }
-
   static String _dateText(DateTime dateTime) {
     final local = dateTime.toLocal();
     final year = local.year.toString().padLeft(4, '0');
@@ -394,6 +434,102 @@ class _ActiveDuelSection extends StatelessWidget {
     final minute = local.minute.toString().padLeft(2, '0');
 
     return '$year-$month-$day $hour:$minute';
+  }
+}
+
+class _KnockoutRecordsSection extends StatelessWidget {
+  const _KnockoutRecordsSection({required this.records});
+
+  final KnockoutPlayerRecords? records;
+
+  @override
+  Widget build(BuildContext context) {
+    final playerRecords = records;
+    if (playerRecords == null || playerRecords.tournamentsPlayed == 0) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Personal Knockout Records', style: _KnockoutText.title),
+          SizedBox(height: 10),
+          Text('No completed Knockout records yet.', style: _KnockoutText.body),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Personal Knockout Records', style: _KnockoutText.title),
+        const SizedBox(height: 10),
+        Text(
+          'Tournaments played: ${playerRecords.tournamentsPlayed}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Tournaments won: ${playerRecords.tournamentsWon}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Highest round reached: ${playerRecords.highestRoundReached}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Best duel score: ${playerRecords.bestDuelScore}',
+          style: _KnockoutText.body,
+        ),
+      ],
+    );
+  }
+}
+
+class _KnockoutHistorySection extends StatelessWidget {
+  const _KnockoutHistorySection({required this.history});
+
+  static const int _visibleHistoryLimit = 10;
+
+  final List<KnockoutTournamentHistoryEntry> history;
+
+  @override
+  Widget build(BuildContext context) {
+    if (history.isEmpty) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tournament History', style: _KnockoutText.title),
+          SizedBox(height: 10),
+          Text('No completed Knockout history yet.', style: _KnockoutText.body),
+        ],
+      );
+    }
+
+    final visibleHistory = history.take(_visibleHistoryLimit).toList();
+    final hiddenCount = history.length - visibleHistory.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Tournament History', style: _KnockoutText.title),
+        const SizedBox(height: 10),
+        ...visibleHistory.map(
+              (entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '${entry.tournamentName}: ${entry.outcome.label} • '
+                  'Round ${entry.finalRoundNumber} • '
+                  'Best score ${entry.bestDuelScore}',
+              style: _KnockoutText.body,
+            ),
+          ),
+        ),
+        if (hiddenCount > 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            '+$hiddenCount older tournament results hidden',
+            style: _KnockoutText.message,
+          ),
+        ],
+      ],
+    );
   }
 }
 

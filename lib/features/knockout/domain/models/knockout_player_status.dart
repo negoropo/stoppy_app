@@ -11,14 +11,12 @@ enum KnockoutPlayerTournamentState {
 }
 
 class KnockoutPlayerStatus {
-  const KnockoutPlayerStatus({
-    required this.state,
-    this.duelSnapshot,
-  }) : assert(
-  state != KnockoutPlayerTournamentState.activeDuel ||
-      duelSnapshot != null,
-  'Active duel status must include a duel snapshot.',
-  );
+  const KnockoutPlayerStatus({required this.state, this.duelSnapshot})
+    : assert(
+        state != KnockoutPlayerTournamentState.activeDuel ||
+            duelSnapshot != null,
+        'Active duel status must include a duel snapshot.',
+      );
 
   final KnockoutPlayerTournamentState state;
   final KnockoutDuelSnapshot? duelSnapshot;

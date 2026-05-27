@@ -7,6 +7,7 @@ import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart'
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
 import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_history_entry.dart';
 
 void main() {
   testWidgets('shows tournament state and registration status', (
@@ -78,8 +79,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Register for Knockout'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
 
     expect(updatedProfile?.gamePoints, 5);
     expect(
@@ -88,6 +88,52 @@ void main() {
     );
     expect(find.text('Registered'), findsOneWidget);
     expect(find.text('Registered at: 2026-05-22 09:30'), findsOneWidget);
+  });
+
+  testWidgets('updates local player profile when parent profile changes', (
+      WidgetTester tester,
+      ) async {
+    final repository = MockKnockoutRepository(
+      now: () => DateTime(2026, 5, 22),
+    );
+
+    final initialProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 25,
+    );
+
+    final updatedProfile = initialProfile.copyWith(gamePoints: 75);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: initialProfile,
+          authRepository: _UpdatingAuthRepository(initialProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your GP: 25'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: updatedProfile,
+          authRepository: _UpdatingAuthRepository(updatedProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your GP: 75'), findsOneWidget);
+    expect(find.text('Your GP: 25'), findsNothing);
   });
 
   testWidgets('insufficient GP shows registration error', (
@@ -292,6 +338,11 @@ void main() {
 
     expect(find.text('Eliminated'), findsOneWidget);
     expect(find.text('Your tournament run has ended.'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Tournament History'), 300);
+    expect(
+      find.text('June Knockout: Eliminated • Round 1 • Best score 0'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows champion state', (WidgetTester tester) async {
@@ -342,39 +393,114 @@ void main() {
 
     expect(find.text('Tournament champion'), findsOneWidget);
     expect(find.text('You won this monthly Knockout.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Personal Knockout Records'),
+      300,
+    );
+    expect(find.text('Tournaments played: 1'), findsOneWidget);
+    expect(find.text('Tournaments won: 1'), findsOneWidget);
+    expect(find.text('Highest round reached: 1'), findsOneWidget);
+    expect(find.text('Best duel score: 1000'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Tournament History'), 300);
+    expect(
+      find.text('June Knockout: Champion • Round 1 • Best score 1000'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('keeps non-registered player as not registered after completion', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('limits visible tournament history entries', (
+      WidgetTester tester,
+      ) async {
     final playerProfile = PlayerProfile(
       id: 'player-id',
       username: 'Tester',
       createdAt: DateTime(2026),
       gamePoints: 50,
     );
+
+    final history = [
+      for (var index = 0; index < 12; index += 1)
+        KnockoutTournamentHistoryEntry(
+          tournamentId: '2026-${index + 1}',
+          tournamentName: 'Tournament $index',
+          tournamentMonth: DateTime(2026, index + 1),
+          playerId: playerProfile.id,
+          outcome: KnockoutTournamentOutcome.eliminated,
+          finalRoundNumber: 1,
+          bestDuelScore: 500 + index,
+          completedAt: DateTime(2026, index + 1, 1),
+        ),
+    ];
+
     final repository = MockKnockoutRepository(
-      initialTournament: KnockoutTournament(
-        id: '2026-06',
-        name: 'June Knockout',
-        entryCostGamePoints: 25,
-        tournamentMonth: DateTime(2026, 6),
-        registrationOpensAt: DateTime(2026, 5),
-        registrationClosesAt: DateTime(2026, 5, 31, 23, 59),
-        startsAt: DateTime(2026, 6),
-        status: KnockoutTournamentStatus.completed,
-      ),
-      now: () => DateTime(2026, 6, 30),
+      initialHistoryByPlayerId: {
+        playerProfile.id: history,
+      },
     );
 
     await _pumpKnockoutHome(tester, repository, playerProfile);
 
-    expect(find.text('Not registered'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Tournament History'),
+      300,
+    );
+
+    for (var index = 2; index < 12; index += 1) {
+      expect(
+        find.text(
+          'Tournament $index: Eliminated • Round 1 • Best score ${500 + index}',
+        ),
+        findsOneWidget,
+      );
+    }
+
     expect(
-      find.text('Register while the monthly window is open.'),
+      find.text('Tournament 0: Eliminated • Round 1 • Best score 500'),
+      findsNothing,
+    );
+    expect(
+      find.text('Tournament 1: Eliminated • Round 1 • Best score 501'),
+      findsNothing,
+    );
+
+    expect(
+      find.text('+2 older tournament results hidden'),
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'keeps non-registered player as not registered after completion',
+    (WidgetTester tester) async {
+      final playerProfile = PlayerProfile(
+        id: 'player-id',
+        username: 'Tester',
+        createdAt: DateTime(2026),
+        gamePoints: 50,
+      );
+      final repository = MockKnockoutRepository(
+        initialTournament: KnockoutTournament(
+          id: '2026-06',
+          name: 'June Knockout',
+          entryCostGamePoints: 25,
+          tournamentMonth: DateTime(2026, 6),
+          registrationOpensAt: DateTime(2026, 5),
+          registrationClosesAt: DateTime(2026, 5, 31, 23, 59),
+          startsAt: DateTime(2026, 6),
+          status: KnockoutTournamentStatus.completed,
+        ),
+        now: () => DateTime(2026, 6, 30),
+      );
+
+      await _pumpKnockoutHome(tester, repository, playerProfile);
+
+      expect(find.text('Not registered'), findsOneWidget);
+      expect(
+        find.text('Register while the monthly window is open.'),
+        findsOneWidget,
+      );
+    },
+  );
 }
 
 Future<void> _pumpKnockoutHome(

@@ -6,6 +6,8 @@ import 'package:stoppy_app/features/knockout/domain/models/knockout_player_statu
 import 'package:stoppy_app/features/knockout/domain/models/knockout_registration_result.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_history_entry.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_records.dart';
 
 void main() {
   group('MockKnockoutRepository', () {
@@ -523,46 +525,167 @@ void main() {
 
       expect(completedTournament.championPlayerId, match.playerOneId);
       expect(status.state, KnockoutPlayerTournamentState.champion);
-    });
 
-    test('keeps non participant as not registered after tournament completion', () async {
-      var now = DateTime(2026, 5, 22);
-      final repository = MockKnockoutRepository(now: () => now);
-      final tournament = await _registerPlayers(repository, count: 2);
-
-      final startedTournament = await repository.startTournament(
-        tournamentId: tournament.id,
+      final championHistory = await repository.fetchPlayerHistory(
+        match.playerOneId!,
       );
-      final match = startedTournament.rounds.first.matches.first;
-
-      await repository.submitKnockoutRun(
-        KnockoutRun(
-          id: 'winner',
-          playerId: match.playerOneId!,
-          matchId: match.id,
-          roundNumber: match.roundNumber,
-          score: 1000,
-          completedAt: DateTime(2026, 6, 1, 10),
-        ),
+      final eliminatedHistory = await repository.fetchPlayerHistory(
+        match.playerTwoId!,
+      );
+      final championRecords = await repository.fetchPlayerRecords(
+        match.playerOneId!,
       );
 
-      now = DateTime(2026, 6, 1, 23, 59);
-      final completedTournament = await repository.settleCurrentRound(
-        tournamentId: startedTournament.id,
-      );
-
-      final outsiderStatus = await repository.fetchPlayerStatus(
-        tournamentId: completedTournament.id,
-        playerId: 'outsider-player',
-      );
-
+      expect(championHistory, hasLength(1));
       expect(
-        outsiderStatus.state,
-        KnockoutPlayerTournamentState.notRegistered,
+        championHistory.single.outcome,
+        KnockoutTournamentOutcome.champion,
       );
-      expect(outsiderStatus.canPlayTournamentRun, isFalse);
+      expect(championHistory.single.finalRoundNumber, 1);
+      expect(championHistory.single.bestDuelScore, 1000);
+      expect(eliminatedHistory, hasLength(1));
+      expect(
+        eliminatedHistory.single.outcome,
+        KnockoutTournamentOutcome.eliminated,
+      );
+      expect(championRecords.tournamentsPlayed, 1);
+      expect(championRecords.tournamentsWon, 1);
+      expect(championRecords.highestRoundReached, 1);
+      expect(championRecords.bestDuelScore, 1000);
     });
 
+    test('returns player history ordered by newest completion first', () async {
+      final repository = MockKnockoutRepository(
+        initialHistoryByPlayerId: {
+          'player-1': [
+            KnockoutTournamentHistoryEntry(
+              tournamentId: '2026-06',
+              tournamentName: 'June Knockout',
+              tournamentMonth: DateTime(2026, 6),
+              playerId: 'player-1',
+              outcome: KnockoutTournamentOutcome.eliminated,
+              finalRoundNumber: 1,
+              bestDuelScore: 500,
+              completedAt: DateTime(2026, 6, 1, 23, 59),
+            ),
+            KnockoutTournamentHistoryEntry(
+              tournamentId: '2026-08',
+              tournamentName: 'August Knockout',
+              tournamentMonth: DateTime(2026, 8),
+              playerId: 'player-1',
+              outcome: KnockoutTournamentOutcome.champion,
+              finalRoundNumber: 3,
+              bestDuelScore: 1200,
+              completedAt: DateTime(2026, 8, 1, 23, 59),
+            ),
+            KnockoutTournamentHistoryEntry(
+              tournamentId: '2026-07',
+              tournamentName: 'July Knockout',
+              tournamentMonth: DateTime(2026, 7),
+              playerId: 'player-1',
+              outcome: KnockoutTournamentOutcome.eliminated,
+              finalRoundNumber: 2,
+              bestDuelScore: 900,
+              completedAt: DateTime(2026, 7, 1, 23, 59),
+            ),
+          ],
+        },
+      );
+
+      final history = await repository.fetchPlayerHistory('player-1');
+
+      expect(history.map((entry) => entry.tournamentId), [
+        '2026-08',
+        '2026-07',
+        '2026-06',
+      ]);
+    });
+
+    test('preserves best duel score when seeded records have a higher score', () async {
+      final repository = MockKnockoutRepository(
+        initialRecordsByPlayerId: {
+          'player-1': const KnockoutPlayerRecords(
+            playerId: 'player-1',
+            tournamentsPlayed: 2,
+            tournamentsWon: 1,
+            highestRoundReached: 3,
+            bestDuelScore: 1200,
+          ),
+        },
+      );
+
+      final records = await repository.fetchPlayerRecords('player-1');
+
+      expect(records.playerId, 'player-1');
+      expect(records.tournamentsPlayed, 2);
+      expect(records.tournamentsWon, 1);
+      expect(records.highestRoundReached, 3);
+      expect(records.bestDuelScore, 1200);
+    });
+
+    test('returns cumulative player records across completed tournaments', () async {
+      final repository = MockKnockoutRepository(
+        initialRecordsByPlayerId: {
+          'player-1': const KnockoutPlayerRecords(
+            playerId: 'player-1',
+            tournamentsPlayed: 1,
+            tournamentsWon: 0,
+            highestRoundReached: 2,
+            bestDuelScore: 900,
+          ),
+        },
+      );
+
+      final records = await repository.fetchPlayerRecords('player-1');
+
+      expect(records.playerId, 'player-1');
+      expect(records.tournamentsPlayed, 1);
+      expect(records.tournamentsWon, 0);
+      expect(records.highestRoundReached, 2);
+      expect(records.bestDuelScore, 900);
+    });
+
+    test(
+      'keeps non participant as not registered after tournament completion',
+      () async {
+        var now = DateTime(2026, 5, 22);
+        final repository = MockKnockoutRepository(now: () => now);
+        final tournament = await _registerPlayers(repository, count: 2);
+
+        final startedTournament = await repository.startTournament(
+          tournamentId: tournament.id,
+        );
+        final match = startedTournament.rounds.first.matches.first;
+
+        await repository.submitKnockoutRun(
+          KnockoutRun(
+            id: 'winner',
+            playerId: match.playerOneId!,
+            matchId: match.id,
+            roundNumber: match.roundNumber,
+            score: 1000,
+            completedAt: DateTime(2026, 6, 1, 10),
+          ),
+        );
+
+        now = DateTime(2026, 6, 1, 23, 59);
+        final completedTournament = await repository.settleCurrentRound(
+          tournamentId: startedTournament.id,
+        );
+
+        final outsiderStatus = await repository.fetchPlayerStatus(
+          tournamentId: completedTournament.id,
+          playerId: 'outsider-player',
+        );
+
+        expect(
+          outsiderStatus.state,
+          KnockoutPlayerTournamentState.notRegistered,
+        );
+        expect(outsiderStatus.canPlayTournamentRun, isFalse);
+        expect(await repository.fetchPlayerHistory('outsider-player'), isEmpty);
+      },
+    );
   });
 }
 
@@ -583,5 +706,5 @@ Future<KnockoutTournament> _registerPlayers(
     );
   }
 
-  return tournament;
+  return repository.fetchCurrentTournament();
 }

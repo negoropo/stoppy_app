@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 22 completed.
+Session 23 completed.
 
-Current session: Session 23 — Knockout Tournament History + Records
+Current session: Session 24 — Knockout Rankings + Hall of Fame
 
 ---
 

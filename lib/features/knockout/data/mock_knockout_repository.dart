@@ -5,11 +5,13 @@ import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_score.d
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_match.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_entry.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_records.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_status.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_registration_result.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_round.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_history_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
 import 'package:stoppy_app/features/knockout/domain/services/knockout_bracket_planner.dart';
 import 'package:stoppy_app/features/knockout/domain/services/knockout_duel_score_calculator.dart';
@@ -25,6 +27,8 @@ class MockKnockoutRepository implements KnockoutRepository {
         const KnockoutDuelScoreCalculator(),
     KnockoutRepechageSelector repechageSelector =
         const KnockoutRepechageSelector(),
+    Map<String, List<KnockoutTournamentHistoryEntry>>? initialHistoryByPlayerId,
+    Map<String, KnockoutPlayerRecords>? initialRecordsByPlayerId,
     Random? random,
     DateTime Function()? now,
   }) : _currentTournament =
@@ -33,9 +37,17 @@ class MockKnockoutRepository implements KnockoutRepository {
        _schedule = schedule,
        _bracketPlanner = bracketPlanner,
        _duelScoreCalculator = duelScoreCalculator,
-       _repechageSelector = repechageSelector,
-       _random = random ?? Random(1),
-       _now = now ?? DateTime.now;
+        _repechageSelector = repechageSelector,
+        _historyByPlayerId = {
+          if (initialHistoryByPlayerId != null)
+            for (final entry in initialHistoryByPlayerId.entries)
+              entry.key: [...entry.value],
+        },
+        _recordsByPlayerId = {
+          ...?initialRecordsByPlayerId,
+        },
+        _random = random ?? Random(1),
+        _now = now ?? DateTime.now;
 
   static const int defaultEntryCostGamePoints =
       KnockoutTournamentSchedule.entryCostGamePoints;
@@ -50,6 +62,9 @@ class MockKnockoutRepository implements KnockoutRepository {
 
   final Map<String, KnockoutPlayerEntry> _entriesByPlayerId = {};
   final List<KnockoutRun> _runs = [];
+  final Map<String, List<KnockoutTournamentHistoryEntry>> _historyByPlayerId;
+  final Map<String, KnockoutPlayerRecords> _recordsByPlayerId;
+  final Set<String> _recordedCompletedTournamentIds = {};
 
   @override
   Future<KnockoutTournament> fetchCurrentTournament() async {
@@ -239,6 +254,7 @@ class MockKnockoutRepository implements KnockoutRepository {
         eliminatedPlayerIds: eliminatedPlayerIds,
         championPlayerId: championPlayerId,
       );
+      _recordCompletedTournamentHistory(completedAt: round.endsAt);
       return _currentTournament;
     }
 
@@ -255,6 +271,20 @@ class MockKnockoutRepository implements KnockoutRepository {
       eliminatedPlayerIds: eliminatedPlayerIds,
     );
     return _currentTournament;
+  }
+
+  @override
+  Future<KnockoutPlayerRecords> fetchPlayerRecords(String playerId) async {
+    return _recordsByPlayerId[playerId] ??
+        KnockoutPlayerRecords.empty(playerId);
+  }
+
+  @override
+  Future<List<KnockoutTournamentHistoryEntry>> fetchPlayerHistory(
+    String playerId,
+  ) async {
+    final history = _historyByPlayerId[playerId] ?? const [];
+    return [...history]..sort((a, b) => b.completedAt.compareTo(a.completedAt));
   }
 
   @override
@@ -631,6 +661,102 @@ class MockKnockoutRepository implements KnockoutRepository {
       return averageComparison;
     }
     return a.accountCreatedAt.compareTo(b.accountCreatedAt);
+  }
+
+  void _recordCompletedTournamentHistory({required DateTime completedAt}) {
+    if (!_currentTournament.isCompleted ||
+        !_recordedCompletedTournamentIds.add(_currentTournament.id)) {
+      return;
+    }
+
+    for (final entry in _currentTournament.entries) {
+      final isChampion = _currentTournament.championPlayerId == entry.playerId;
+      final historyEntry = KnockoutTournamentHistoryEntry(
+        tournamentId: _currentTournament.id,
+        tournamentName: _currentTournament.name,
+        tournamentMonth: _currentTournament.tournamentMonth,
+        playerId: entry.playerId,
+        outcome: isChampion
+            ? KnockoutTournamentOutcome.champion
+            : KnockoutTournamentOutcome.eliminated,
+        finalRoundNumber: _finalRoundNumberFor(entry.playerId),
+        bestDuelScore: _bestDuelScoreFor(entry.playerId),
+        completedAt: completedAt,
+      );
+
+      _historyByPlayerId
+          .putIfAbsent(entry.playerId, () => [])
+          .add(historyEntry);
+      _recordsByPlayerId[entry.playerId] = _updatedRecordsFor(historyEntry);
+    }
+  }
+
+  KnockoutPlayerRecords _updatedRecordsFor(
+    KnockoutTournamentHistoryEntry historyEntry,
+  ) {
+    final currentRecords =
+        _recordsByPlayerId[historyEntry.playerId] ??
+        KnockoutPlayerRecords.empty(historyEntry.playerId);
+
+    return currentRecords.copyWith(
+      tournamentsPlayed: currentRecords.tournamentsPlayed + 1,
+      tournamentsWon:
+          currentRecords.tournamentsWon + (historyEntry.wasChampion ? 1 : 0),
+      highestRoundReached: max(
+        currentRecords.highestRoundReached,
+        historyEntry.finalRoundNumber,
+      ),
+      bestDuelScore: max(
+        currentRecords.bestDuelScore,
+        historyEntry.bestDuelScore,
+      ),
+    );
+  }
+
+  int _finalRoundNumberFor(String playerId) {
+    if (_currentTournament.championPlayerId == playerId) {
+      return _currentTournament.rounds.isEmpty
+          ? 1
+          : _currentTournament.rounds.last.roundNumber;
+    }
+
+    for (final round in _currentTournament.rounds) {
+      final advancedFromRound =
+          round.byePlayerIds.contains(playerId) ||
+          round.matches.any((match) => match.advancingPlayerId == playerId);
+      if (advancedFromRound) {
+        continue;
+      }
+
+      for (final match in round.matches) {
+        final playedInMatch =
+            match.playerOneId == playerId || match.playerTwoId == playerId;
+        final wasRepechageWinner = match.repechageWinnerPlayerId == playerId;
+        if (playedInMatch && !wasRepechageWinner) {
+          return round.roundNumber;
+        }
+      }
+    }
+
+    return _currentTournament.rounds.isEmpty
+        ? 1
+        : _currentTournament.rounds.last.roundNumber;
+  }
+
+  int _bestDuelScoreFor(String playerId) {
+    var bestScore = 0;
+    for (final round in _currentTournament.rounds) {
+      for (final match in round.matches) {
+        if (match.playerOneId == playerId) {
+          bestScore = max(bestScore, match.playerOneScore);
+        }
+        if (match.playerTwoId == playerId) {
+          bestScore = max(bestScore, match.playerTwoScore);
+        }
+      }
+    }
+
+    return bestScore;
   }
 }
 

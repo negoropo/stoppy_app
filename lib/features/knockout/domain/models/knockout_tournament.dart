@@ -27,26 +27,26 @@ class KnockoutTournament {
     List<String> eliminatedPlayerIds = const [],
     this.championPlayerId,
   }) : assert(id.trim().isNotEmpty),
-        assert(name.trim().isNotEmpty),
-        assert(entryCostGamePoints >= 0),
-        assert(registrationOpensAt.isBefore(registrationClosesAt)),
-        assert(registrationClosesAt.isBefore(startsAt)),
-        assert(
-        entries.map((entry) => entry.playerId).toSet().length ==
-            entries.length,
-        ),
-        assert(eliminatedPlayerIds.toSet().length == eliminatedPlayerIds.length),
-        assert(
-        rounds.map((round) => round.roundNumber).toSet().length ==
-            rounds.length,
-        ),
-        assert(
-        championPlayerId == null ||
-            entries.any((entry) => entry.playerId == championPlayerId),
-        ),
-        entries = UnmodifiableListView(entries),
-        rounds = UnmodifiableListView(rounds),
-        eliminatedPlayerIds = UnmodifiableListView(eliminatedPlayerIds);
+       assert(name.trim().isNotEmpty),
+       assert(entryCostGamePoints >= 0),
+       assert(registrationOpensAt.isBefore(registrationClosesAt)),
+       assert(registrationClosesAt.isBefore(startsAt)),
+       assert(
+         entries.map((entry) => entry.playerId).toSet().length ==
+             entries.length,
+       ),
+       assert(eliminatedPlayerIds.toSet().length == eliminatedPlayerIds.length),
+       assert(
+         rounds.map((round) => round.roundNumber).toSet().length ==
+             rounds.length,
+       ),
+       assert(
+         championPlayerId == null ||
+             entries.any((entry) => entry.playerId == championPlayerId),
+       ),
+       entries = UnmodifiableListView(entries),
+       rounds = UnmodifiableListView(rounds),
+       eliminatedPlayerIds = UnmodifiableListView(eliminatedPlayerIds);
 
   final String id;
   final String name;
