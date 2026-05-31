@@ -1,5 +1,6 @@
 import '../../../auth/domain/models/player_profile.dart';
 import '../models/knockout_player_entry.dart';
+import '../models/knockout_hall_of_fame_entry.dart';
 import '../models/knockout_player_records.dart';
 import '../models/knockout_registration_result.dart';
 import '../models/knockout_duel_snapshot.dart';
@@ -44,4 +45,6 @@ abstract class KnockoutRepository {
   Future<List<KnockoutTournamentHistoryEntry>> fetchPlayerHistory(
     String playerId,
   );
+
+  Future<List<KnockoutHallOfFameEntry>> fetchHallOfFame();
 }

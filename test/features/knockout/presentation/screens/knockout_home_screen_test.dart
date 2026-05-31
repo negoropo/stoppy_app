@@ -91,11 +91,9 @@ void main() {
   });
 
   testWidgets('updates local player profile when parent profile changes', (
-      WidgetTester tester,
-      ) async {
-    final repository = MockKnockoutRepository(
-      now: () => DateTime(2026, 5, 22),
-    );
+    WidgetTester tester,
+  ) async {
+    final repository = MockKnockoutRepository(now: () => DateTime(2026, 5, 22));
 
     final initialProfile = PlayerProfile(
       id: 'player-id',
@@ -339,10 +337,7 @@ void main() {
     expect(find.text('Eliminated'), findsOneWidget);
     expect(find.text('Your tournament run has ended.'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Tournament History'), 300);
-    expect(
-      find.text('June Knockout: Eliminated • Round 1 • Best score 0'),
-      findsOneWidget,
-    );
+    expect(find.text('June Knockout: Eliminated • Round 1'), findsOneWidget);
   });
 
   testWidgets('shows champion state', (WidgetTester tester) async {
@@ -398,19 +393,17 @@ void main() {
       300,
     );
     expect(find.text('Tournaments played: 1'), findsOneWidget);
-    expect(find.text('Tournaments won: 1'), findsOneWidget);
-    expect(find.text('Highest round reached: 1'), findsOneWidget);
-    expect(find.text('Best duel score: 1000'), findsOneWidget);
+    expect(find.text('Titles won: 1'), findsOneWidget);
+    expect(find.text('Best tournament result: Champion'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Knockout Hall of Fame'), 300);
+    expect(find.text('Tester: 1 title'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Tournament History'), 300);
-    expect(
-      find.text('June Knockout: Champion • Round 1 • Best score 1000'),
-      findsOneWidget,
-    );
+    expect(find.text('June Knockout: Champion • Round 1'), findsOneWidget);
   });
 
   testWidgets('limits visible tournament history entries', (
-      WidgetTester tester,
-      ) async {
+    WidgetTester tester,
+  ) async {
     final playerProfile = PlayerProfile(
       id: 'player-id',
       username: 'Tester',
@@ -427,46 +420,64 @@ void main() {
           playerId: playerProfile.id,
           outcome: KnockoutTournamentOutcome.eliminated,
           finalRoundNumber: 1,
-          bestDuelScore: 500 + index,
           completedAt: DateTime(2026, index + 1, 1),
         ),
     ];
 
     final repository = MockKnockoutRepository(
+      initialHistoryByPlayerId: {playerProfile.id: history},
+    );
+
+    await _pumpKnockoutHome(tester, repository, playerProfile);
+
+    await tester.scrollUntilVisible(find.text('Tournament History'), 300);
+
+    for (var index = 2; index < 12; index += 1) {
+      expect(
+        find.text('Tournament $index: Eliminated • Round 1'),
+        findsOneWidget,
+      );
+    }
+
+    expect(find.text('Tournament 0: Eliminated • Round 1'), findsNothing);
+    expect(find.text('Tournament 1: Eliminated • Round 1'), findsNothing);
+
+    expect(find.text('+2 older tournament results hidden'), findsOneWidget);
+  });
+
+  testWidgets('shows empty champion-only Hall of Fame', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+
+    final repository = MockKnockoutRepository(
       initialHistoryByPlayerId: {
-        playerProfile.id: history,
+        playerProfile.id: [
+          KnockoutTournamentHistoryEntry(
+            tournamentId: '2026-06',
+            tournamentName: 'June Knockout',
+            tournamentMonth: DateTime(2026, 6),
+            playerId: playerProfile.id,
+            playerUsername: playerProfile.username,
+            outcome: KnockoutTournamentOutcome.eliminated,
+            finalRoundNumber: 1,
+            completedAt: DateTime(2026, 6, 1),
+          ),
+        ],
       },
     );
 
     await _pumpKnockoutHome(tester, repository, playerProfile);
 
-    await tester.scrollUntilVisible(
-      find.text('Tournament History'),
-      300,
-    );
+    await tester.scrollUntilVisible(find.text('Knockout Hall of Fame'), 300);
 
-    for (var index = 2; index < 12; index += 1) {
-      expect(
-        find.text(
-          'Tournament $index: Eliminated • Round 1 • Best score ${500 + index}',
-        ),
-        findsOneWidget,
-      );
-    }
-
-    expect(
-      find.text('Tournament 0: Eliminated • Round 1 • Best score 500'),
-      findsNothing,
-    );
-    expect(
-      find.text('Tournament 1: Eliminated • Round 1 • Best score 501'),
-      findsNothing,
-    );
-
-    expect(
-      find.text('+2 older tournament results hidden'),
-      findsOneWidget,
-    );
+    expect(find.text('No Knockout champions yet.'), findsOneWidget);
+    expect(find.text('Tester: 1 title'), findsNothing);
   });
 
   testWidgets(

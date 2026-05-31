@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 23 completed.
+Session 24 completed.
 
-Current session: Session 24 — Knockout Rankings + Hall of Fame
+Current session: Session 25 — Competitive Profile + Knockout Statistics Polish
 
 ---
 

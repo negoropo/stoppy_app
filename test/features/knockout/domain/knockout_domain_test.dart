@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_entry.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_hall_of_fame_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
 import 'package:stoppy_app/features/knockout/domain/services/knockout_bracket_planner.dart';
@@ -276,31 +277,57 @@ void main() {
       expect(records.playerId, 'player');
       expect(records.tournamentsPlayed, 0);
       expect(records.tournamentsWon, 0);
+      expect(records.titlesWon, 0);
       expect(records.highestRoundReached, 0);
-      expect(records.bestDuelScore, 0);
+      expect(records.bestTournamentResultLabel, 'No completed tournaments');
     });
 
-    test('copyWith updates only provided values', () {
+    test('copyWith updates player tournament results only', () {
       const records = KnockoutPlayerRecords(
         playerId: 'player',
         tournamentsPlayed: 2,
         tournamentsWon: 1,
         highestRoundReached: 3,
-        bestDuelScore: 900,
       );
 
-      final updated = records.copyWith(
-        tournamentsWon: 2,
-        bestDuelScore: 1200,
-      );
+      final updated = records.copyWith(tournamentsWon: 2);
 
       expect(updated.playerId, 'player');
       expect(updated.tournamentsPlayed, 2);
       expect(updated.tournamentsWon, 2);
+      expect(updated.titlesWon, 2);
       expect(updated.highestRoundReached, 3);
-      expect(updated.bestDuelScore, 1200);
+      expect(updated.bestTournamentResultLabel, 'Champion');
     });
 
+    test('describes best tournament result when player has no title', () {
+      const records = KnockoutPlayerRecords(
+        playerId: 'player',
+        tournamentsPlayed: 2,
+        tournamentsWon: 0,
+        highestRoundReached: 3,
+      );
+
+      expect(records.bestTournamentResultLabel, 'Round 3');
+    });
+  });
+
+  group('KnockoutHallOfFameEntry', () {
+    test('formats champion title counts', () {
+      const singleTitle = KnockoutHallOfFameEntry(
+        playerId: 'player-1',
+        displayName: 'Ada',
+        titlesWon: 1,
+      );
+      const multipleTitles = KnockoutHallOfFameEntry(
+        playerId: 'player-2',
+        displayName: 'Ben',
+        titlesWon: 3,
+      );
+
+      expect(singleTitle.titlesLabel, '1 title');
+      expect(multipleTitles.titlesLabel, '3 titles');
+    });
   });
 }
 

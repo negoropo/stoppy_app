@@ -542,7 +542,6 @@ void main() {
         KnockoutTournamentOutcome.champion,
       );
       expect(championHistory.single.finalRoundNumber, 1);
-      expect(championHistory.single.bestDuelScore, 1000);
       expect(eliminatedHistory, hasLength(1));
       expect(
         eliminatedHistory.single.outcome,
@@ -550,8 +549,15 @@ void main() {
       );
       expect(championRecords.tournamentsPlayed, 1);
       expect(championRecords.tournamentsWon, 1);
+      expect(championRecords.titlesWon, 1);
       expect(championRecords.highestRoundReached, 1);
-      expect(championRecords.bestDuelScore, 1000);
+      expect(championRecords.bestTournamentResultLabel, 'Champion');
+
+      final hallOfFame = await repository.fetchHallOfFame();
+      expect(hallOfFame, hasLength(1));
+      expect(hallOfFame.single.playerId, match.playerOneId);
+      expect(hallOfFame.single.displayName, startsWith('Player'));
+      expect(hallOfFame.single.titlesWon, 1);
     });
 
     test('returns player history ordered by newest completion first', () async {
@@ -565,7 +571,6 @@ void main() {
               playerId: 'player-1',
               outcome: KnockoutTournamentOutcome.eliminated,
               finalRoundNumber: 1,
-              bestDuelScore: 500,
               completedAt: DateTime(2026, 6, 1, 23, 59),
             ),
             KnockoutTournamentHistoryEntry(
@@ -575,7 +580,6 @@ void main() {
               playerId: 'player-1',
               outcome: KnockoutTournamentOutcome.champion,
               finalRoundNumber: 3,
-              bestDuelScore: 1200,
               completedAt: DateTime(2026, 8, 1, 23, 59),
             ),
             KnockoutTournamentHistoryEntry(
@@ -585,7 +589,6 @@ void main() {
               playerId: 'player-1',
               outcome: KnockoutTournamentOutcome.eliminated,
               finalRoundNumber: 2,
-              bestDuelScore: 900,
               completedAt: DateTime(2026, 7, 1, 23, 59),
             ),
           ],
@@ -601,7 +604,7 @@ void main() {
       ]);
     });
 
-    test('preserves best duel score when seeded records have a higher score', () async {
+    test('returns seeded player knockout records', () async {
       final repository = MockKnockoutRepository(
         initialRecordsByPlayerId: {
           'player-1': const KnockoutPlayerRecords(
@@ -609,7 +612,6 @@ void main() {
             tournamentsPlayed: 2,
             tournamentsWon: 1,
             highestRoundReached: 3,
-            bestDuelScore: 1200,
           ),
         },
       );
@@ -619,30 +621,97 @@ void main() {
       expect(records.playerId, 'player-1');
       expect(records.tournamentsPlayed, 2);
       expect(records.tournamentsWon, 1);
+      expect(records.titlesWon, 1);
       expect(records.highestRoundReached, 3);
-      expect(records.bestDuelScore, 1200);
+      expect(records.bestTournamentResultLabel, 'Champion');
     });
 
-    test('returns cumulative player records across completed tournaments', () async {
+    test(
+      'returns cumulative player records for non-champion players',
+      () async {
+        final repository = MockKnockoutRepository(
+          initialRecordsByPlayerId: {
+            'player-1': const KnockoutPlayerRecords(
+              playerId: 'player-1',
+              tournamentsPlayed: 1,
+              tournamentsWon: 0,
+              highestRoundReached: 2,
+            ),
+          },
+        );
+
+        final records = await repository.fetchPlayerRecords('player-1');
+
+        expect(records.playerId, 'player-1');
+        expect(records.tournamentsPlayed, 1);
+        expect(records.tournamentsWon, 0);
+        expect(records.titlesWon, 0);
+        expect(records.highestRoundReached, 2);
+        expect(records.bestTournamentResultLabel, 'Round 2');
+      },
+    );
+
+    test('aggregates Hall of Fame champions only by titles won', () async {
       final repository = MockKnockoutRepository(
-        initialRecordsByPlayerId: {
-          'player-1': const KnockoutPlayerRecords(
-            playerId: 'player-1',
-            tournamentsPlayed: 1,
-            tournamentsWon: 0,
-            highestRoundReached: 2,
-            bestDuelScore: 900,
-          ),
+        initialHistoryByPlayerId: {
+          'champion-a': [
+            KnockoutTournamentHistoryEntry(
+              tournamentId: '2026-06',
+              tournamentName: 'June Knockout',
+              tournamentMonth: DateTime(2026, 6),
+              playerId: 'champion-a',
+              playerUsername: 'Ada',
+              outcome: KnockoutTournamentOutcome.champion,
+              finalRoundNumber: 3,
+              completedAt: DateTime(2026, 6, 1, 23, 59),
+            ),
+            KnockoutTournamentHistoryEntry(
+              tournamentId: '2026-07',
+              tournamentName: 'July Knockout',
+              tournamentMonth: DateTime(2026, 7),
+              playerId: 'champion-a',
+              playerUsername: 'Ada',
+              outcome: KnockoutTournamentOutcome.champion,
+              finalRoundNumber: 4,
+              completedAt: DateTime(2026, 7, 1, 23, 59),
+            ),
+          ],
+          'champion-b': [
+            KnockoutTournamentHistoryEntry(
+              tournamentId: '2026-08',
+              tournamentName: 'August Knockout',
+              tournamentMonth: DateTime(2026, 8),
+              playerId: 'champion-b',
+              playerUsername: 'Ben',
+              outcome: KnockoutTournamentOutcome.champion,
+              finalRoundNumber: 3,
+              completedAt: DateTime(2026, 8, 1, 23, 59),
+            ),
+          ],
+          'eliminated-player': [
+            KnockoutTournamentHistoryEntry(
+              tournamentId: '2026-08',
+              tournamentName: 'August Knockout',
+              tournamentMonth: DateTime(2026, 8),
+              playerId: 'eliminated-player',
+              playerUsername: 'Eli',
+              outcome: KnockoutTournamentOutcome.eliminated,
+              finalRoundNumber: 1,
+              completedAt: DateTime(2026, 8, 1, 23, 59),
+            ),
+          ],
         },
       );
 
-      final records = await repository.fetchPlayerRecords('player-1');
+      final hallOfFame = await repository.fetchHallOfFame();
 
-      expect(records.playerId, 'player-1');
-      expect(records.tournamentsPlayed, 1);
-      expect(records.tournamentsWon, 0);
-      expect(records.highestRoundReached, 2);
-      expect(records.bestDuelScore, 900);
+      expect(hallOfFame.map((entry) => entry.playerId), [
+        'champion-a',
+        'champion-b',
+      ]);
+      expect(hallOfFame.first.displayName, 'Ada');
+      expect(hallOfFame.first.titlesWon, 2);
+      expect(hallOfFame.first.titlesLabel, '2 titles');
     });
 
     test(

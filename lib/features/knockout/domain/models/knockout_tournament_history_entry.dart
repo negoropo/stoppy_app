@@ -15,23 +15,22 @@ class KnockoutTournamentHistoryEntry {
     required this.tournamentName,
     required this.tournamentMonth,
     required this.playerId,
+    this.playerUsername,
     required this.outcome,
     required this.finalRoundNumber,
-    required this.bestDuelScore,
     required this.completedAt,
   }) : assert(tournamentId != ''),
        assert(tournamentName != ''),
        assert(playerId != ''),
-       assert(finalRoundNumber > 0),
-       assert(bestDuelScore >= 0);
+       assert(finalRoundNumber > 0);
 
   final String tournamentId;
   final String tournamentName;
   final DateTime tournamentMonth;
   final String playerId;
+  final String? playerUsername;
   final KnockoutTournamentOutcome outcome;
   final int finalRoundNumber;
-  final int bestDuelScore;
   final DateTime completedAt;
 
   bool get wasChampion {

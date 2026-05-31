@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_score.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_hall_of_fame_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_match.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_records.dart';
@@ -37,17 +38,15 @@ class MockKnockoutRepository implements KnockoutRepository {
        _schedule = schedule,
        _bracketPlanner = bracketPlanner,
        _duelScoreCalculator = duelScoreCalculator,
-        _repechageSelector = repechageSelector,
-        _historyByPlayerId = {
-          if (initialHistoryByPlayerId != null)
-            for (final entry in initialHistoryByPlayerId.entries)
-              entry.key: [...entry.value],
-        },
-        _recordsByPlayerId = {
-          ...?initialRecordsByPlayerId,
-        },
-        _random = random ?? Random(1),
-        _now = now ?? DateTime.now;
+       _repechageSelector = repechageSelector,
+       _historyByPlayerId = {
+         if (initialHistoryByPlayerId != null)
+           for (final entry in initialHistoryByPlayerId.entries)
+             entry.key: [...entry.value],
+       },
+       _recordsByPlayerId = {...?initialRecordsByPlayerId},
+       _random = random ?? Random(1),
+       _now = now ?? DateTime.now;
 
   static const int defaultEntryCostGamePoints =
       KnockoutTournamentSchedule.entryCostGamePoints;
@@ -285,6 +284,50 @@ class MockKnockoutRepository implements KnockoutRepository {
   ) async {
     final history = _historyByPlayerId[playerId] ?? const [];
     return [...history]..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+  }
+
+  @override
+  Future<List<KnockoutHallOfFameEntry>> fetchHallOfFame() async {
+    final championHistory = _historyByPlayerId.values
+        .expand((entries) => entries)
+        .where((entry) => entry.wasChampion);
+    final titlesByPlayerId = <String, int>{};
+    final namesByPlayerId = <String, String>{};
+
+    for (final entry in championHistory) {
+      titlesByPlayerId.update(
+        entry.playerId,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+      namesByPlayerId[entry.playerId] = entry.playerUsername ?? entry.playerId;
+    }
+
+    final hallOfFame = [
+      for (final entry in titlesByPlayerId.entries)
+        KnockoutHallOfFameEntry(
+          playerId: entry.key,
+          displayName: namesByPlayerId[entry.key] ?? entry.key,
+          titlesWon: entry.value,
+        ),
+    ];
+
+    // Hall of Fame is champion-only. Sorting by titles first keeps the most
+    // decorated players visible while a deterministic name/id fallback keeps
+    // mock and future backend responses stable for tests.
+    hallOfFame.sort((a, b) {
+      final titlesComparison = b.titlesWon.compareTo(a.titlesWon);
+      if (titlesComparison != 0) {
+        return titlesComparison;
+      }
+      final nameComparison = a.displayName.compareTo(b.displayName);
+      if (nameComparison != 0) {
+        return nameComparison;
+      }
+      return a.playerId.compareTo(b.playerId);
+    });
+
+    return hallOfFame;
   }
 
   @override
@@ -676,11 +719,11 @@ class MockKnockoutRepository implements KnockoutRepository {
         tournamentName: _currentTournament.name,
         tournamentMonth: _currentTournament.tournamentMonth,
         playerId: entry.playerId,
+        playerUsername: entry.username,
         outcome: isChampion
             ? KnockoutTournamentOutcome.champion
             : KnockoutTournamentOutcome.eliminated,
         finalRoundNumber: _finalRoundNumberFor(entry.playerId),
-        bestDuelScore: _bestDuelScoreFor(entry.playerId),
         completedAt: completedAt,
       );
 
@@ -705,10 +748,6 @@ class MockKnockoutRepository implements KnockoutRepository {
       highestRoundReached: max(
         currentRecords.highestRoundReached,
         historyEntry.finalRoundNumber,
-      ),
-      bestDuelScore: max(
-        currentRecords.bestDuelScore,
-        historyEntry.bestDuelScore,
       ),
     );
   }
@@ -741,22 +780,6 @@ class MockKnockoutRepository implements KnockoutRepository {
     return _currentTournament.rounds.isEmpty
         ? 1
         : _currentTournament.rounds.last.roundNumber;
-  }
-
-  int _bestDuelScoreFor(String playerId) {
-    var bestScore = 0;
-    for (final round in _currentTournament.rounds) {
-      for (final match in round.matches) {
-        if (match.playerOneId == playerId) {
-          bestScore = max(bestScore, match.playerOneScore);
-        }
-        if (match.playerTwoId == playerId) {
-          bestScore = max(bestScore, match.playerTwoScore);
-        }
-      }
-    }
-
-    return bestScore;
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../auth/domain/models/player_profile.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../domain/models/knockout_hall_of_fame_entry.dart';
 import '../../domain/models/knockout_player_entry.dart';
 import '../../domain/models/knockout_player_records.dart';
 import '../../domain/models/knockout_player_status.dart';
@@ -36,6 +37,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
   KnockoutPlayerStatus? _playerStatus;
   KnockoutPlayerRecords? _playerRecords;
   List<KnockoutTournamentHistoryEntry> _playerHistory = const [];
+  List<KnockoutHallOfFameEntry> _hallOfFame = const [];
   bool _isLoading = true;
   bool _isRegistering = false;
   String? _message;
@@ -81,11 +83,13 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
     final playerHistoryFuture = widget.knockoutRepository.fetchPlayerHistory(
       _playerProfile.id,
     );
+    final hallOfFameFuture = widget.knockoutRepository.fetchHallOfFame();
 
     final playerEntry = await playerEntryFuture;
     final playerStatus = await playerStatusFuture;
     final playerRecords = await playerRecordsFuture;
     final playerHistory = await playerHistoryFuture;
+    final hallOfFame = await hallOfFameFuture;
 
     if (!mounted) {
       return;
@@ -97,6 +101,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
       _playerStatus = playerStatus;
       _playerRecords = playerRecords;
       _playerHistory = playerHistory;
+      _hallOfFame = hallOfFame;
       _isLoading = false;
     });
   }
@@ -288,6 +293,10 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   _KnockoutCard(
+                    child: _KnockoutHallOfFameSection(entries: _hallOfFame),
+                  ),
+                  const SizedBox(height: 12),
+                  _KnockoutCard(
                     child: _KnockoutHistorySection(history: _playerHistory),
                   ),
                   const SizedBox(height: 12),
@@ -372,9 +381,9 @@ class _ActiveDuelSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final status =
         playerStatus ??
-            const KnockoutPlayerStatus(
-              state: KnockoutPlayerTournamentState.notRegistered,
-            );
+        const KnockoutPlayerStatus(
+          state: KnockoutPlayerTournamentState.notRegistered,
+        );
     final snapshot = status.duelSnapshot;
 
     return Column(
@@ -398,10 +407,7 @@ class _ActiveDuelSection extends StatelessWidget {
             ),
           ] else ...[
             Text('Round ${snapshot.roundNumber}', style: _KnockoutText.body),
-            Text(
-              'Opponent: $opponentUsername',
-              style: _KnockoutText.body,
-            ),
+            Text('Opponent: $opponentUsername', style: _KnockoutText.body),
             Text(
               'Your score: ${snapshot.playerScore} (${snapshot.playerRunCount} runs)',
               style: _KnockoutText.body,
@@ -466,16 +472,49 @@ class _KnockoutRecordsSection extends StatelessWidget {
           style: _KnockoutText.body,
         ),
         Text(
-          'Tournaments won: ${playerRecords.tournamentsWon}',
+          'Titles won: ${playerRecords.titlesWon}',
           style: _KnockoutText.body,
         ),
         Text(
-          'Highest round reached: ${playerRecords.highestRoundReached}',
+          'Best tournament result: ${playerRecords.bestTournamentResultLabel}',
           style: _KnockoutText.body,
         ),
-        Text(
-          'Best duel score: ${playerRecords.bestDuelScore}',
-          style: _KnockoutText.body,
+      ],
+    );
+  }
+}
+
+class _KnockoutHallOfFameSection extends StatelessWidget {
+  const _KnockoutHallOfFameSection({required this.entries});
+
+  final List<KnockoutHallOfFameEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    if (entries.isEmpty) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Knockout Hall of Fame', style: _KnockoutText.title),
+          SizedBox(height: 10),
+          Text('No Knockout champions yet.', style: _KnockoutText.body),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Knockout Hall of Fame', style: _KnockoutText.title),
+        const SizedBox(height: 10),
+        ...entries.map(
+          (entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '${entry.displayName}: ${entry.titlesLabel}',
+              style: _KnockoutText.body,
+            ),
+          ),
         ),
       ],
     );
@@ -511,12 +550,11 @@ class _KnockoutHistorySection extends StatelessWidget {
         const Text('Tournament History', style: _KnockoutText.title),
         const SizedBox(height: 10),
         ...visibleHistory.map(
-              (entry) => Padding(
+          (entry) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               '${entry.tournamentName}: ${entry.outcome.label} • '
-                  'Round ${entry.finalRoundNumber} • '
-                  'Best score ${entry.bestDuelScore}',
+              'Round ${entry.finalRoundNumber}',
               style: _KnockoutText.body,
             ),
           ),
