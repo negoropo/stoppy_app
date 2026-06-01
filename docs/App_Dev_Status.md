@@ -4140,3 +4140,228 @@ Current session: Session 26 — Backend Foundation + Data Persistence Planning
 
 Status: Ready ⏳
 
+---
+
+## 🔄 Session Update
+
+### Session: Session 26 — Backend Foundation + Data Persistence Planning
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Prepare the long-term backend architecture, persistence strategy, API surface, and anti-cheat foundations required to migrate the current mock-first implementation toward a production-ready server-authoritative platform.
+
+---
+
+### 📦 Deliverables
+
+* [x] Backend architecture plan created
+* [x] Custom backend direction finalized
+* [x] PostgreSQL persistence strategy documented
+* [x] REST API strategy documented
+* [x] Client vs server responsibilities documented
+* [x] Server-authoritative rules documented
+* [x] Backend architecture section added to Architecture.md
+* [x] Anti-cheat plan created
+* [x] Client trust boundaries documented
+* [x] Future validation strategy documented
+* [x] Settlement protection rules documented
+* [x] Replay/event-log strategy documented
+* [x] Persistence mapping created
+* [x] League persistence requirements documented
+* [x] Knockout persistence requirements documented
+* [x] Hall of Fame persistence requirements documented
+* [x] Future API plan created
+* [x] Auth endpoints documented
+* [x] Player endpoints documented
+* [x] League endpoints documented
+* [x] Knockout endpoints documented
+* [x] Gameplay submission endpoints documented
+* [x] Store/economy endpoints documented
+* [x] Internal settlement endpoints documented
+* [x] Backend implementation intentionally deferred
+* [x] No gameplay changes introduced
+* [x] No League runtime changes introduced
+* [x] No Knockout runtime changes introduced
+* [x] flutter analyze passed
+* [x] flutter test passed (208 tests)
+
+---
+
+### 🛠️ Work Done
+
+* Created `docs/Backend_Plan.md`
+* Defined target architecture:
+
+  * Flutter Client
+  * Custom Backend API
+  * PostgreSQL
+  * REST API
+  * Server-authoritative competitive logic
+
+* Documented client responsibilities:
+
+  * UI
+  * local rendering
+  * input collection
+  * temporary state
+
+* Documented server responsibilities:
+
+  * authentication
+  * GP economy
+  * purchases
+  * league participation
+  * league settlement
+  * knockout lifecycle
+  * Hall of Fame
+  * achievements
+  * run validation
+  * anti-cheat validation
+
+* Defined authoritative ownership for:
+
+  * GP balances
+  * purchases
+  * league entry
+  * league rankings
+  * league settlements
+  * knockout registration
+  * knockout duel results
+  * knockout advancement
+  * Hall of Fame
+  * competitive achievements
+
+* Updated `docs/Architecture.md`
+
+  * Added future backend architecture section
+  * Preserved repository-contract architecture
+  * Preserved mock repositories for testing
+  * Documented backend repository replacement strategy
+
+* Created `docs/Anti_Cheat_Plan.md`
+
+  * Defined client-not-trusted model
+  * Documented run validation requirements
+  * Documented PP progression validation
+  * Documented tier progression validation
+  * Documented duplicate submission protection
+  * Documented settlement authority requirements
+  * Added replay/event-log strategy
+
+* Created `docs/Persistence_Map.md`
+
+  * Mapped PlayerProfile persistence
+  * Mapped League persistence
+  * Mapped Knockout persistence
+  * Mapped Hall of Fame persistence
+  * Defined future PostgreSQL ownership
+  * Documented validation requirements per entity
+
+* Created `docs/API_Plan.md`
+
+  * Auth endpoints
+  * Player endpoints
+  * League endpoints
+  * Knockout endpoints
+  * Gameplay submission endpoints
+  * Store/economy endpoints
+  * Internal settlement endpoints
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Firebase is no longer the recommended backend direction
+* Custom backend is the official target architecture
+* PostgreSQL is the planned primary database
+* REST API is the planned first integration layer
+* Competitive state must remain server-authoritative
+* Mock repositories remain the current runtime implementation
+* Repository contracts remain the migration boundary
+* UI remains isolated from backend implementation details
+* League and Knockout rules remain unchanged
+* Anti-cheat validation is planned but not yet implemented
+* Replay/event-log storage remains a future capability
+* No networking layer was introduced during this session
+* No persistence layer was implemented during this session
+
+---
+
+### 🧪 Validation
+
+* [x] Backend architecture documentation reviewed
+* [x] Anti-cheat documentation reviewed
+* [x] Persistence mapping reviewed
+* [x] API plan reviewed
+* [x] Architecture documentation updated
+* [x] No runtime behaviour changed
+* [x] No gameplay behaviour changed
+* [x] No league calculations changed
+* [x] No knockout calculations changed
+* [x] flutter analyze passed
+* [x] flutter test passed (208 tests)
+
+---
+
+### 📌 Next Session
+
+Session 27 — Backend Repository Contracts Preparation
+
+Planned focus:
+
+* [ ] DTO architecture
+* [ ] API response models
+* [ ] Serialization strategy
+* [ ] BackendAuthRepository preparation
+* [ ] BackendLeagueRepository preparation
+* [ ] BackendKnockoutRepository preparation
+* [ ] Result/error model standardization
+* [ ] Mock → Backend migration path preparation
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle (completed)
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression (completed)
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status (completed)
+* ✅ Session 23 — Knockout Tournament History + Records (completed)
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish (completed)
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish (completed)
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning (completed)
+* 🔄 Session 27 — Backend Repository Contracts Preparation (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 27 — Backend Repository Contracts Preparation
+
+Status: Ready ⏳

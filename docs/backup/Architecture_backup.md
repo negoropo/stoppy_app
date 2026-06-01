@@ -29,19 +29,20 @@ A arquitetura é desenhada para garantir:
 * Android Studio
 * Xcode (iOS)
 
-### Backend
+### Backend (proposta inicial)
 
-* Custom backend
-* REST API
-* Server-authoritative competitive logic
+* Node.js / TypeScript ou alternativa equivalente
+* API REST (ou gRPC numa fase futura)
 
 ### Base de Dados
 
 * PostgreSQL (relacional)
+  ou
+* Firestore (NoSQL, mais rápido de implementar)
 
 ### Serviços adicionais
 
-* Autenticação custom
+* Autenticação (Firebase Auth ou custom)
 * Analytics
 * Crash reporting
 
@@ -370,46 +371,4 @@ Ordem recomendada:
 * Simplicidade inicial → complexidade controlada
 * Tudo validado no backend
 
----
-
-## 21. Future Backend Architecture
-
-The target backend architecture is a custom backend with a PostgreSQL database and REST API. Firebase will not be used as the primary backend.
-
-### Repository Contracts
-
-* Repository contracts remain unchanged.
-* Mock repositories remain available for tests.
-* Backend repositories will replace mocks.
-* UI must never depend on backend implementation details.
-
-The app should continue to depend on domain-facing repository contracts. Production implementations can call REST endpoints, while tests and local development can keep using mock repositories.
-
-### Domain Logic
-
-* Domain logic should stay reusable where possible.
-* Client-side domain logic may support UI previews, local feedback, and deterministic tests.
-* Competitive validation becomes server-authoritative.
-
-Reusable domain logic is still useful, but any result affecting economy, rankings, league state, knockout progression, Hall of Fame, or competitive achievements must be confirmed by the backend.
-
-### Server Authority
-
-The future backend must be authoritative for:
-
-* Authentication
-* GP balance
-* Purchases
-* League entry
-* League rankings
-* League settlement
-* Knockout registration
-* Knockout duel results
-* Knockout advancement
-* Hall of Fame
-* Competitive achievements
-* Run validation
-* Anti-cheat validation
-
-The Flutter client is not trusted. It collects inputs, renders animation, displays temporary state, and submits run claims to the backend for validation.
 
