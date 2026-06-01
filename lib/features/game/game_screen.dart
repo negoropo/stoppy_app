@@ -772,6 +772,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             authRepository: authRepository,
             knockoutRepository: knockoutRepository,
             onPlayerProfileUpdated: _handleKnockoutPlayerProfileUpdated,
+            leagueRepository: widget.leagueRepository,
             onPlayTournamentRun: _startTournamentRun,
           );
         },

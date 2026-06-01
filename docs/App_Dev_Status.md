@@ -3811,8 +3811,6 @@ Status: Ready ⏳
 
 ---
 
-<<File name="Pasted text.txt">>
-
 ## 🔄 Session Update
 
 ### Session: Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
@@ -3956,6 +3954,189 @@ Session 25 — Competitive Profile + Knockout Statistics Polish
 ### 🧭 Current State
 
 Current session: Session 25 — Competitive Profile + Knockout Statistics Polish
+
+Status: Ready ⏳
+
+---
+
+Claro — aqui está a atualização da **Session 25** no mesmo formato do ficheiro anterior.
+
+## 🔄 Session Update
+
+### Session: Session 25 — Competitive Profile + Knockout Statistics Polish
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Expand player-facing competitive statistics by improving Knockout personal stats, polishing Hall of Fame champion entries, and introducing a combined competitive achievements view for League and Knockout.
+
+---
+
+### 📦 Deliverables
+
+* [x] Knockout player records expanded
+* [x] Total duels played tracking implemented
+* [x] Total duels won tracking implemented
+* [x] Duel win percentage implemented
+* [x] Tournaments participated tracking implemented
+* [x] Best round reached tracking implemented
+* [x] Repechage advancement excluded from duel wins
+* [x] Hall of Fame champion-only behaviour preserved
+* [x] Hall of Fame tournament win months/years added
+* [x] Hall of Fame title month aggregation implemented
+* [x] Hall of Fame title month ordering made deterministic
+* [x] Hall of Fame UI updated with champion name, title count and won months
+* [x] `DateTimeFormatter` utility added
+* [x] Domain presentation labels removed where appropriate
+* [x] League achievements model implemented
+* [x] Best division reached tracking implemented
+* [x] Promotions count implemented
+* [x] Relegations count implemented
+* [x] League achievements repository projection added
+* [x] Competitive Achievements UI section implemented
+* [x] League and Knockout achievements shown separately in one section
+* [x] `LeagueRepository` passed into `KnockoutHomeScreen`
+* [x] Knockout UI kept repository/domain-driven
+* [x] Tests updated for records, Hall of Fame and achievements
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
+
+---
+
+### 🛠️ Work Done
+
+* Expanded `KnockoutPlayerRecords` with:
+
+  * tournaments played
+  * tournaments won
+  * highest round reached
+  * total duels played
+  * total duels won
+  * duel win percentage
+* Updated Knockout records aggregation in `MockKnockoutRepository`
+* Ensured repechage advancement does not count as a direct duel win
+* Updated Hall of Fame entries to store won tournament months
+* Preserved champion-only Hall of Fame aggregation
+* Added deterministic title month storage and validation
+* Removed UI labels from Hall of Fame domain model
+* Added shared `DateTimeFormatter`
+* Updated `KnockoutHomeScreen` to format dates/months in the UI layer
+* Added `PlayerLeagueAchievements`
+* Added `fetchPlayerAchievements()` to `LeagueRepository`
+* Implemented League achievements projection in `MockLeagueRepository`
+* Added Competitive Achievements section to Knockout UI
+* Displayed League achievements:
+
+  * best division reached
+  * promotions
+  * relegations
+* Displayed Knockout achievements:
+
+  * best round reached
+  * tournaments participated
+  * duel win percentage
+  * total duels played
+* Updated domain tests
+* Updated repository tests
+* Updated widget tests
+* Removed obsolete references to domain presentation labels
+
+---
+
+### ⚠️ Notes / Decisions
+
+* No Knockout rewards were implemented
+* No GP prizes were implemented
+* No ranking points were implemented
+* No seasonal ranking ladders were implemented
+* No new economy system was introduced
+* Hall of Fame remains champion-only
+* Hall of Fame remains repository-driven
+* Competitive achievements are repository/domain-driven
+* UI performs formatting only and does not calculate competitive statistics
+* League and Knockout achievements remain separate but visible together
+* Repechage advancement is not counted as a duel win
+* Backend-ready mock-first architecture preserved
+
+---
+
+### 🧪 Validation
+
+* [x] flutter analyze
+* [x] flutter test
+* [x] Knockout expanded records validated
+* [x] Duel win percentage validated
+* [x] Repechage win exclusion validated
+* [x] Hall of Fame champion-only filtering validated
+* [x] Hall of Fame title month aggregation validated
+* [x] Hall of Fame deterministic ordering validated
+* [x] League achievements projection validated
+* [x] Competitive Achievements UI validated
+* [x] Date formatting utility validated
+* [x] Removed domain label references validated
+* [x] Existing Knockout runtime compatibility preserved
+* [x] Existing League settlement compatibility preserved
+
+---
+
+### 📌 Next Session
+
+Session 26 — Backend Foundation + Data Persistence Planning
+
+Suggested focus:
+
+* [ ] Define backend architecture direction
+* [ ] Decide Firebase vs custom backend
+* [ ] Map current repositories to backend contracts
+* [ ] Identify authoritative server-side validations
+* [ ] Plan persistence for player profiles
+* [ ] Plan persistence for League state
+* [ ] Plan persistence for Knockout tournaments
+* [ ] Plan anti-cheat validation boundaries
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle (completed)
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression (completed)
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status (completed)
+* ✅ Session 23 — Knockout Tournament History + Records (completed)
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish (completed)
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish (completed)
+* 🔄 Session 26 — Backend Foundation + Data Persistence Planning (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 26 — Backend Foundation + Data Persistence Planning
 
 Status: Ready ⏳
 

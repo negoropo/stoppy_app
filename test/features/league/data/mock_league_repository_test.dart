@@ -390,6 +390,20 @@ void main() {
           (await repository.currentEntry('player-9'))?.hasReservedSlot,
           isTrue,
         );
+
+        final promotedAchievements = await repository.fetchPlayerAchievements(
+          'player-10',
+        );
+        final relegatedAchievements = await repository.fetchPlayerAchievements(
+          'player-9',
+        );
+
+        expect(promotedAchievements.bestDivisionReached, 1);
+        expect(promotedAchievements.promotions, 1);
+        expect(promotedAchievements.relegations, 0);
+        expect(relegatedAchievements.bestDivisionReached, 1);
+        expect(relegatedAchievements.promotions, 0);
+        expect(relegatedAchievements.relegations, 1);
       },
     );
 

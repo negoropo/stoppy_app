@@ -18,6 +18,7 @@ import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.da
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
 import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
 import 'package:stoppy_app/features/league/domain/models/league_season_settlement_result.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_achievements.dart';
 import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
@@ -945,6 +946,13 @@ class _FakeLeagueRepository implements LeagueRepository {
   @override
   Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId) async {
     return PlayerLeagueRecords.empty(playerId);
+  }
+
+  @override
+  Future<PlayerLeagueAchievements> fetchPlayerAchievements(
+    String playerId,
+  ) async {
+    return PlayerLeagueAchievements.empty(playerId);
   }
 
   @override

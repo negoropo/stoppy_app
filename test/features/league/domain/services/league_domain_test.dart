@@ -4,6 +4,7 @@ import 'package:stoppy_app/features/league/domain/models/league_division_settlem
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_achievements.dart';
 import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
@@ -17,6 +18,28 @@ import 'package:stoppy_app/features/league/domain/services/weekly_league_score_c
 import 'package:stoppy_app/features/league/domain/services/weekly_league_history_generator.dart';
 
 void main() {
+  group('PlayerLeagueAchievements', () {
+    test('creates empty achievements defensively', () {
+      final achievements = PlayerLeagueAchievements.empty('p1');
+
+      expect(achievements.playerId, 'p1');
+      expect(achievements.bestDivisionReached, isNull);
+      expect(achievements.promotions, 0);
+      expect(achievements.relegations, 0);
+    });
+
+    test('formats best division reached', () {
+      const achievements = PlayerLeagueAchievements(
+        playerId: 'p1',
+        bestDivisionReached: 2,
+        promotions: 3,
+        relegations: 1,
+      );
+
+      expect(achievements.bestDivisionReached, 2);
+    });
+  });
+
   group('PlayerLeagueRecordsCalculator', () {
     const calculator = PlayerLeagueRecordsCalculator();
 

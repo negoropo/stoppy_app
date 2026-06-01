@@ -293,6 +293,7 @@ class MockKnockoutRepository implements KnockoutRepository {
         .where((entry) => entry.wasChampion);
     final titlesByPlayerId = <String, int>{};
     final namesByPlayerId = <String, String>{};
+    final titleMonthsByPlayerId = <String, List<DateTime>>{};
 
     for (final entry in championHistory) {
       titlesByPlayerId.update(
@@ -301,6 +302,9 @@ class MockKnockoutRepository implements KnockoutRepository {
         ifAbsent: () => 1,
       );
       namesByPlayerId[entry.playerId] = entry.playerUsername ?? entry.playerId;
+      titleMonthsByPlayerId
+          .putIfAbsent(entry.playerId, () => [])
+          .add(entry.tournamentMonth);
     }
 
     final hallOfFame = [
@@ -309,6 +313,8 @@ class MockKnockoutRepository implements KnockoutRepository {
           playerId: entry.key,
           displayName: namesByPlayerId[entry.key] ?? entry.key,
           titlesWon: entry.value,
+          wonTournamentMonths: [...?titleMonthsByPlayerId[entry.key]]
+            ..sort((a, b) => b.compareTo(a)),
         ),
     ];
 
@@ -714,6 +720,7 @@ class MockKnockoutRepository implements KnockoutRepository {
 
     for (final entry in _currentTournament.entries) {
       final isChampion = _currentTournament.championPlayerId == entry.playerId;
+      final duelStats = _duelStatsFor(entry.playerId);
       final historyEntry = KnockoutTournamentHistoryEntry(
         tournamentId: _currentTournament.id,
         tournamentName: _currentTournament.name,
@@ -730,13 +737,17 @@ class MockKnockoutRepository implements KnockoutRepository {
       _historyByPlayerId
           .putIfAbsent(entry.playerId, () => [])
           .add(historyEntry);
-      _recordsByPlayerId[entry.playerId] = _updatedRecordsFor(historyEntry);
+      _recordsByPlayerId[entry.playerId] = _updatedRecordsFor(
+        historyEntry,
+        duelStats: duelStats,
+      );
     }
   }
 
   KnockoutPlayerRecords _updatedRecordsFor(
-    KnockoutTournamentHistoryEntry historyEntry,
-  ) {
+    KnockoutTournamentHistoryEntry historyEntry, {
+    required _DuelStats duelStats,
+  }) {
     final currentRecords =
         _recordsByPlayerId[historyEntry.playerId] ??
         KnockoutPlayerRecords.empty(historyEntry.playerId);
@@ -749,6 +760,8 @@ class MockKnockoutRepository implements KnockoutRepository {
         currentRecords.highestRoundReached,
         historyEntry.finalRoundNumber,
       ),
+      totalDuelsPlayed: currentRecords.totalDuelsPlayed + duelStats.played,
+      totalDuelsWon: currentRecords.totalDuelsWon + duelStats.won,
     );
   }
 
@@ -781,6 +794,42 @@ class MockKnockoutRepository implements KnockoutRepository {
         ? 1
         : _currentTournament.rounds.last.roundNumber;
   }
+
+  _DuelStats _duelStatsFor(String playerId) {
+    var played = 0;
+    var won = 0;
+
+    for (final round in _currentTournament.rounds) {
+      for (final match in round.matches) {
+        final playedInMatch =
+            match.playerOneId == playerId || match.playerTwoId == playerId;
+        if (!playedInMatch || match.status != KnockoutMatchStatus.completed) {
+          continue;
+        }
+
+        // Duel stats are recorded from settled matches only. This keeps client
+        // UI aligned with future backend validation: a run submitted during an
+        // active day does not become a permanent competitive record until that
+        // duel has been settled.
+        played += 1;
+
+// Repechage advancement does not count as a duel win.
+// It only means the player advanced as a replacement candidate.
+        if (match.winnerPlayerId == playerId) {
+          won += 1;
+        }
+      }
+    }
+
+    return _DuelStats(played: played, won: won);
+  }
+}
+
+class _DuelStats {
+  const _DuelStats({required this.played, required this.won});
+
+  final int played;
+  final int won;
 }
 
 class _RoundSettlement {

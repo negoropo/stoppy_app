@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../auth/domain/models/player_profile.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../../league/domain/models/player_league_achievements.dart';
+import '../../../league/domain/repositories/league_repository.dart';
 import '../../domain/models/knockout_hall_of_fame_entry.dart';
 import '../../domain/models/knockout_player_entry.dart';
 import '../../domain/models/knockout_player_records.dart';
@@ -9,6 +11,7 @@ import '../../domain/models/knockout_player_status.dart';
 import '../../domain/models/knockout_tournament.dart';
 import '../../domain/models/knockout_tournament_history_entry.dart';
 import '../../domain/repositories/knockout_repository.dart';
+import '../../../../core/utils/date_time_formatter.dart';
 
 class KnockoutHomeScreen extends StatefulWidget {
   const KnockoutHomeScreen({
@@ -17,6 +20,7 @@ class KnockoutHomeScreen extends StatefulWidget {
     required this.authRepository,
     required this.knockoutRepository,
     required this.onPlayerProfileUpdated,
+    this.leagueRepository,
     this.onPlayTournamentRun,
   });
 
@@ -24,6 +28,7 @@ class KnockoutHomeScreen extends StatefulWidget {
   final AuthRepository authRepository;
   final KnockoutRepository knockoutRepository;
   final ValueSetter<PlayerProfile> onPlayerProfileUpdated;
+  final LeagueRepository? leagueRepository;
   final VoidCallback? onPlayTournamentRun;
 
   @override
@@ -36,6 +41,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
   KnockoutPlayerEntry? _playerEntry;
   KnockoutPlayerStatus? _playerStatus;
   KnockoutPlayerRecords? _playerRecords;
+  PlayerLeagueAchievements? _leagueAchievements;
   List<KnockoutTournamentHistoryEntry> _playerHistory = const [];
   List<KnockoutHallOfFameEntry> _hallOfFame = const [];
   bool _isLoading = true;
@@ -84,12 +90,18 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
       _playerProfile.id,
     );
     final hallOfFameFuture = widget.knockoutRepository.fetchHallOfFame();
+    final leagueAchievementsFuture =
+        widget.leagueRepository?.fetchPlayerAchievements(_playerProfile.id) ??
+        Future<PlayerLeagueAchievements>.value(
+          PlayerLeagueAchievements.empty(_playerProfile.id),
+        );
 
     final playerEntry = await playerEntryFuture;
     final playerStatus = await playerStatusFuture;
     final playerRecords = await playerRecordsFuture;
     final playerHistory = await playerHistoryFuture;
     final hallOfFame = await hallOfFameFuture;
+    final leagueAchievements = await leagueAchievementsFuture;
 
     if (!mounted) {
       return;
@@ -100,6 +112,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
       _playerEntry = playerEntry;
       _playerStatus = playerStatus;
       _playerRecords = playerRecords;
+      _leagueAchievements = leagueAchievements;
       _playerHistory = playerHistory;
       _hallOfFame = hallOfFame;
       _isLoading = false;
@@ -218,11 +231,11 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                           style: _KnockoutText.body,
                         ),
                         Text(
-                          'Registration closes: ${_dateText(tournament.registrationClosesAt)}',
+                          'Registration closes: ${DateTimeFormatter.dateTime(tournament.registrationClosesAt)}',
                           style: _KnockoutText.body,
                         ),
                         Text(
-                          'Tournament starts: ${_dateText(tournament.startsAt)}',
+                          'Tournament starts: ${DateTimeFormatter.dateTime(tournament.startsAt)}',
                           style: _KnockoutText.body,
                         ),
                         Text(
@@ -261,7 +274,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                         ),
                         if (playerEntry != null)
                           Text(
-                            'Registered at: ${_dateText(playerEntry.registeredAt)}',
+                            'Registered at: ${DateTimeFormatter.dateTime(playerEntry.registeredAt)}',
                             style: _KnockoutText.body,
                           ),
                         if (_message != null) ...[
@@ -290,6 +303,13 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
                   const SizedBox(height: 12),
                   _KnockoutCard(
                     child: _KnockoutRecordsSection(records: _playerRecords),
+                  ),
+                  const SizedBox(height: 12),
+                  _KnockoutCard(
+                    child: _CompetitiveAchievementsSection(
+                      leagueAchievements: _leagueAchievements,
+                      knockoutRecords: _playerRecords,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _KnockoutCard(
@@ -336,16 +356,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
     );
   }
 
-  String _dateText(DateTime dateTime) {
-    final local = dateTime.toLocal();
-    final year = local.year.toString().padLeft(4, '0');
-    final month = local.month.toString().padLeft(2, '0');
-    final day = local.day.toString().padLeft(2, '0');
-    final hour = local.hour.toString().padLeft(2, '0');
-    final minute = local.minute.toString().padLeft(2, '0');
 
-    return '$year-$month-$day $hour:$minute';
-  }
 }
 
 class _KnockoutCard extends StatelessWidget {
@@ -402,7 +413,7 @@ class _ActiveDuelSection extends StatelessWidget {
               style: _KnockoutText.body,
             ),
             Text(
-              'Round settles: ${_dateText(snapshot.roundEndsAt)}',
+              'Round settles: ${DateTimeFormatter.dateTime(snapshot.roundEndsAt)}',
               style: _KnockoutText.body,
             ),
           ] else ...[
@@ -417,7 +428,7 @@ class _ActiveDuelSection extends StatelessWidget {
               style: _KnockoutText.body,
             ),
             Text(
-              'Round settles: ${_dateText(snapshot.roundEndsAt)}',
+              'Round settles: ${DateTimeFormatter.dateTime(snapshot.roundEndsAt)}',
               style: _KnockoutText.body,
             ),
           ],
@@ -431,16 +442,6 @@ class _ActiveDuelSection extends StatelessWidget {
     );
   }
 
-  static String _dateText(DateTime dateTime) {
-    final local = dateTime.toLocal();
-    final year = local.year.toString().padLeft(4, '0');
-    final month = local.month.toString().padLeft(2, '0');
-    final day = local.day.toString().padLeft(2, '0');
-    final hour = local.hour.toString().padLeft(2, '0');
-    final minute = local.minute.toString().padLeft(2, '0');
-
-    return '$year-$month-$day $hour:$minute';
-  }
 }
 
 class _KnockoutRecordsSection extends StatelessWidget {
@@ -479,6 +480,79 @@ class _KnockoutRecordsSection extends StatelessWidget {
           'Best tournament result: ${playerRecords.bestTournamentResultLabel}',
           style: _KnockoutText.body,
         ),
+        Text(
+          'Tournaments participated: ${playerRecords.tournamentsParticipated}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Total duels played: ${playerRecords.totalDuelsPlayed}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Total duels won: ${playerRecords.totalDuelsWon}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Duel win percentage: ${playerRecords.duelWinPercentageLabel}',
+          style: _KnockoutText.body,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompetitiveAchievementsSection extends StatelessWidget {
+  const _CompetitiveAchievementsSection({
+    required this.leagueAchievements,
+    required this.knockoutRecords,
+  });
+
+  final PlayerLeagueAchievements? leagueAchievements;
+  final KnockoutPlayerRecords? knockoutRecords;
+
+  @override
+  Widget build(BuildContext context) {
+    final league =
+        leagueAchievements ?? PlayerLeagueAchievements.empty('unknown-player');
+    final knockout =
+        knockoutRecords ?? KnockoutPlayerRecords.empty('unknown-player');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Competitive Achievements', style: _KnockoutText.title),
+        const SizedBox(height: 10),
+        Text('League', style: _KnockoutText.status),
+        const SizedBox(height: 6),
+        Text(
+          league.bestDivisionReached == null
+              ? 'Best division reached: No league result yet'
+              : 'Best division reached: Division ${league.bestDivisionReached}',
+          style: _KnockoutText.body,
+        ),
+        Text('Promotions: ${league.promotions}', style: _KnockoutText.body),
+        Text('Relegations: ${league.relegations}', style: _KnockoutText.body),
+        const SizedBox(height: 12),
+        Text('Knockout', style: _KnockoutText.status),
+        const SizedBox(height: 6),
+        Text(
+          knockout.highestRoundReached == 0
+              ? 'Best round reached: No knockout result yet'
+              : 'Best round reached: Round ${knockout.highestRoundReached}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Tournaments participated: ${knockout.tournamentsParticipated}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Duel win percentage: ${knockout.duelWinPercentageLabel}',
+          style: _KnockoutText.body,
+        ),
+        Text(
+          'Total duels played: ${knockout.totalDuelsPlayed}',
+          style: _KnockoutText.body,
+        ),
       ],
     );
   }
@@ -488,6 +562,7 @@ class _KnockoutHallOfFameSection extends StatelessWidget {
   const _KnockoutHallOfFameSection({required this.entries});
 
   final List<KnockoutHallOfFameEntry> entries;
+
 
   @override
   Widget build(BuildContext context) {
@@ -510,9 +585,19 @@ class _KnockoutHallOfFameSection extends StatelessWidget {
         ...entries.map(
           (entry) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              '${entry.displayName}: ${entry.titlesLabel}',
-              style: _KnockoutText.body,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${entry.displayName} • '
+                      '${entry.titlesWon == 1 ? '1 title' : '${entry.titlesWon} titles'}',
+                  style: _KnockoutText.body,
+                ),
+                Text(
+                  'Won: ${DateTimeFormatter.monthYearList(entry.wonTournamentMonths)}',
+                  style: _KnockoutText.message,
+                ),
+              ],
             ),
           ),
         ),

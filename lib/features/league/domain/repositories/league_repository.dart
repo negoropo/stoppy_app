@@ -4,6 +4,7 @@ import '../models/league_ranking_entry.dart';
 import '../models/league_ranking_snapshot.dart';
 import '../models/league_season_id.dart';
 import '../models/league_season_settlement_result.dart';
+import '../models/player_league_achievements.dart';
 import '../models/player_league_records.dart';
 import '../models/weekly_league_history_entry.dart';
 import '../models/weekly_league_run.dart';
@@ -28,6 +29,8 @@ abstract class LeagueRepository {
   Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run);
 
   Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId);
+
+  Future<PlayerLeagueAchievements> fetchPlayerAchievements(String playerId);
 
   Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(String playerId);
 

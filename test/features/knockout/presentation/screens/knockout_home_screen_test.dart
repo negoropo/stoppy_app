@@ -4,10 +4,21 @@ import 'package:stoppy_app/features/auth/domain/models/auth_state.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_records.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
 import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_history_entry.dart';
+import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
+import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
+import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_settlement_result.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_achievements.dart';
+import 'package:stoppy_app/features/league/domain/models/player_league_records.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_history_entry.dart';
+import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
+import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 
 void main() {
   testWidgets('shows tournament state and registration status', (
@@ -395,10 +406,65 @@ void main() {
     expect(find.text('Tournaments played: 1'), findsOneWidget);
     expect(find.text('Titles won: 1'), findsOneWidget);
     expect(find.text('Best tournament result: Champion'), findsOneWidget);
+    expect(find.text('Tournaments participated: 1'), findsWidgets);
+    expect(find.text('Total duels played: 1'), findsWidgets);
+    expect(find.text('Total duels won: 1'), findsOneWidget);
+    expect(find.text('Duel win percentage: 100.0%'), findsWidgets);
     await tester.scrollUntilVisible(find.text('Knockout Hall of Fame'), 300);
-    expect(find.text('Tester: 1 title'), findsOneWidget);
+    expect(find.text('Tester • 1 title'), findsOneWidget);
+    expect(find.text('Won: June 2026'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Tournament History'), 300);
     expect(find.text('June Knockout: Champion • Round 1'), findsOneWidget);
+  });
+
+  testWidgets('shows combined competitive achievements from repositories', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 50,
+    );
+    final repository = MockKnockoutRepository(
+      initialRecordsByPlayerId: {
+        playerProfile.id: const KnockoutPlayerRecords(
+          playerId: 'player-id',
+          tournamentsPlayed: 4,
+          tournamentsWon: 1,
+          highestRoundReached: 5,
+          totalDuelsPlayed: 12,
+          totalDuelsWon: 9,
+        ),
+      },
+    );
+    final leagueRepository = _AchievementLeagueRepository(
+      PlayerLeagueAchievements(
+        playerId: playerProfile.id,
+        bestDivisionReached: 2,
+        promotions: 3,
+        relegations: 1,
+      ),
+    );
+
+    await _pumpKnockoutHome(
+      tester,
+      repository,
+      playerProfile,
+      leagueRepository: leagueRepository,
+    );
+
+    await tester.scrollUntilVisible(find.text('Competitive Achievements'), 300);
+
+    expect(find.text('League'), findsOneWidget);
+    expect(find.text('Best division reached: Division 2'), findsOneWidget);
+    expect(find.text('Promotions: 3'), findsOneWidget);
+    expect(find.text('Relegations: 1'), findsOneWidget);
+    expect(find.text('Knockout'), findsWidgets);
+    expect(find.text('Best round reached: Round 5'), findsOneWidget);
+    expect(find.text('Tournaments participated: 4'), findsWidgets);
+    expect(find.text('Duel win percentage: 75.0%'), findsWidgets);
+    expect(find.text('Total duels played: 12'), findsWidgets);
   });
 
   testWidgets('limits visible tournament history entries', (
@@ -517,8 +583,9 @@ void main() {
 Future<void> _pumpKnockoutHome(
   WidgetTester tester,
   MockKnockoutRepository repository,
-  PlayerProfile playerProfile,
-) async {
+  PlayerProfile playerProfile, {
+  LeagueRepository? leagueRepository,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       home: KnockoutHomeScreen(
@@ -526,10 +593,88 @@ Future<void> _pumpKnockoutHome(
         authRepository: _UpdatingAuthRepository(playerProfile),
         knockoutRepository: repository,
         onPlayerProfileUpdated: (_) {},
+        leagueRepository: leagueRepository,
       ),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+class _AchievementLeagueRepository implements LeagueRepository {
+  const _AchievementLeagueRepository(this.achievements);
+
+  final PlayerLeagueAchievements achievements;
+
+  @override
+  Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
+    return null;
+  }
+
+  @override
+  Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<LeagueRankingEntry>> fetchDivisionRanking(
+    int divisionNumber,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<PlayerLeagueAchievements> fetchPlayerAchievements(
+    String playerId,
+  ) async {
+    return achievements;
+  }
+
+  @override
+  Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId) async {
+    return PlayerLeagueRecords.empty(playerId);
+  }
+
+  @override
+  Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(
+    String playerId,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<List<WeeklyLeagueRun>> fetchPlayerWeeklyRuns({
+    required String playerId,
+    required LeagueSeasonId seasonId,
+  }) async {
+    return const [];
+  }
+
+  @override
+  Future<LeagueRankingSnapshot> fetchPlayerSnapshot({
+    required String playerId,
+    required int divisionNumber,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<LeagueSeasonSettlementResult> settleCurrentSeason({
+    required DateTime now,
+  }) async {
+    return LeagueSeasonSettlementResult(
+      seasonId: LeagueSeasonId.fromDate(now),
+      settledAt: now,
+      executed: false,
+    );
+  }
+
+  @override
+  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
+    return LeagueRunSubmissionResult(
+      accepted: false,
+      playerRecords: PlayerLeagueRecords.empty(run.playerId),
+    );
+  }
 }
 
 class _UpdatingAuthRepository implements AuthRepository {

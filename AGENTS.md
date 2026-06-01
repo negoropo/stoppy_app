@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 24 completed.
+Session 25 completed.
 
-Current session: Session 25 — Competitive Profile + Knockout Statistics Polish
+Current session: Session 26 — Backend Foundation + Data Persistence Planning
 
 ---
 

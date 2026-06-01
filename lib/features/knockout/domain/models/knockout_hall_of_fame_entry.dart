@@ -1,17 +1,22 @@
 class KnockoutHallOfFameEntry {
-  const KnockoutHallOfFameEntry({
+  KnockoutHallOfFameEntry({
     required this.playerId,
     required this.displayName,
     required this.titlesWon,
+    List<DateTime> wonTournamentMonths = const [],
   }) : assert(playerId != ''),
-       assert(displayName != ''),
-       assert(titlesWon > 0);
+        assert(displayName != ''),
+        assert(titlesWon > 0),
+        assert(
+        wonTournamentMonths.isEmpty ||
+            wonTournamentMonths.length == titlesWon,
+        ),
+        wonTournamentMonths = List.unmodifiable(
+          [...wonTournamentMonths]..sort((a, b) => a.compareTo(b)),
+        );
 
   final String playerId;
   final String displayName;
   final int titlesWon;
-
-  String get titlesLabel {
-    return titlesWon == 1 ? '1 title' : '$titlesWon titles';
-  }
+  final List<DateTime> wonTournamentMonths;
 }

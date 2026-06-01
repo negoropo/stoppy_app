@@ -279,24 +279,33 @@ void main() {
       expect(records.tournamentsWon, 0);
       expect(records.titlesWon, 0);
       expect(records.highestRoundReached, 0);
+      expect(records.totalDuelsPlayed, 0);
+      expect(records.totalDuelsWon, 0);
+      expect(records.duelWinPercentage, 0);
+      expect(records.duelWinPercentageLabel, '0.0%');
       expect(records.bestTournamentResultLabel, 'No completed tournaments');
     });
 
-    test('copyWith updates player tournament results only', () {
+    test('copyWith updates player tournament and duel results only', () {
       const records = KnockoutPlayerRecords(
         playerId: 'player',
         tournamentsPlayed: 2,
         tournamentsWon: 1,
         highestRoundReached: 3,
+        totalDuelsPlayed: 8,
+        totalDuelsWon: 5,
       );
 
-      final updated = records.copyWith(tournamentsWon: 2);
+      final updated = records.copyWith(tournamentsWon: 2, totalDuelsWon: 6);
 
       expect(updated.playerId, 'player');
       expect(updated.tournamentsPlayed, 2);
       expect(updated.tournamentsWon, 2);
       expect(updated.titlesWon, 2);
       expect(updated.highestRoundReached, 3);
+      expect(updated.totalDuelsPlayed, 8);
+      expect(updated.totalDuelsWon, 6);
+      expect(updated.duelWinPercentageLabel, '75.0%');
       expect(updated.bestTournamentResultLabel, 'Champion');
     });
 
@@ -313,20 +322,32 @@ void main() {
   });
 
   group('KnockoutHallOfFameEntry', () {
-    test('formats champion title counts', () {
-      const singleTitle = KnockoutHallOfFameEntry(
-        playerId: 'player-1',
-        displayName: 'Ada',
+    test('KnockoutHallOfFameEntry stores champion title counts and title months', () {
+      final singleTitle = KnockoutHallOfFameEntry(
+        playerId: 'champion-1',
+        displayName: 'Champion One',
         titlesWon: 1,
-      );
-      const multipleTitles = KnockoutHallOfFameEntry(
-        playerId: 'player-2',
-        displayName: 'Ben',
-        titlesWon: 3,
+        wonTournamentMonths: [DateTime(2026, 6)],
       );
 
-      expect(singleTitle.titlesLabel, '1 title');
-      expect(multipleTitles.titlesLabel, '3 titles');
+      final multipleTitles = KnockoutHallOfFameEntry(
+        playerId: 'champion-2',
+        displayName: 'Champion Two',
+        titlesWon: 2,
+        wonTournamentMonths: [
+          DateTime(2026, 7),
+          DateTime(2026, 6),
+        ],
+      );
+
+      expect(singleTitle.titlesWon, 1);
+      expect(singleTitle.wonTournamentMonths, [DateTime(2026, 6)]);
+
+      expect(multipleTitles.titlesWon, 2);
+      expect(multipleTitles.wonTournamentMonths, [
+        DateTime(2026, 6),
+        DateTime(2026, 7),
+      ]);
     });
   });
 }

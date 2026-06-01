@@ -494,6 +494,63 @@ void main() {
       expect(settledTournament.rounds.last.matches.length, 1);
     });
 
+    test('repechage advancement is not recorded as direct duel win', () async {
+      var now = DateTime(2026, 5, 22);
+      final repository = MockKnockoutRepository(now: () => now);
+      final tournament = await _registerPlayers(repository, count: 4);
+
+      final startedTournament = await repository.startTournament(
+        tournamentId: tournament.id,
+      );
+
+      final matches = startedTournament.rounds.first.matches;
+      final scoredMatch = matches.first;
+      final zeroRunMatch = matches.last;
+
+      await repository.submitKnockoutRun(
+        KnockoutRun(
+          id: 'natural-winner',
+          playerId: scoredMatch.playerOneId!,
+          matchId: scoredMatch.id,
+          roundNumber: scoredMatch.roundNumber,
+          score: 900,
+          completedAt: DateTime(2026, 6, 1, 10),
+        ),
+      );
+
+      await repository.submitKnockoutRun(
+        KnockoutRun(
+          id: 'repechage-candidate',
+          playerId: scoredMatch.playerTwoId!,
+          matchId: scoredMatch.id,
+          roundNumber: scoredMatch.roundNumber,
+          score: 850,
+          completedAt: DateTime(2026, 6, 1, 11),
+        ),
+      );
+
+      now = DateTime(2026, 6, 1, 23, 59);
+
+      final settledTournament = await repository.settleCurrentRound(
+        tournamentId: startedTournament.id,
+      );
+
+      final settledScoredMatch = settledTournament.rounds.first.matches
+          .firstWhere((match) => match.id == scoredMatch.id);
+
+      final settledZeroRunMatch = settledTournament.rounds.first.matches
+          .firstWhere((match) => match.id == zeroRunMatch.id);
+
+      expect(settledScoredMatch.winnerPlayerId, scoredMatch.playerOneId);
+      expect(settledScoredMatch.winnerPlayerId, isNot(scoredMatch.playerTwoId));
+
+      expect(
+        settledZeroRunMatch.repechageWinnerPlayerId,
+        scoredMatch.playerTwoId,
+      );
+      expect(settledZeroRunMatch.winnerPlayerId, isNull);
+    });
+
     test('reports champion after final settlement', () async {
       var now = DateTime(2026, 5, 22);
       final repository = MockKnockoutRepository(now: () => now);
@@ -552,12 +609,18 @@ void main() {
       expect(championRecords.titlesWon, 1);
       expect(championRecords.highestRoundReached, 1);
       expect(championRecords.bestTournamentResultLabel, 'Champion');
+      expect(championRecords.totalDuelsPlayed, 1);
+      expect(championRecords.totalDuelsWon, 1);
+      expect(championRecords.duelWinPercentageLabel, '100.0%');
 
       final hallOfFame = await repository.fetchHallOfFame();
       expect(hallOfFame, hasLength(1));
       expect(hallOfFame.single.playerId, match.playerOneId);
       expect(hallOfFame.single.displayName, startsWith('Player'));
       expect(hallOfFame.single.titlesWon, 1);
+      expect(hallOfFame.single.wonTournamentMonths, [
+        DateTime(2026, 6),
+      ]);
     });
 
     test('returns player history ordered by newest completion first', () async {
@@ -612,6 +675,8 @@ void main() {
             tournamentsPlayed: 2,
             tournamentsWon: 1,
             highestRoundReached: 3,
+            totalDuelsPlayed: 7,
+            totalDuelsWon: 4,
           ),
         },
       );
@@ -623,6 +688,9 @@ void main() {
       expect(records.tournamentsWon, 1);
       expect(records.titlesWon, 1);
       expect(records.highestRoundReached, 3);
+      expect(records.totalDuelsPlayed, 7);
+      expect(records.totalDuelsWon, 4);
+      expect(records.duelWinPercentageLabel, '57.1%');
       expect(records.bestTournamentResultLabel, 'Champion');
     });
 
@@ -711,7 +779,15 @@ void main() {
       ]);
       expect(hallOfFame.first.displayName, 'Ada');
       expect(hallOfFame.first.titlesWon, 2);
-      expect(hallOfFame.first.titlesLabel, '2 titles');
+      expect(hallOfFame.first.titlesWon, 2);
+
+      expect(
+        hallOfFame.first.wonTournamentMonths,
+        [
+          DateTime(2026, 6),
+          DateTime(2026, 7),
+        ],
+      );
     });
 
     test(
