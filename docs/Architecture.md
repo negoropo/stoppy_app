@@ -385,6 +385,22 @@ The target backend architecture is a custom backend with a PostgreSQL database a
 
 The app should continue to depend on domain-facing repository contracts. Production implementations can call REST endpoints, while tests and local development can keep using mock repositories.
 
+### DTO and Serialization Boundary
+
+* Backend DTOs live in the data layer.
+* Domain models remain the UI-facing and engine-facing contract.
+* DTOs translate REST JSON payloads into domain models.
+* Serialization must use explicit `toJson` / `fromJson` methods.
+
+This boundary keeps backend payload shape independent from Flutter widgets and domain rules. It also gives future backend repositories a stable place for versioning, migration, and compatibility logic.
+
+### API Result Standardization
+
+* REST responses use a standard success/error envelope.
+* API errors use typed error codes plus a user/debug message.
+* Backend repositories convert API errors into repository-level failures or exceptions.
+* Skeleton backend repositories must fail explicitly until real networking is connected.
+
 ### Domain Logic
 
 * Domain logic should stay reusable where possible.
@@ -412,4 +428,3 @@ The future backend must be authoritative for:
 * Anti-cheat validation
 
 The Flutter client is not trusted. It collects inputs, renders animation, displays temporary state, and submits run claims to the backend for validation.
-

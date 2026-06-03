@@ -4365,3 +4365,233 @@ Planned focus:
 Current session: Session 27 — Backend Repository Contracts Preparation
 
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 27 — Backend Repository Contracts Preparation
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Prepare the backend integration foundation required for future REST API + PostgreSQL connectivity while preserving the existing mock-driven architecture, repository contracts, gameplay systems, league runtime, and knockout runtime.
+
+---
+
+### 📦 Deliverables
+
+* [x] Core backend architecture created under `lib/core/backend`
+* [x] Standardized API response envelope implemented
+* [x] `ApiResponse<T>` model implemented
+* [x] `ApiResult<T>` result abstraction implemented
+* [x] `ApiError` infrastructure implemented
+* [x] `ApiException` infrastructure implemented
+* [x] Backend repository placeholder strategy implemented
+* [x] `BackendApiClient` contract created
+* [x] Auth DTO architecture introduced
+* [x] League DTO architecture introduced
+* [x] Knockout DTO architecture introduced
+* [x] Explicit serialization strategy established
+* [x] Future REST endpoint constants documented
+* [x] `BackendAuthRepository` skeleton implemented
+* [x] `BackendLeagueRepository` skeleton implemented
+* [x] `BackendKnockoutRepository` skeleton implemented
+* [x] Repository migration boundary preserved
+* [x] Mock repositories preserved unchanged
+* [x] Existing repository contracts preserved unchanged
+* [x] Backend repositories configured to fail explicitly until connected
+* [x] DTO → Domain boundary documented
+* [x] API envelope strategy documented
+* [x] API error strategy documented
+* [x] Mock → Backend migration path documented
+* [x] Server-authoritative ownership documented
+* [x] PostgreSQL persistence ownership documented
+* [x] Validation ownership documented
+* [x] Architecture documentation updated
+* [x] API plan documentation updated
+* [x] Persistence mapping documentation updated
+* [x] Backend architecture tests added
+* [x] DTO serialization tests added
+* [x] Backend repository skeleton tests added
+* [x] No networking implementation introduced
+* [x] No gameplay changes introduced
+* [x] No League runtime changes introduced
+* [x] No Knockout runtime changes introduced
+* [x] flutter analyze passed
+* [x] flutter test passed (214 tests)
+
+---
+
+### 🛠️ Work Done
+
+* Created backend foundation inside:
+
+  * `lib/core/backend/`
+
+* Implemented:
+
+  * `ApiResponse<T>`
+  * `ApiResult<T>`
+  * `ApiError`
+  * `ApiException`
+  * `BackendApiClient`
+  * Backend repository placeholder helper
+
+* Introduced DTO architecture for:
+
+  * Authentication
+  * League runs
+  * Knockout runs
+
+* Established serialization strategy:
+
+  * Explicit `fromJson`
+  * Explicit `toJson`
+  * DTO ↔ Domain separation
+
+* Created backend repository skeletons:
+
+  * `BackendAuthRepository`
+  * `BackendLeagueRepository`
+  * `BackendKnockoutRepository`
+
+* Added future REST endpoint preparation:
+
+  * Auth endpoints
+  * Player endpoints
+  * League endpoints
+  * Knockout endpoints
+  * Run submission endpoints
+
+* Preserved architecture boundary:
+
+  * UI
+  * Domain Models
+  * Repository Contracts
+  * Mock Repositories
+  * Future Backend Repositories
+
+* Updated `docs/Architecture.md`
+
+  * Added repository migration architecture
+  * Added DTO boundary documentation
+  * Added API result/error strategy
+  * Added server-authoritative ownership section
+
+* Updated `docs/API_Plan.md`
+
+  * Added standardized API envelope
+  * Added DTO strategy
+  * Added backend repository expectations
+  * Expanded future endpoint ownership rules
+
+* Updated `docs/Persistence_Map.md`
+
+  * Expanded persistence ownership definitions
+  * Added validation ownership rules
+  * Added migration path documentation
+  * Added auditability requirements
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Mock repositories remain the active runtime implementation
+* Backend repositories are intentionally disconnected
+* Repository contracts remain the migration boundary
+* UI remains isolated from backend implementation details
+* DTOs remain data-layer only
+* Domain models remain backend-agnostic
+* Competitive state remains server-authoritative
+* PostgreSQL remains the planned primary database
+* REST API remains the planned integration layer
+* Dependency injection strategy is deferred to the next session
+* Networking implementation is intentionally deferred
+* No persistence implementation was introduced
+* No runtime behavior changed during this session
+
+---
+
+### 🧪 Validation
+
+* [x] API response architecture reviewed
+* [x] API error architecture reviewed
+* [x] Backend repository architecture reviewed
+* [x] DTO architecture reviewed
+* [x] Serialization strategy reviewed
+* [x] Architecture documentation reviewed
+* [x] API plan reviewed
+* [x] Persistence mapping reviewed
+* [x] Repository boundaries preserved
+* [x] No runtime behaviour changed
+* [x] No gameplay behaviour changed
+* [x] No league calculations changed
+* [x] No knockout calculations changed
+* [x] flutter analyze passed
+* [x] flutter test passed (214 tests)
+
+---
+
+### 📌 Next Session
+
+Session 28 — Backend Integration Layer + Repository Wiring Preparation
+
+Planned focus:
+
+* [ ] Environment configuration strategy
+* [ ] Dependency injection preparation
+* [ ] Repository factory architecture
+* [ ] Backend repository selection by environment
+* [ ] Auth session/token abstraction
+* [ ] DTO ↔ Domain mapper layer
+* [ ] API error → domain error mapping
+* [ ] BackendApiClient implementation preparation
+* [ ] Mock ↔ Backend switching infrastructure
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League Structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle (completed)
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression (completed)
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status (completed)
+* ✅ Session 23 — Knockout Tournament History + Records (completed)
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish (completed)
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish (completed)
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning (completed)
+* ✅ Session 27 — Backend Repository Contracts Preparation (completed)
+* 🔄 Session 28 — Backend Integration Layer + Repository Wiring Preparation (ready)
+---
+
+### 🧭 Current State
+
+Current session: Session 28 — Backend Integration Layer + Repository Wiring Preparation
+
+Status: Ready ⏳

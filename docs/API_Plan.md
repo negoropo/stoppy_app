@@ -2,6 +2,40 @@
 
 The future API is a custom REST API backed by PostgreSQL. Endpoints below describe the first backend-facing contract shape and may evolve, but competitive state must remain server-authoritative.
 
+## Response Envelope
+
+All endpoints should use a standardized envelope:
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+Failure responses should use:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "validationFailed",
+    "message": "Human readable error.",
+    "details": {}
+  }
+}
+```
+
+The Flutter app already has prepared API response/error models for this future contract. Backend repositories should decode this envelope first, then translate DTOs into domain models.
+
+## DTO Strategy
+
+- REST JSON maps to DTOs in the data layer.
+- DTOs map to domain models before data reaches UI.
+- Domain models should not depend on HTTP or PostgreSQL schema details.
+- Mock repositories can continue returning domain models directly.
+- Backend repositories should be swappable behind the existing repository contracts.
+
 ## Auth
 
 ### POST /auth/register
@@ -79,6 +113,12 @@ Server responsibilities:
 - return all-time/current records
 - return best division, promotions, and relegations
 - derive achievement values from trusted history
+
+### GET /league/runs
+Returns current weekly runs for the authenticated player.
+
+### GET /league/achievements
+Returns derived league achievements.
 
 ## Knockout
 
@@ -175,5 +215,8 @@ Server responsibilities:
 
 ### POST /internal/knockout/settle-round
 
-These endpoints must not be callable by normal clients.
+### POST /internal/league/settle-current
 
+### POST /internal/knockout/settle-current-round
+
+These endpoints must not be callable by normal clients.
