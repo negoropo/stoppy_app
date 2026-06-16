@@ -28,6 +28,17 @@ Failure responses should use:
 
 The Flutter app already has prepared API response/error models for this future contract. Backend repositories should decode this envelope first, then translate DTOs into domain models.
 
+## Client Integration Layer
+
+The Flutter app prepares backend integration through environment configuration and a repository factory.
+
+- `STP_REPOSITORY_RUNTIME=mock` keeps mock repositories active.
+- `STP_REPOSITORY_RUNTIME=backend` creates backend repository skeletons.
+- `STP_API_BASE_URL` defines the future REST API base URL.
+- No real network calls are made until a concrete `BackendApiClient` implementation is added.
+
+Backend repositories should receive a `BackendApiClient` plus an auth session store. The API client should attach the current access token when required, decode the response envelope, and surface `ApiError` for repository-level mapping.
+
 ## DTO Strategy
 
 - REST JSON maps to DTOs in the data layer.
@@ -35,6 +46,15 @@ The Flutter app already has prepared API response/error models for this future c
 - Domain models should not depend on HTTP or PostgreSQL schema details.
 - Mock repositories can continue returning domain models directly.
 - Backend repositories should be swappable behind the existing repository contracts.
+- DTO/domain conversion should be expressed through feature mappers so serialization rules stay outside widgets.
+
+## Error Strategy
+
+- Transport responses decode into `ApiResponse`.
+- Failure envelopes decode into `ApiError`.
+- Repositories map `ApiError` into domain-facing exceptions where useful.
+- UI must not branch on HTTP status codes or backend implementation details.
+- Validation, conflict, and authorization errors should keep stable machine-readable `code` values.
 
 ## Auth
 

@@ -1,3 +1,5 @@
+import 'package:stoppy_app/core/backend/domain_mapper.dart';
+
 import '../../domain/models/knockout_run.dart';
 
 class KnockoutRunDto {
@@ -9,6 +11,13 @@ class KnockoutRunDto {
     required this.score,
     required this.completedAt,
   });
+
+  static const idKey = 'id';
+  static const roundNumberKey = 'roundNumber';
+  static const matchIdKey = 'matchId';
+  static const playerIdKey = 'playerId';
+  static const scoreKey = 'score';
+  static const completedAtKey = 'completedAt';
 
   final String id;
   final int roundNumber;
@@ -30,12 +39,12 @@ class KnockoutRunDto {
 
   factory KnockoutRunDto.fromJson(Map<String, Object?> json) {
     return KnockoutRunDto(
-      id: json['id'] as String,
-      roundNumber: json['roundNumber'] as int,
-      matchId: json['matchId'] as String,
-      playerId: json['playerId'] as String,
-      score: json['score'] as int,
-      completedAt: DateTime.parse(json['completedAt'] as String),
+      id: json[idKey] as String,
+      roundNumber: json[roundNumberKey] as int,
+      matchId: json[matchIdKey] as String,
+      playerId: json[playerIdKey] as String,
+      score: json[scoreKey] as int,
+      completedAt: DateTime.parse(json[completedAtKey] as String),
     );
   }
 
@@ -50,14 +59,46 @@ class KnockoutRunDto {
     );
   }
 
+  KnockoutRunDto copyWith({
+    String? id,
+    int? roundNumber,
+    String? matchId,
+    String? playerId,
+    int? score,
+    DateTime? completedAt,
+  }) {
+    return KnockoutRunDto(
+      id: id ?? this.id,
+      roundNumber: roundNumber ?? this.roundNumber,
+      matchId: matchId ?? this.matchId,
+      playerId: playerId ?? this.playerId,
+      score: score ?? this.score,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
   Map<String, Object?> toJson() {
     return {
-      'id': id,
-      'roundNumber': roundNumber,
-      'matchId': matchId,
-      'playerId': playerId,
-      'score': score,
-      'completedAt': completedAt.toIso8601String(),
+      idKey: id,
+      roundNumberKey: roundNumber,
+      matchIdKey: matchId,
+      playerIdKey: playerId,
+      scoreKey: score,
+      completedAtKey: completedAt.toIso8601String(),
     };
+  }
+}
+
+class KnockoutRunMapper extends DomainMapper<KnockoutRun, KnockoutRunDto> {
+  const KnockoutRunMapper();
+
+  @override
+  KnockoutRunDto toDto(KnockoutRun domain) {
+    return KnockoutRunDto.fromDomain(domain);
+  }
+
+  @override
+  KnockoutRun toDomain(KnockoutRunDto dto) {
+    return dto.toDomain();
   }
 }

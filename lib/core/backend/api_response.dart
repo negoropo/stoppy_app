@@ -47,12 +47,13 @@ class ApiResponse<T> {
 
     return {
       'success': false,
-      'error': (error ??
-          const ApiError(
-            code: ApiErrorCode.unknown,
-            message: 'Unknown API error.',
-          ))
-          .toJson(),
+      'error':
+          (error ??
+                  const ApiError(
+                    code: ApiErrorCode.unknown,
+                    message: 'Unknown API error.',
+                  ))
+              .toJson(),
     };
   }
 }

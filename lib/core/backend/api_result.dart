@@ -1,16 +1,25 @@
 import 'api_error.dart';
 
 class ApiResult<T> {
-  const ApiResult.success(this.data) : error = null, isSuccess = true;
+  const ApiResult.success(this.data)
+      : error = null,
+        isSuccess = true;
 
-  const ApiResult.failure(this.error) : data = null, isSuccess = false;
+  const ApiResult.failure(this.error)
+      : data = null,
+        isSuccess = false;
 
   final T? data;
   final ApiError? error;
   final bool isSuccess;
 
+  bool get isFailure => !isSuccess;
+
+  bool get hasData => data != null;
+
   T requireData() {
     final value = data;
+
     if (isSuccess && value != null) {
       return value;
     }
@@ -22,5 +31,13 @@ class ApiResult<T> {
             message: 'API result did not contain data.',
           ),
     );
+  }
+
+  ApiError? get requireError {
+    if (isFailure) {
+      return error;
+    }
+
+    return null;
   }
 }

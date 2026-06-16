@@ -12,9 +12,15 @@ void main() {
 
     final dto = WeeklyLeagueRunDto.fromDomain(run);
     final decoded = WeeklyLeagueRunDto.fromJson(dto.toJson()).toDomain();
+    final mapperDecoded = const WeeklyLeagueRunMapper().toDomain(
+      const WeeklyLeagueRunMapper().toDto(run),
+    );
 
     expect(decoded.playerId, run.playerId);
     expect(decoded.score, run.score);
     expect(decoded.completedAt, run.completedAt);
+    expect(mapperDecoded.playerId, run.playerId);
+    expect(mapperDecoded.score, run.score);
+    expect(mapperDecoded.completedAt, run.completedAt);
   });
 }

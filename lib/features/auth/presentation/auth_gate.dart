@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../ads/data/mock_ad_repository.dart';
+import '../../../core/config/app_environment.dart';
+import '../../../core/repositories/app_repositories.dart';
+import '../../../core/repositories/repository_factory.dart';
 import '../../ads/domain/repositories/ad_repository.dart';
 import '../../game/game_screen.dart';
-import '../../knockout/data/mock_knockout_repository.dart';
 import '../../knockout/domain/repositories/knockout_repository.dart';
-import '../../league/data/mock_league_repository.dart';
 import '../../league/domain/repositories/league_repository.dart';
-import '../../purchases/data/mock_purchase_repository.dart';
 import '../../purchases/domain/repositories/purchase_repository.dart';
-import '../data/mock_auth_repository.dart';
 import '../domain/models/auth_state.dart';
 import '../domain/models/player_profile.dart';
 import '../domain/repositories/auth_repository.dart';
@@ -24,12 +22,18 @@ class AuthGate extends StatefulWidget {
     AdRepository? adRepository,
     LeagueRepository? leagueRepository,
     KnockoutRepository? knockoutRepository,
-  }) : authRepository = authRepository ?? const _DefaultAuthRepository(),
+  }) : authRepository = authRepository ?? _defaultRepositories.authRepository,
        purchaseRepository =
-           purchaseRepository ?? const MockPurchaseRepository(),
-       adRepository = adRepository ?? MockAdRepository(),
-       leagueRepository = leagueRepository ?? MockLeagueRepository(),
-       knockoutRepository = knockoutRepository ?? MockKnockoutRepository();
+           purchaseRepository ?? _defaultRepositories.purchaseRepository,
+       adRepository = adRepository ?? _defaultRepositories.adRepository,
+       leagueRepository =
+           leagueRepository ?? _defaultRepositories.leagueRepository,
+       knockoutRepository =
+           knockoutRepository ?? _defaultRepositories.knockoutRepository;
+
+  static final AppRepositories _defaultRepositories = RepositoryFactory(
+    environment: AppEnvironment.fromDartDefines(),
+  ).createRepositories();
 
   final AuthRepository authRepository;
   final PurchaseRepository purchaseRepository;
@@ -174,42 +178,5 @@ class _AuthGateState extends State<AuthGate> {
         );
       },
     );
-  }
-}
-
-class _DefaultAuthRepository implements AuthRepository {
-  const _DefaultAuthRepository();
-
-  static final MockAuthRepository _repository = MockAuthRepository();
-
-  @override
-  Future<AuthState> currentAuthState() {
-    return _repository.currentAuthState();
-  }
-
-  @override
-  Future<PlayerProfile> login({
-    required String username,
-    required String password,
-  }) {
-    return _repository.login(username: username, password: password);
-  }
-
-  @override
-  Future<void> logout() {
-    return _repository.logout();
-  }
-
-  @override
-  Future<PlayerProfile> updatePlayerProfile(PlayerProfile playerProfile) {
-    return _repository.updatePlayerProfile(playerProfile);
-  }
-
-  @override
-  Future<PlayerProfile> register({
-    required String username,
-    required String password,
-  }) {
-    return _repository.register(username: username, password: password);
   }
 }

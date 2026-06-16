@@ -15,6 +15,9 @@ void main() {
 
     final dto = KnockoutRunDto.fromDomain(run);
     final decoded = KnockoutRunDto.fromJson(dto.toJson()).toDomain();
+    final mapperDecoded = const KnockoutRunMapper().toDomain(
+      const KnockoutRunMapper().toDto(run),
+    );
 
     expect(decoded.id, run.id);
     expect(decoded.roundNumber, run.roundNumber);
@@ -22,5 +25,11 @@ void main() {
     expect(decoded.playerId, run.playerId);
     expect(decoded.score, run.score);
     expect(decoded.completedAt, run.completedAt);
+    expect(mapperDecoded.id, run.id);
+    expect(mapperDecoded.roundNumber, run.roundNumber);
+    expect(mapperDecoded.matchId, run.matchId);
+    expect(mapperDecoded.playerId, run.playerId);
+    expect(mapperDecoded.score, run.score);
+    expect(mapperDecoded.completedAt, run.completedAt);
   });
 }

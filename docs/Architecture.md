@@ -385,12 +385,32 @@ The target backend architecture is a custom backend with a PostgreSQL database a
 
 The app should continue to depend on domain-facing repository contracts. Production implementations can call REST endpoints, while tests and local development can keep using mock repositories.
 
+### Environment Configuration and Wiring
+
+`AppEnvironment` is the environment configuration boundary for repository selection.
+
+* `RepositoryRuntime.mock` remains the default runtime.
+* `RepositoryRuntime.backend` creates backend repository skeletons.
+* `STP_REPOSITORY_RUNTIME` can later select `mock` or `backend`.
+* `STP_API_BASE_URL` can later provide the REST API base URL.
+
+`RepositoryFactory` is the composition root for repositories. Widgets receive repository contracts and must not decide whether the implementation is mock or backend.
+
+### Auth Session Preparation
+
+`AuthSession` and `AuthSessionStore` prepare the future token/session layer.
+
+* Tokens are not used for real networking yet.
+* `InMemoryAuthSessionStore` is temporary and testable.
+* A secure device/session store can replace it later without changing repository contracts.
+
 ### DTO and Serialization Boundary
 
 * Backend DTOs live in the data layer.
 * Domain models remain the UI-facing and engine-facing contract.
 * DTOs translate REST JSON payloads into domain models.
 * Serialization must use explicit `toJson` / `fromJson` methods.
+* Feature mappers express the DTO-to-domain conversion explicitly.
 
 This boundary keeps backend payload shape independent from Flutter widgets and domain rules. It also gives future backend repositories a stable place for versioning, migration, and compatibility logic.
 
@@ -400,6 +420,15 @@ This boundary keeps backend payload shape independent from Flutter widgets and d
 * API errors use typed error codes plus a user/debug message.
 * Backend repositories convert API errors into repository-level failures or exceptions.
 * Skeleton backend repositories must fail explicitly until real networking is connected.
+* UI should receive domain-facing errors, not raw transport details.
+
+### Future API Client
+
+`PendingBackendApiClient` is a non-network placeholder.
+
+* It prevents accidental real network calls before the networking session.
+* It preserves the final API client shape.
+* A real REST implementation should replace it behind the same `BackendApiClient` contract.
 
 ### Domain Logic
 

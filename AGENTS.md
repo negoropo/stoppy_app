@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 27 completed.
+Session 28 completed.
 
-Current session: Session 28 — Backend Integration Layer + Repository Wiring Preparation
+Current session: Session 29 — Backend API Contracts + Serialization Hardening
 
 ---
 

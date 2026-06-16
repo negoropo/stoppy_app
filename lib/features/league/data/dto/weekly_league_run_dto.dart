@@ -1,3 +1,5 @@
+import 'package:stoppy_app/core/backend/domain_mapper.dart';
+
 import '../../domain/models/weekly_league_run.dart';
 
 class WeeklyLeagueRunDto {
@@ -6,6 +8,10 @@ class WeeklyLeagueRunDto {
     required this.score,
     required this.completedAt,
   });
+
+  static const playerIdKey = 'playerId';
+  static const scoreKey = 'score';
+  static const completedAtKey = 'completedAt';
 
   final String playerId;
   final int score;
@@ -21,9 +27,9 @@ class WeeklyLeagueRunDto {
 
   factory WeeklyLeagueRunDto.fromJson(Map<String, Object?> json) {
     return WeeklyLeagueRunDto(
-      playerId: json['playerId'] as String,
-      score: json['score'] as int,
-      completedAt: DateTime.parse(json['completedAt'] as String),
+      playerId: json[playerIdKey] as String,
+      score: json[scoreKey] as int,
+      completedAt: DateTime.parse(json[completedAtKey] as String),
     );
   }
 
@@ -35,11 +41,38 @@ class WeeklyLeagueRunDto {
     );
   }
 
+  WeeklyLeagueRunDto copyWith({
+    String? playerId,
+    int? score,
+    DateTime? completedAt,
+  }) {
+    return WeeklyLeagueRunDto(
+      playerId: playerId ?? this.playerId,
+      score: score ?? this.score,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
   Map<String, Object?> toJson() {
     return {
-      'playerId': playerId,
-      'score': score,
-      'completedAt': completedAt.toIso8601String(),
+      playerIdKey: playerId,
+      scoreKey: score,
+      completedAtKey: completedAt.toIso8601String(),
     };
+  }
+}
+
+class WeeklyLeagueRunMapper
+    extends DomainMapper<WeeklyLeagueRun, WeeklyLeagueRunDto> {
+  const WeeklyLeagueRunMapper();
+
+  @override
+  WeeklyLeagueRunDto toDto(WeeklyLeagueRun domain) {
+    return WeeklyLeagueRunDto.fromDomain(domain);
+  }
+
+  @override
+  WeeklyLeagueRun toDomain(WeeklyLeagueRunDto dto) {
+    return dto.toDomain();
   }
 }

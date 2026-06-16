@@ -39,3 +39,13 @@ This map describes current mock-owned data and the expected future PostgreSQL pe
 7. Move competitive validation from local mock behavior to server-authoritative responses.
 
 The UI should not change during this migration. If a widget needs to change when a backend repository replaces a mock repository, that is a sign the boundary leaked implementation details.
+
+## Session 27 Wiring Preparation
+
+- `AppEnvironment` selects mock or backend repository runtime.
+- `RepositoryFactory` creates the concrete repository bundle from that environment.
+- Mock repositories remain the default runtime and test fixture.
+- Backend repositories are skeletons behind the same contracts and must not be called for real networking yet.
+- DTO mappers define the future REST JSON to domain boundary.
+- `AuthSessionStore` prepares token persistence without choosing a secure storage implementation yet.
+- API errors should be mapped to domain-facing exceptions before reaching widgets.

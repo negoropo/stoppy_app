@@ -18,7 +18,11 @@ void main() {
 
     final dto = PlayerProfileDto.fromDomain(profile);
     final decoded = PlayerProfileDto.fromJson(dto.toJson()).toDomain();
+    final mapperDecoded = const PlayerProfileMapper().toDomain(
+      const PlayerProfileMapper().toDto(profile),
+    );
 
     expect(decoded.toJson(), profile.toJson());
+    expect(mapperDecoded.toJson(), profile.toJson());
   });
 }

@@ -39,12 +39,26 @@ class ApiError {
   }
 
   static ApiErrorCode _codeFromString(String? value) {
+    final normalizedValue = value?.trim();
+
+    if (normalizedValue == null || normalizedValue.isEmpty) {
+      return ApiErrorCode.unknown;
+    }
+
     for (final code in ApiErrorCode.values) {
-      if (code.name == value) {
+      if (code.name == normalizedValue || _toSnakeCase(code.name) == normalizedValue) {
         return code;
       }
     }
+
     return ApiErrorCode.unknown;
+  }
+
+  static String _toSnakeCase(String value) {
+    return value.replaceAllMapped(
+      RegExp('[A-Z]'),
+          (match) => '_${match.group(0)!.toLowerCase()}',
+    );
   }
 }
 

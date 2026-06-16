@@ -1,3 +1,5 @@
+import 'package:stoppy_app/core/backend/domain_mapper.dart';
+
 import '../../domain/models/player_profile.dart';
 
 class PlayerProfileDto {
@@ -12,6 +14,16 @@ class PlayerProfileDto {
     required this.hasWeeklyLeagueEntry,
     required this.reservedLeagueSlot,
   });
+
+  static const idKey = 'id';
+  static const usernameKey = 'username';
+  static const createdAtKey = 'createdAt';
+  static const gamePointsKey = 'gamePoints';
+  static const lastDailyGpAwardedAtKey = 'lastDailyGpAwardedAt';
+  static const adsRemovedKey = 'adsRemoved';
+  static const currentLeagueDivisionKey = 'currentLeagueDivision';
+  static const hasWeeklyLeagueEntryKey = 'hasWeeklyLeagueEntry';
+  static const reservedLeagueSlotKey = 'reservedLeagueSlot';
 
   final String id;
   final String username;
@@ -39,17 +51,17 @@ class PlayerProfileDto {
 
   factory PlayerProfileDto.fromJson(Map<String, Object?> json) {
     return PlayerProfileDto(
-      id: json['id'] as String,
-      username: json['username'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      gamePoints: json['gamePoints'] as int? ?? 5,
-      lastDailyGpAwardedAt: json['lastDailyGpAwardedAt'] == null
+      id: json[idKey] as String,
+      username: json[usernameKey] as String,
+      createdAt: DateTime.parse(json[createdAtKey] as String),
+      gamePoints: json[gamePointsKey] as int,
+      lastDailyGpAwardedAt: json[lastDailyGpAwardedAtKey] == null
           ? null
-          : DateTime.parse(json['lastDailyGpAwardedAt'] as String),
-      adsRemoved: json['adsRemoved'] as bool? ?? false,
-      currentLeagueDivision: json['currentLeagueDivision'] as int?,
-      hasWeeklyLeagueEntry: json['hasWeeklyLeagueEntry'] as bool? ?? false,
-      reservedLeagueSlot: json['reservedLeagueSlot'] as bool? ?? false,
+          : DateTime.parse(json[lastDailyGpAwardedAtKey] as String),
+      adsRemoved: json[adsRemovedKey] as bool,
+      currentLeagueDivision: json[currentLeagueDivisionKey] as int?,
+      hasWeeklyLeagueEntry: json[hasWeeklyLeagueEntryKey] as bool,
+      reservedLeagueSlot: json[reservedLeagueSlotKey] as bool,
     );
   }
 
@@ -67,17 +79,59 @@ class PlayerProfileDto {
     );
   }
 
+  PlayerProfileDto copyWith({
+    String? id,
+    String? username,
+    DateTime? createdAt,
+    int? gamePoints,
+    DateTime? lastDailyGpAwardedAt,
+    bool? adsRemoved,
+    int? currentLeagueDivision,
+    bool? hasWeeklyLeagueEntry,
+    bool? reservedLeagueSlot,
+  }) {
+    return PlayerProfileDto(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      createdAt: createdAt ?? this.createdAt,
+      gamePoints: gamePoints ?? this.gamePoints,
+      lastDailyGpAwardedAt:
+      lastDailyGpAwardedAt ?? this.lastDailyGpAwardedAt,
+      adsRemoved: adsRemoved ?? this.adsRemoved,
+      currentLeagueDivision:
+      currentLeagueDivision ?? this.currentLeagueDivision,
+      hasWeeklyLeagueEntry:
+      hasWeeklyLeagueEntry ?? this.hasWeeklyLeagueEntry,
+      reservedLeagueSlot: reservedLeagueSlot ?? this.reservedLeagueSlot,
+    );
+  }
+
   Map<String, Object?> toJson() {
     return {
-      'id': id,
-      'username': username,
-      'createdAt': createdAt.toIso8601String(),
-      'gamePoints': gamePoints,
-      'lastDailyGpAwardedAt': lastDailyGpAwardedAt?.toIso8601String(),
-      'adsRemoved': adsRemoved,
-      'currentLeagueDivision': currentLeagueDivision,
-      'hasWeeklyLeagueEntry': hasWeeklyLeagueEntry,
-      'reservedLeagueSlot': reservedLeagueSlot,
+      idKey: id,
+      usernameKey: username,
+      createdAtKey: createdAt.toIso8601String(),
+      gamePointsKey: gamePoints,
+      lastDailyGpAwardedAtKey: lastDailyGpAwardedAt?.toIso8601String(),
+      adsRemovedKey: adsRemoved,
+      currentLeagueDivisionKey: currentLeagueDivision,
+      hasWeeklyLeagueEntryKey: hasWeeklyLeagueEntry,
+      reservedLeagueSlotKey: reservedLeagueSlot,
     };
+  }
+}
+
+class PlayerProfileMapper
+    extends DomainMapper<PlayerProfile, PlayerProfileDto> {
+  const PlayerProfileMapper();
+
+  @override
+  PlayerProfileDto toDto(PlayerProfile domain) {
+    return PlayerProfileDto.fromDomain(domain);
+  }
+
+  @override
+  PlayerProfile toDomain(PlayerProfileDto dto) {
+    return dto.toDomain();
   }
 }
