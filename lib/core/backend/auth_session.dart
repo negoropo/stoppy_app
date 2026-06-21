@@ -14,9 +14,9 @@ class AuthSession {
   }
 
   bool isExpiringSoon(
-      DateTime now, {
-        Duration threshold = const Duration(minutes: 1),
-      }) {
+    DateTime now, {
+    Duration threshold = const Duration(minutes: 1),
+  }) {
     return expiresAt.subtract(threshold).isBefore(now);
   }
 

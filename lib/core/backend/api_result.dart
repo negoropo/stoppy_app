@@ -1,13 +1,9 @@
 import 'api_error.dart';
 
 class ApiResult<T> {
-  const ApiResult.success(this.data)
-      : error = null,
-        isSuccess = true;
+  const ApiResult.success(this.data) : error = null, isSuccess = true;
 
-  const ApiResult.failure(this.error)
-      : data = null,
-        isSuccess = false;
+  const ApiResult.failure(this.error) : data = null, isSuccess = false;
 
   final T? data;
   final ApiError? error;
@@ -33,11 +29,16 @@ class ApiResult<T> {
     );
   }
 
-  ApiError? get requireError {
-    if (isFailure) {
-      return error;
+  ApiError requireError() {
+    if (isFailure && error != null) {
+      return error!;
     }
 
-    return null;
+    throw const ApiException(
+      ApiError(
+        code: ApiErrorCode.unknown,
+        message: 'API result did not contain an error.',
+      ),
+    );
   }
 }

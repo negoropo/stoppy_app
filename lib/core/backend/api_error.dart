@@ -8,6 +8,7 @@ enum ApiErrorCode {
   serverError,
   networkUnavailable,
   notImplemented,
+  malformedPayload,
   unknown,
 }
 
@@ -22,11 +23,30 @@ class ApiError {
   final String message;
   final Map<String, Object?> details;
 
-  factory ApiError.fromJson(Map<String, Object?> json) {
+  factory ApiError.fromJson(Object? json) {
+    if (json is! Map) {
+      return const ApiError(
+        code: ApiErrorCode.malformedPayload,
+        message: 'API error payload must be a JSON object.',
+      );
+    }
+
+    final normalized = <String, Object?>{};
+    for (final entry in json.entries) {
+      if (entry.key is String) {
+        normalized[entry.key as String] = entry.value;
+      }
+    }
+
+    final message = normalized['message'];
     return ApiError(
-      code: _codeFromString(json['code'] as String?),
-      message: json['message'] as String? ?? 'Unknown API error.',
-      details: (json['details'] as Map?)?.cast<String, Object?>() ?? const {},
+      code: _codeFromString(
+        normalized['code'] is String ? normalized['code'] as String : null,
+      ),
+      message: message is String && message.trim().isNotEmpty
+          ? message
+          : 'Unknown API error.',
+      details: _detailsFromJson(normalized['details']),
     );
   }
 
@@ -46,7 +66,8 @@ class ApiError {
     }
 
     for (final code in ApiErrorCode.values) {
-      if (code.name == normalizedValue || _toSnakeCase(code.name) == normalizedValue) {
+      if (code.name == normalizedValue ||
+          _toSnakeCase(code.name) == normalizedValue) {
         return code;
       }
     }
@@ -57,8 +78,22 @@ class ApiError {
   static String _toSnakeCase(String value) {
     return value.replaceAllMapped(
       RegExp('[A-Z]'),
-          (match) => '_${match.group(0)!.toLowerCase()}',
+      (match) => '_${match.group(0)!.toLowerCase()}',
     );
+  }
+
+  static Map<String, Object?> _detailsFromJson(Object? value) {
+    if (value is! Map) {
+      return const {};
+    }
+
+    final details = <String, Object?>{};
+    for (final entry in value.entries) {
+      if (entry.key is String) {
+        details[entry.key as String] = entry.value;
+      }
+    }
+    return Map.unmodifiable(details);
   }
 }
 

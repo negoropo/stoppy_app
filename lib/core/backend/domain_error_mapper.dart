@@ -3,10 +3,10 @@ import 'api_error.dart';
 
 class RepositoryDomainException implements Exception {
   const RepositoryDomainException(
-      this.message, {
-        required this.code,
-        this.details = const {},
-      });
+    this.message, {
+    required this.code,
+    this.details = const {},
+  });
 
   final String message;
   final ApiErrorCode code;
@@ -20,10 +20,10 @@ class RepositoryDomainException implements Exception {
 
 class AuthDomainException extends AuthException {
   AuthDomainException(
-      super.message, {
-        required this.code,
-        this.details = const {},
-      });
+    super.message, {
+    required this.code,
+    this.details = const {},
+  });
 
   final ApiErrorCode code;
   final Map<String, Object?> details;
@@ -57,9 +57,11 @@ class DomainErrorMapper {
       ApiErrorCode.conflict => error.message,
       ApiErrorCode.rateLimited => 'Too many attempts. Please try again later.',
       ApiErrorCode.networkUnavailable =>
-      'Network unavailable. Please try again.',
+        'Network unavailable. Please try again.',
       ApiErrorCode.serverError => 'Server error. Please try again later.',
       ApiErrorCode.notImplemented => error.message,
+      ApiErrorCode.malformedPayload =>
+        'Received an invalid response. Please try again later.',
       ApiErrorCode.unknown => 'Something went wrong. Please try again.',
     };
   }

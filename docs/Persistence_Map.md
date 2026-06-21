@@ -49,3 +49,27 @@ The UI should not change during this migration. If a widget needs to change when
 - DTO mappers define the future REST JSON to domain boundary.
 - `AuthSessionStore` prepares token persistence without choosing a secure storage implementation yet.
 - API errors should be mapped to domain-facing exceptions before reaching widgets.
+
+## Session 29 PostgreSQL Entity Mapping Preparation
+
+The following column-level direction is intentionally descriptive rather than a migration. Database names should use snake_case while REST DTOs remain camelCase.
+
+| Entity | Primary identity | Important persisted fields | Notes |
+| --- | --- | --- | --- |
+| players | `id` | `username`, `created_at`, `game_points`, `ads_removed` | GP and purchase state are server-controlled. |
+| weekly_league_runs | `id` | `player_id`, `season_id`, `score`, `completed_at` | Unique run submission/idempotency key required. |
+| league_player_entries | `(season_id, player_id)` | `division_number`, `entry_paid`, `has_reserved_slot`, lifetime tie-breaker fields | One active entry per player and season. |
+| league_divisions | `(season_id, division_number)` | `capacity`, settlement metadata | Capacity/expansion and settlement writes are server-only. |
+| league_history_entries | `(season_id, player_id)` | `final_rank`, `final_division`, `result`, `final_weekly_score`, `season_ended_at` | Immutable after settlement. |
+| player_league_records | `player_id` | all-time/current weekly records, current season | Derived from accepted runs and settlement state. |
+| player_league_achievements | `player_id` | best division, promotions, relegations | Derived server-side only. |
+| knockout_tournaments | `id` | schedule, status, entry cost, champion id | Monthly lifecycle is server-authoritative. |
+| knockout_player_entries | `(tournament_id, player_id)` | registration and repechage tie-breaker fields | Duplicate registration prevented by unique key. |
+| knockout_rounds | `(tournament_id, round_number)` | starts/ends timestamps, status | Daily settlement state. |
+| knockout_matches | `id` | player ids, scores, run counts, winner/repechage winner | Only settlement can set advancement fields. |
+| knockout_runs | `id` | `match_id`, `player_id`, `round_number`, `score`, `completed_at` | Must reference an active duel. |
+| knockout_history_entries | `(tournament_id, player_id)` | outcome, final round, completed timestamp | Immutable participant history. |
+| knockout_player_records | `player_id` | tournament/duel totals and highest round | Derived from settled history/matches. |
+| knockout_hall_of_fame | derived view | champion identity, title count, won months | Champion-only aggregate. |
+
+DTOs mirror the REST representation of these records, not direct PostgreSQL rows. Backend adapters own the translation between database rows, API payloads, and domain models.

@@ -1,0 +1,32 @@
+class ApiContract {
+  const ApiContract._();
+
+  static const version = 'v1';
+  static const apiPrefix = '/api/$version';
+
+  static const contentTypeHeader = 'Content-Type';
+  static const authorizationHeader = 'Authorization';
+  static const jsonContentType = 'application/json';
+  static const bearerScheme = 'Bearer';
+
+  static const authRegister = '$apiPrefix/auth/register';
+  static const authLogin = '$apiPrefix/auth/login';
+  static const playerProfile = '$apiPrefix/player/profile';
+
+  static const leagueEntry = '$apiPrefix/league/enter';
+  static const leagueSnapshot = '$apiPrefix/league/snapshot';
+  static const leagueHistory = '$apiPrefix/league/history';
+  static const leagueRecords = '$apiPrefix/league/records';
+  static const leagueAchievements = '$apiPrefix/league/achievements';
+  static const leagueRuns = '$apiPrefix/league/runs';
+  static const leagueRunSubmission = '$apiPrefix/runs/league';
+
+  static const knockoutTournament = '$apiPrefix/knockout/tournament';
+  static const knockoutRegistration = '$apiPrefix/knockout/register';
+  static const knockoutStatus = '$apiPrefix/knockout/status';
+  static const knockoutActiveDuel = '$apiPrefix/knockout/active-duel';
+  static const knockoutHistory = '$apiPrefix/knockout/history';
+  static const knockoutRecords = '$apiPrefix/knockout/records';
+  static const knockoutHallOfFame = '$apiPrefix/knockout/hall-of-fame';
+  static const knockoutRunSubmission = '$apiPrefix/runs/knockout';
+}

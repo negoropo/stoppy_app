@@ -1,4 +1,5 @@
 import 'package:stoppy_app/core/backend/domain_mapper.dart';
+import 'package:stoppy_app/core/backend/json_reader.dart';
 
 import '../../domain/models/knockout_run.dart';
 
@@ -37,14 +38,15 @@ class KnockoutRunDto {
     );
   }
 
-  factory KnockoutRunDto.fromJson(Map<String, Object?> json) {
+  factory KnockoutRunDto.fromJson(Object? json) {
+    final reader = JsonReader.fromObject(json, context: 'KnockoutRunDto');
     return KnockoutRunDto(
-      id: json[idKey] as String,
-      roundNumber: json[roundNumberKey] as int,
-      matchId: json[matchIdKey] as String,
-      playerId: json[playerIdKey] as String,
-      score: json[scoreKey] as int,
-      completedAt: DateTime.parse(json[completedAtKey] as String),
+      id: reader.requiredString(idKey),
+      roundNumber: reader.requiredPositiveInt(roundNumberKey),
+      matchId: reader.requiredString(matchIdKey),
+      playerId: reader.requiredString(playerIdKey),
+      score: reader.requiredNonNegativeInt(scoreKey),
+      completedAt: reader.requiredDateTime(completedAtKey),
     );
   }
 

@@ -28,5 +28,29 @@ void main() {
       expect(response.error?.message, 'Invalid input.');
       expect(response.error?.details['field'], 'username');
     });
+
+    test('returns malformed payload failure for invalid envelopes', () {
+      final response = ApiResponse<Map<String, Object?>>.fromJson({
+        'success': 'yes',
+      }, (json) => json! as Map<String, Object?>);
+
+      expect(response.isSuccess, isFalse);
+      expect(response.error?.code, ApiErrorCode.malformedPayload);
+    });
+
+    test('converts decoder API exceptions into failure envelopes', () {
+      final response = ApiResponse<String>.fromJson(
+        {'success': true, 'data': {}},
+        (_) => throw const ApiException(
+          ApiError(
+            code: ApiErrorCode.malformedPayload,
+            message: 'Missing token.',
+          ),
+        ),
+      );
+
+      expect(response.isSuccess, isFalse);
+      expect(response.error?.message, 'Missing token.');
+    });
   });
 }

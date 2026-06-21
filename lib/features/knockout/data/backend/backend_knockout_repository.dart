@@ -1,5 +1,6 @@
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
+import 'package:stoppy_app/core/backend/api_contract.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_hall_of_fame_entry.dart';
@@ -17,17 +18,14 @@ class BackendKnockoutRepository implements KnockoutRepository {
 
   final BackendApiClient? apiClient;
 
-  static const tournamentPath = '/knockout/tournament';
-  static const registerPath = '/knockout/register';
-  static const statusPath = '/knockout/status';
-  static const activeDuelPath = '/knockout/active-duel';
-  static const historyPath = '/knockout/history';
-  static const recordsPath = '/knockout/records';
-  static const hallOfFamePath = '/knockout/hall-of-fame';
-  static const closeRegistrationPath = '/internal/knockout/close-registration';
-  static const startTournamentPath = '/internal/knockout/start';
-  static const settleRoundPath = '/internal/knockout/settle-current-round';
-  static const knockoutRunPath = '/runs/knockout';
+  static const tournamentPath = ApiContract.knockoutTournament;
+  static const registerPath = ApiContract.knockoutRegistration;
+  static const statusPath = ApiContract.knockoutStatus;
+  static const activeDuelPath = ApiContract.knockoutActiveDuel;
+  static const historyPath = ApiContract.knockoutHistory;
+  static const recordsPath = ApiContract.knockoutRecords;
+  static const hallOfFamePath = ApiContract.knockoutHallOfFame;
+  static const knockoutRunPath = ApiContract.knockoutRunSubmission;
 
   BackendApiClient get _client {
     final client = apiClient;
@@ -131,8 +129,8 @@ class BackendKnockoutRepository implements KnockoutRepository {
 
   @override
   Future<List<KnockoutTournamentHistoryEntry>> fetchPlayerHistory(
-      String playerId,
-      ) {
+    String playerId,
+  ) {
     final _ = _client;
     return backendNotConnected(
       'BackendKnockoutRepository',

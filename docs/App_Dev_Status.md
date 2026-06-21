@@ -4850,3 +4850,246 @@ Planned focus:
 Current session: Session 29 — Backend API Contracts + Serialization Hardening
 
 Status: Ready ⏳
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 29 — Backend API Contracts + Serialization Hardening
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Harden the backend API contract layer before implementing real networking or backend persistence, ensuring DTO serialization, API envelopes, validation payloads, and backend contract definitions are robust and ready for future networking integration.
+
+---
+
+### 📦 Deliverables
+
+* [x] Versioned REST API contract constants implemented
+* [x] `/api/v1` API prefix centralized
+* [x] API headers centralized
+* [x] Auth endpoint constants implemented
+* [x] Player endpoint constants implemented
+* [x] League endpoint constants implemented
+* [x] Knockout endpoint constants implemented
+* [x] Competitive run submission endpoint constants implemented
+* [x] Defensive `JsonReader` implemented and expanded
+* [x] Typed malformed-payload errors implemented
+* [x] Required string/int/double/bool/date parsing implemented
+* [x] Positive and non-negative number parsing implemented
+* [x] Optional object/list parsing implemented
+* [x] `ApiError` payload decoding hardened
+* [x] `ApiResponse` envelope decoding hardened
+* [x] Malformed success envelopes handled safely
+* [x] Malformed failure envelopes handled safely
+* [x] Null decoded success data rejected
+* [x] `ApiResult` reviewed and preserved
+* [x] JWT authentication DTOs implemented
+* [x] `AuthRequestDto` implemented
+* [x] `AuthSessionDto` implemented
+* [x] `AuthResponseDto` implemented
+* [x] `PlayerProfileDto` serialization hardened
+* [x] `PlayerProfileMapper` preserved
+* [x] League persisted DTO coverage expanded
+* [x] `LeagueDivisionDto` implemented
+* [x] `LeaguePlayerEntryDto` implemented
+* [x] `WeeklyLeagueScoreDto` implemented
+* [x] `WeeklyLeagueHistoryEntryDto` implemented
+* [x] `PlayerLeagueRecordsDto` implemented
+* [x] `PlayerLeagueAchievementsDto` implemented
+* [x] `WeeklyLeagueRunDto` serialization hardened
+* [x] `WeeklyLeagueRunMapper` preserved
+* [x] Knockout persisted DTO coverage expanded
+* [x] `KnockoutPlayerEntryDto` implemented
+* [x] `KnockoutMatchDto` implemented
+* [x] `KnockoutRoundDto` implemented
+* [x] `KnockoutTournamentDto` implemented
+* [x] `KnockoutTournamentHistoryEntryDto` implemented
+* [x] `KnockoutPlayerRecordsDto` implemented
+* [x] `KnockoutHallOfFameEntryDto` implemented
+* [x] Hall of Fame title/month consistency validation added
+* [x] `KnockoutRunDto` serialization hardened
+* [x] `KnockoutRunMapper` preserved
+* [x] Competitive run validation DTOs implemented
+* [x] `RunValidationClaimDto` implemented
+* [x] `RunValidationResultDto` implemented
+* [x] Run validation date-order validation added
+* [x] Run validation result consistency validation added
+* [x] Backend API client contract expanded
+* [x] GET/POST headers support added
+* [x] PUT/PATCH/DELETE contract methods prepared
+* [x] `PendingBackendApiClient` updated to match expanded contract
+* [x] Backend repository skeleton paths migrated to centralized API constants
+* [x] `BackendAuthRepository` reviewed and preserved as disconnected skeleton
+* [x] Backend remains explicitly disconnected
+* [x] Mock repositories remain the active runtime
+* [x] No real HTTP networking introduced
+* [x] No PostgreSQL implementation introduced
+* [x] No gameplay behavior changed
+* [x] No League runtime behavior changed
+* [x] No Knockout runtime behavior changed
+* [x] API documentation updated
+* [x] Persistence documentation updated
+* [x] Architecture documentation updated
+* [x] DTO serialization tests expanded
+* [x] API envelope tests expanded
+* [x] Malformed JSON handling tests expanded
+* [x] Backend client placeholder tests updated
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
+
+---
+
+### 🛠️ Work Done
+
+* Implemented centralized API contract constants through `ApiContract`
+* Standardized the API prefix under `/api/v1`
+* Centralized request header constants for JSON and Bearer authentication
+* Hardened API envelope parsing in `ApiResponse`
+* Added safe handling for malformed success and failure responses
+* Ensured successful responses must contain valid decoded data
+* Hardened `ApiError` decoding for malformed backend error payloads
+* Expanded `JsonReader` as the common defensive DTO parsing utility
+* Added stricter numeric validation for competitive and persisted data
+* Added authentication DTOs for future JWT-based login/register flow
+* Added session serialization support through `AuthSessionDto`
+* Added combined auth response contract through `AuthResponseDto`
+* Expanded player profile DTO serialization for backend persistence compatibility
+* Added persisted League DTOs for divisions, player entries, weekly scores, history, records, and achievements
+* Hardened League run DTOs to reject invalid competitive scores
+* Added persisted Knockout DTOs for tournaments, entries, rounds, matches, history, records, and Hall of Fame data
+* Hardened Knockout run DTOs to reject invalid round numbers and invalid competitive scores
+* Added Hall of Fame validation to ensure won tournament month count matches title count
+* Added competitive run validation claim/result DTOs for future server-side anti-cheat validation
+* Added date ordering validation for run validation claims
+* Added consistency validation for accepted/rejected run validation results
+* Expanded `BackendApiClient` contract to prepare the future HTTP request pipeline
+* Updated `PendingBackendApiClient` to preserve explicit disconnected backend behavior
+* Confirmed `BackendAuthRepository` continues to use centralized API contract paths
+* Preserved existing repository contracts and mock runtime behavior
+* Updated backend architecture, API plan, and persistence documentation
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Mock repositories remain the default and active runtime implementation
+* Backend repositories remain optional and disconnected
+* `PendingBackendApiClient` remains an explicit placeholder
+* Real HTTP networking is intentionally deferred to the next session
+* PostgreSQL implementation remains deferred
+* DTOs remain data-layer only
+* Domain models remain backend-agnostic
+* UI remains isolated from backend implementation details
+* API contracts are now centralized and versioned
+* Persisted DTOs now reject impossible negative competitive values
+* Enum decoding remains strict by design
+* Server-authoritative validation remains the future production target
+* Competitive run validation DTOs are preparation only and do not validate gameplay server-side yet
+* No gameplay, League, or Knockout runtime behavior changed during this session
+
+---
+
+### 🧪 Validation
+
+* [x] API contract constants reviewed
+* [x] API envelope decoding reviewed
+* [x] API error decoding reviewed
+* [x] Defensive JSON reader reviewed
+* [x] Auth DTOs reviewed
+* [x] Player profile DTO reviewed
+* [x] League DTOs reviewed
+* [x] League run DTO reviewed
+* [x] Knockout DTOs reviewed
+* [x] Knockout run DTO reviewed
+* [x] Hall of Fame consistency validation reviewed
+* [x] Competitive run validation DTOs reviewed
+* [x] Backend API client contract reviewed
+* [x] Pending backend client compatibility reviewed
+* [x] Backend auth repository skeleton reviewed
+* [x] Repository boundaries preserved
+* [x] Mock runtime preserved
+* [x] No real networking introduced
+* [x] No persistence implementation introduced
+* [x] No gameplay behavior changed
+* [x] No league calculations changed
+* [x] No knockout calculations changed
+* [x] flutter analyze passed
+* [x] flutter test passed
+
+---
+
+### 📌 Next Session
+
+Session 30 — Backend Networking Client Preparation
+
+Planned focus:
+
+* [ ] Real HTTP client abstraction preparation
+* [ ] Request/response pipeline implementation
+* [ ] Base URL resolution
+* [ ] Query parameter encoding
+* [ ] JSON body encoding
+* [ ] JSON response decoding
+* [ ] Content-Type header handling
+* [ ] Authorization header injection
+* [ ] Auth session integration
+* [ ] Timeout policy
+* [ ] Retry policy preparation
+* [ ] Network error mapping
+* [ ] HTTP status code mapping
+* [ ] API response decoding integration
+* [ ] Backend client test doubles
+* [ ] Backend repositories remain disconnected by default
+* [ ] Mock repositories remain active by default
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League Structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle (completed)
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression (completed)
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status (completed)
+* ✅ Session 23 — Knockout Tournament History + Records (completed)
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish (completed)
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish (completed)
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning (completed)
+* ✅ Session 27 — Backend Repository Contracts Preparation (completed)
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation (completed)
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening (completed)
+* 🔄 Session 30 — Backend Networking Client Preparation (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 30 — Backend Networking Client Preparation
+
+Status: Ready ⏳

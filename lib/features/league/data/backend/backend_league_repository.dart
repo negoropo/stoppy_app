@@ -1,5 +1,6 @@
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
+import 'package:stoppy_app/core/backend/api_contract.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
@@ -17,14 +18,13 @@ class BackendLeagueRepository implements LeagueRepository {
 
   final BackendApiClient? apiClient;
 
-  static const enterPath = '/league/enter';
-  static const snapshotPath = '/league/snapshot';
-  static const historyPath = '/league/history';
-  static const recordsPath = '/league/records';
-  static const achievementsPath = '/league/achievements';
-  static const weeklyRunsPath = '/league/runs';
-  static const settlementPath = '/internal/league/settle-current';
-  static const leagueRunPath = '/runs/league';
+  static const enterPath = ApiContract.leagueEntry;
+  static const snapshotPath = ApiContract.leagueSnapshot;
+  static const historyPath = ApiContract.leagueHistory;
+  static const recordsPath = ApiContract.leagueRecords;
+  static const achievementsPath = ApiContract.leagueAchievements;
+  static const weeklyRunsPath = ApiContract.leagueRuns;
+  static const leagueRunPath = ApiContract.leagueRunSubmission;
 
   BackendApiClient get _client {
     final client = apiClient;

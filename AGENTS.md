@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 28 completed.
+Session 29 completed.
 
-Current session: Session 29 — Backend API Contracts + Serialization Hardening
+Current session: Session 30 — Backend Networking Client Preparation
 
 ---
 

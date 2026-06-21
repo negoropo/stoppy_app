@@ -1,4 +1,5 @@
 import 'package:stoppy_app/core/backend/domain_mapper.dart';
+import 'package:stoppy_app/core/backend/json_reader.dart';
 
 import '../../domain/models/player_profile.dart';
 
@@ -49,19 +50,27 @@ class PlayerProfileDto {
     );
   }
 
-  factory PlayerProfileDto.fromJson(Map<String, Object?> json) {
+  factory PlayerProfileDto.fromJson(Object? json) {
+    final reader = JsonReader.fromObject(json, context: 'PlayerProfileDto');
+    final currentLeagueDivision = reader.optionalPositiveInt(
+      currentLeagueDivisionKey,
+    );
     return PlayerProfileDto(
-      id: json[idKey] as String,
-      username: json[usernameKey] as String,
-      createdAt: DateTime.parse(json[createdAtKey] as String),
-      gamePoints: json[gamePointsKey] as int,
-      lastDailyGpAwardedAt: json[lastDailyGpAwardedAtKey] == null
-          ? null
-          : DateTime.parse(json[lastDailyGpAwardedAtKey] as String),
-      adsRemoved: json[adsRemovedKey] as bool,
-      currentLeagueDivision: json[currentLeagueDivisionKey] as int?,
-      hasWeeklyLeagueEntry: json[hasWeeklyLeagueEntryKey] as bool,
-      reservedLeagueSlot: json[reservedLeagueSlotKey] as bool,
+      id: reader.requiredString(idKey),
+      username: reader.requiredString(usernameKey),
+      createdAt: reader.requiredDateTime(createdAtKey),
+      gamePoints: reader.optionalInt(gamePointsKey, defaultValue: 5),
+      lastDailyGpAwardedAt: reader.optionalDateTime(lastDailyGpAwardedAtKey),
+      adsRemoved: reader.optionalBool(adsRemovedKey, defaultValue: false),
+      currentLeagueDivision: currentLeagueDivision,
+      hasWeeklyLeagueEntry: reader.optionalBool(
+        hasWeeklyLeagueEntryKey,
+        defaultValue: false,
+      ),
+      reservedLeagueSlot: reader.optionalBool(
+        reservedLeagueSlotKey,
+        defaultValue: false,
+      ),
     );
   }
 
@@ -95,13 +104,11 @@ class PlayerProfileDto {
       username: username ?? this.username,
       createdAt: createdAt ?? this.createdAt,
       gamePoints: gamePoints ?? this.gamePoints,
-      lastDailyGpAwardedAt:
-      lastDailyGpAwardedAt ?? this.lastDailyGpAwardedAt,
+      lastDailyGpAwardedAt: lastDailyGpAwardedAt ?? this.lastDailyGpAwardedAt,
       adsRemoved: adsRemoved ?? this.adsRemoved,
       currentLeagueDivision:
-      currentLeagueDivision ?? this.currentLeagueDivision,
-      hasWeeklyLeagueEntry:
-      hasWeeklyLeagueEntry ?? this.hasWeeklyLeagueEntry,
+          currentLeagueDivision ?? this.currentLeagueDivision,
+      hasWeeklyLeagueEntry: hasWeeklyLeagueEntry ?? this.hasWeeklyLeagueEntry,
       reservedLeagueSlot: reservedLeagueSlot ?? this.reservedLeagueSlot,
     );
   }

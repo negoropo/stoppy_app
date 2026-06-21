@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
 import 'package:stoppy_app/features/knockout/data/dto/knockout_run_dto.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 
@@ -31,5 +32,25 @@ void main() {
     expect(mapperDecoded.playerId, run.playerId);
     expect(mapperDecoded.score, run.score);
     expect(mapperDecoded.completedAt, run.completedAt);
+  });
+
+  test('KnockoutRunDto rejects malformed run payloads', () {
+    expect(
+      () => KnockoutRunDto.fromJson({
+        'id': 'run-id',
+        'roundNumber': 1,
+        'matchId': 'match-id',
+        'playerId': 'player-id',
+        'score': 45000,
+        'completedAt': false,
+      }),
+      throwsA(
+        isA<ApiException>().having(
+          (exception) => exception.error.code,
+          'code',
+          ApiErrorCode.malformedPayload,
+        ),
+      ),
+    );
   });
 }

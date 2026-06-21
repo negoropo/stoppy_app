@@ -25,19 +25,74 @@ class ApiResponse<T> {
   }
 
   factory ApiResponse.fromJson(
-    Map<String, Object?> json,
-    T Function(Object? json) decodeData,
-  ) {
-    final success = json['success'] as bool? ?? false;
-    if (success) {
-      return ApiResponse.success(decodeData(json['data']));
+      Object? json,
+      T Function(Object? json) decodeData,
+      ) {
+    if (json is! Map) {
+      return const ApiResponse.failure(
+        ApiError(
+          code: ApiErrorCode.malformedPayload,
+          message: 'API response envelope must be a JSON object.',
+        ),
+      );
     }
 
-    return ApiResponse.failure(
-      ApiError.fromJson(
-        (json['error'] as Map?)?.cast<String, Object?>() ?? const {},
-      ),
-    );
+    final success = json['success'];
+    if (success is! bool) {
+      return const ApiResponse.failure(
+        ApiError(
+          code: ApiErrorCode.malformedPayload,
+          message: 'API response envelope.success must be a boolean.',
+        ),
+      );
+    }
+
+    if (success) {
+      if (!json.containsKey('data')) {
+        return const ApiResponse.failure(
+          ApiError(
+            code: ApiErrorCode.malformedPayload,
+            message: 'Successful API response must contain data.',
+          ),
+        );
+      }
+
+      try {
+        final decodedData = decodeData(json['data']);
+        if (decodedData == null) {
+          return const ApiResponse.failure(
+            ApiError(
+              code: ApiErrorCode.malformedPayload,
+              message: 'Successful API response data could not be decoded.',
+            ),
+          );
+        }
+
+        return ApiResponse.success(decodedData);
+      } on ApiException catch (exception) {
+        return ApiResponse.failure(exception.error);
+      } on FormatException catch (exception) {
+        return ApiResponse.failure(
+          ApiError(
+            code: ApiErrorCode.malformedPayload,
+            message: exception.message,
+          ),
+        );
+      }
+    }
+
+    try {
+      return ApiResponse.failure(ApiError.fromJson(json['error']));
+    } on ApiException catch (exception) {
+      return ApiResponse.failure(exception.error);
+    } on FormatException catch (exception) {
+      return ApiResponse.failure(
+        ApiError(
+          code: ApiErrorCode.malformedPayload,
+          message: exception.message,
+        ),
+      );
+    }
   }
 
   Map<String, Object?> toJson(Object? Function(T data) encodeData) {
@@ -48,12 +103,12 @@ class ApiResponse<T> {
     return {
       'success': false,
       'error':
-          (error ??
-                  const ApiError(
-                    code: ApiErrorCode.unknown,
-                    message: 'Unknown API error.',
-                  ))
-              .toJson(),
+      (error ??
+          const ApiError(
+            code: ApiErrorCode.unknown,
+            message: 'Unknown API error.',
+          ))
+          .toJson(),
     };
   }
 }

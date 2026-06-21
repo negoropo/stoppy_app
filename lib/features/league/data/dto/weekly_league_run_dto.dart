@@ -1,4 +1,5 @@
 import 'package:stoppy_app/core/backend/domain_mapper.dart';
+import 'package:stoppy_app/core/backend/json_reader.dart';
 
 import '../../domain/models/weekly_league_run.dart';
 
@@ -25,11 +26,12 @@ class WeeklyLeagueRunDto {
     );
   }
 
-  factory WeeklyLeagueRunDto.fromJson(Map<String, Object?> json) {
+  factory WeeklyLeagueRunDto.fromJson(Object? json) {
+    final reader = JsonReader.fromObject(json, context: 'WeeklyLeagueRunDto');
     return WeeklyLeagueRunDto(
-      playerId: json[playerIdKey] as String,
-      score: json[scoreKey] as int,
-      completedAt: DateTime.parse(json[completedAtKey] as String),
+      playerId: reader.requiredString(playerIdKey),
+      score: reader.requiredNonNegativeInt(scoreKey),
+      completedAt: reader.requiredDateTime(completedAtKey),
     );
   }
 

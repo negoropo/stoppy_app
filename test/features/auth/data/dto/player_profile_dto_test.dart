@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
 import 'package:stoppy_app/features/auth/data/dto/player_profile_dto.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 
@@ -24,5 +25,22 @@ void main() {
 
     expect(decoded.toJson(), profile.toJson());
     expect(mapperDecoded.toJson(), profile.toJson());
+  });
+
+  test('PlayerProfileDto rejects malformed profile fields', () {
+    expect(
+      () => PlayerProfileDto.fromJson({
+        'id': 'player-id',
+        'username': 'Tester',
+        'createdAt': 'bad-date',
+      }),
+      throwsA(
+        isA<ApiException>().having(
+          (exception) => exception.error.code,
+          'code',
+          ApiErrorCode.malformedPayload,
+        ),
+      ),
+    );
   });
 }

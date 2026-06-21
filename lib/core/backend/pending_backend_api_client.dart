@@ -1,8 +1,6 @@
-import 'api_error.dart';
 import 'api_response.dart';
 import 'backend_api_client.dart';
-import 'backend_api_client_config.dart';
-import 'auth_session.dart';
+import 'backend_repository_not_configured.dart';
 
 class PendingBackendApiClient implements BackendApiClient {
   const PendingBackendApiClient({
@@ -10,44 +8,51 @@ class PendingBackendApiClient implements BackendApiClient {
     required this.authSessionStore,
   });
 
-  final BackendApiClientConfig config;
-  final AuthSessionStore authSessionStore;
+  final Object config;
+  final Object authSessionStore;
 
   @override
   Future<ApiResponse<Map<String, Object?>>> get(
       String path, {
         Map<String, String> queryParameters = const {},
+        Map<String, String> headers = const {},
       }) {
-    return _notImplemented('GET', path);
+    return backendNotConnected('PendingBackendApiClient', 'get');
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> post(
       String path, {
         Map<String, Object?> body = const {},
+        Map<String, String> headers = const {},
       }) {
-    return _notImplemented('POST', path);
+    return backendNotConnected('PendingBackendApiClient', 'post');
   }
 
-  Future<ApiResponse<Map<String, Object?>>> _notImplemented(
-      String method,
-      String path,
-      ) async {
-    // Future implementation will use the current authenticated session
-    // to attach authorization headers before performing HTTP requests.
-    await authSessionStore.read();
+  @override
+  Future<ApiResponse<Map<String, Object?>>> put(
+      String path, {
+        Map<String, Object?> body = const {},
+        Map<String, String> headers = const {},
+      }) {
+    return backendNotConnected('PendingBackendApiClient', 'put');
+  }
 
-    throw ApiException(
-      ApiError(
-        code: ApiErrorCode.notImplemented,
-        message:
-        'BackendApiClient is not connected yet for $method $path. '
-            'This placeholder preserves the repository boundary until real '
-            'networking is added.',
-        details: {
-          'baseUrl': config.baseUrl,
-        },
-      ),
-    );
+  @override
+  Future<ApiResponse<Map<String, Object?>>> patch(
+      String path, {
+        Map<String, Object?> body = const {},
+        Map<String, String> headers = const {},
+      }) {
+    return backendNotConnected('PendingBackendApiClient', 'patch');
+  }
+
+  @override
+  Future<ApiResponse<Map<String, Object?>>> delete(
+      String path, {
+        Map<String, String> queryParameters = const {},
+        Map<String, String> headers = const {},
+      }) {
+    return backendNotConnected('PendingBackendApiClient', 'delete');
   }
 }

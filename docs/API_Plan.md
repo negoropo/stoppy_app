@@ -2,6 +2,20 @@
 
 The future API is a custom REST API backed by PostgreSQL. Endpoints below describe the first backend-facing contract shape and may evolve, but competitive state must remain server-authoritative.
 
+## Versioning and Paths
+
+All public REST endpoints use the `/api/v1` prefix. The client exposes these paths through `ApiContract`; backend repositories must not duplicate string literals.
+
+Examples:
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/player/profile`
+- `POST /api/v1/runs/league`
+- `POST /api/v1/runs/knockout`
+
+Requests and responses use `Content-Type: application/json`. Authenticated requests will use `Authorization: Bearer <accessToken>` once real networking is introduced.
+
 ## Response Envelope
 
 All endpoints should use a standardized envelope:
@@ -26,6 +40,8 @@ Failure responses should use:
 }
 ```
 
+`code` uses stable machine-readable values such as `validationFailed`, `conflict`, `unauthenticated`, `forbidden`, and `malformedPayload`. The client accepts camelCase and snake_case response codes during the migration period.
+
 The Flutter app already has prepared API response/error models for this future contract. Backend repositories should decode this envelope first, then translate DTOs into domain models.
 
 ## Client Integration Layer
@@ -47,6 +63,38 @@ Backend repositories should receive a `BackendApiClient` plus an auth session st
 - Mock repositories can continue returning domain models directly.
 - Backend repositories should be swappable behind the existing repository contracts.
 - DTO/domain conversion should be expressed through feature mappers so serialization rules stay outside widgets.
+- DTO `fromJson` methods validate required field types before constructing domain models.
+- Invalid transport payloads become typed `malformedPayload` errors instead of leaking cast or date parsing exceptions into UI.
+
+### Persisted DTO Coverage
+
+The client has explicit DTOs for the persisted competitive entities currently represented in the app:
+
+- Player profile and auth requests/responses
+- Weekly league divisions, entries, scores, history, records, achievements, and runs
+- Knockout tournaments, entries, rounds, matches, history, records, Hall of Fame entries, and runs
+
+Snapshots and other UI projections remain domain/repository outputs. They are not database schemas.
+
+## JWT Authentication Contract
+
+Successful registration/login responses return:
+
+```json
+{
+  "playerProfile": {},
+  "session": {
+    "accessToken": "jwt-access-token",
+    "refreshToken": "optional-refresh-token",
+    "expiresAt": "2026-06-21T12:00:00.000Z"
+  }
+}
+```
+
+- `accessToken` is required and non-empty.
+- `refreshToken` is optional to allow a future session policy change.
+- `expiresAt` is an ISO-8601 UTC date-time.
+- Token storage and refresh calls are intentionally not implemented in this session.
 
 ## Error Strategy
 
@@ -222,6 +270,24 @@ Server responsibilities:
 - prevent duplicates
 - persist accepted run
 - update current duel score where appropriate
+
+## Competitive Validation Contract
+
+Future run submission claims carry enough information for server-side verification:
+
+```json
+{
+  "runId": "client-generated-idempotency-key",
+  "runType": "league",
+  "finalPrecisionPoints": 12000,
+  "levelReached": 15,
+  "precisionPointTier": 7,
+  "runStartedAt": "2026-06-21T10:00:00.000Z",
+  "runEndedAt": "2026-06-21T10:10:00.000Z"
+}
+```
+
+This is a preparation contract only. The backend will later validate timing, tier progression, duplicate submission protection, authenticated player identity, and the final accepted score.
 
 ## Store / Economy
 

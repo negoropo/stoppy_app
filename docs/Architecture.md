@@ -430,6 +430,17 @@ This boundary keeps backend payload shape independent from Flutter widgets and d
 * It preserves the final API client shape.
 * A real REST implementation should replace it behind the same `BackendApiClient` contract.
 
+### Session 29 Contract Hardening
+
+The backend preparation layer now defines a versioned `ApiContract`, defensive JSON decoding, JWT session DTOs, and validation claim DTOs.
+
+* Public endpoints use `/api/v1` and are centralized in `ApiContract`.
+* DTO decoders validate field shape before domain models are created.
+* Malformed response payloads become typed API errors.
+* Auth responses keep profile and JWT/session transport data in data-layer DTOs.
+* Competitive run validation claims are transport contracts only; they do not alter local gameplay or scoring.
+* No HTTP client, network transport, token refresh, or PostgreSQL access is implemented yet.
+
 ### Domain Logic
 
 * Domain logic should stay reusable where possible.

@@ -1,5 +1,6 @@
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
+import 'package:stoppy_app/core/backend/api_contract.dart';
 
 import '../../domain/models/auth_state.dart';
 import '../../domain/models/player_profile.dart';
@@ -10,9 +11,9 @@ class BackendAuthRepository implements AuthRepository {
 
   final BackendApiClient? apiClient;
 
-  static const registerPath = '/auth/register';
-  static const loginPath = '/auth/login';
-  static const profilePath = '/player/profile';
+  static const registerPath = ApiContract.authRegister;
+  static const loginPath = ApiContract.authLogin;
+  static const profilePath = ApiContract.playerProfile;
 
   BackendApiClient get _client {
     final client = apiClient;
