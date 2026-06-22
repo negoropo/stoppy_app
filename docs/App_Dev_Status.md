@@ -5117,96 +5117,98 @@ Implement the real HTTP networking foundation required for future REST API integ
 * [x] Official Dart `http` package added
 * [x] HTTP transport abstraction implemented
 * [x] Package-backed HTTP transport implemented
-* [x] Transport request model implemented
-* [x] Transport response model implemented
+* [x] HTTP request model implemented
+* [x] HTTP response model implemented
 * [x] HTTP method abstraction implemented
 * [x] Transport lifecycle contract implemented
 * [x] Transport close handling implemented
 * [x] Real `HttpBackendApiClient` implemented
-* [x] Base URL configuration implemented
-* [x] Backend request timeout configuration implemented
+* [x] Backend client configuration implemented
+* [x] Configurable request timeout implemented
 * [x] Base URL validation implemented
 * [x] HTTP and HTTPS scheme validation implemented
-* [x] Base URL credentials rejected
-* [x] Base URL query parameters rejected
-* [x] Base URL fragments rejected
-* [x] Relative API path validation implemented
+* [x] Invalid backend URL credentials rejected
+* [x] Backend URL query parameters rejected
+* [x] Backend URL fragments rejected
+* [x] Relative request path validation implemented
 * [x] Absolute request paths rejected
-* [x] Base path preservation implemented
-* [x] Query parameter resolution implemented
+* [x] Configured base paths preserved
+* [x] Query parameter encoding implemented
 * [x] GET request support implemented
 * [x] POST request support implemented
 * [x] PUT request support implemented
 * [x] PATCH request support implemented
 * [x] DELETE request support implemented
-* [x] JSON body encoding implemented
-* [x] JSON response decoding implemented
-* [x] Request header composition implemented
-* [x] Default JSON headers implemented
-* [x] Caller-provided headers preserved
+* [x] JSON request-body encoding implemented
+* [x] JSON response-body decoding implemented
+* [x] Default JSON request headers implemented
+* [x] Caller-provided request headers supported
 * [x] Bearer authorization header injection implemented
 * [x] Public authentication endpoint detection implemented
-* [x] Login and registration requests excluded from Bearer injection
+* [x] Login requests excluded from Bearer injection
+* [x] Registration requests excluded from Bearer injection
 * [x] Authentication session model implemented
 * [x] Authentication session store contract implemented
 * [x] In-memory authentication session store implemented
 * [x] Session expiration detection implemented
-* [x] Session expiration threshold detection implemented
-* [x] Session copy support implemented
-* [x] Refresh-token clearing support implemented
-* [x] HTTP timeout mapping implemented
-* [x] Network exception mapping implemented
+* [x] Session near-expiration detection implemented
+* [x] Exact expiration-boundary behavior implemented
+* [x] Authentication session copying implemented
+* [x] Refresh-token clearing supported
+* [x] Request timeout mapping implemented
+* [x] Network failure mapping implemented
 * [x] HTTP status fallback mapping implemented
-* [x] Backend error envelope decoding implemented
-* [x] Direct backend error payload decoding supported
+* [x] Backend error-envelope decoding implemented
+* [x] Direct backend error decoding supported
 * [x] Backend error details preserved
-* [x] HTTP status metadata preserved in API errors
+* [x] HTTP status metadata preserved in errors
 * [x] Malformed JSON response handling implemented
-* [x] Malformed success envelope handling implemented
+* [x] Malformed success-envelope handling implemented
 * [x] Empty successful-response handling implemented
 * [x] HTTP 204 response handling implemented
 * [x] HTTP 205 response handling implemented
-* [x] Empty non-204/205 success payloads rejected
-* [x] Transport parsing errors separated from network failures
-* [x] Automatic retry intentionally excluded
+* [x] Empty non-204/205 success responses rejected
+* [x] Transport errors separated from payload-decoding errors
+* [x] Automatic retries intentionally excluded
 * [x] Backend configuration exception implemented
 * [x] `ApiError` decoding hardened
 * [x] `ApiError.copyWith` implemented
-* [x] API error code decoding made case-compatible
-* [x] API response decoding hardened
-* [x] Failure envelope validation hardened
+* [x] API error-code decoding normalized
+* [x] `ApiResponse` decoding hardened
+* [x] Failure-envelope validation hardened
 * [x] Backend API client contract preserved
-* [x] Backend API client contract converted to interface
+* [x] Backend API client converted to an explicit interface
 * [x] API contract public-path normalization implemented
 * [x] `BackendConfig` adopted as the canonical configuration type
-* [x] Legacy `BackendApiClientConfig` compatibility type preserved
+* [x] `BackendApiClientConfig` compatibility type preserved
 * [x] Legacy configuration type marked as deprecated
-* [x] `PendingBackendApiClient` updated with concrete types
+* [x] `PendingBackendApiClient` updated with concrete dependency types
 * [x] `PendingBackendApiClient` preserved as an explicit placeholder
 * [x] Repository factory backend wiring implemented
 * [x] HTTP transport injection added to repository factory
 * [x] Backend API client injection preserved
-* [x] Authentication session store injection preserved
+* [x] Authentication session-store injection preserved
 * [x] Backend runtime creates the real HTTP client
 * [x] Mock runtime remains the default
-* [x] Mock runtime remains isolated from backend dependencies
-* [x] One backend API client instance shared across backend repositories
-* [x] Backend auth repository client dependency made explicit
+* [x] Mock runtime remains isolated from backend networking
+* [x] One backend client shared across backend repositories
+* [x] Backend Auth repository client dependency made explicit
 * [x] Backend League repository client dependency made explicit
 * [x] Backend Knockout repository client dependency made explicit
 * [x] Backend repositories preserved as disconnected skeletons
 * [x] Purchase repository remains mock-driven
-* [x] Ad repository remains mock-driven
-* [x] Application environment backend configuration reviewed
-* [x] Dart define runtime configuration preserved
+* [x] Ads repository remains mock-driven
+* [x] Application environment configuration reviewed
+* [x] Dart define environment configuration preserved
 * [x] Backend and mock environment constructors preserved
-* [x] HTTP client tests expanded
+* [x] HTTP backend client tests expanded
 * [x] Authentication session tests added
 * [x] Pending backend client tests updated
 * [x] Repository factory tests expanded
-* [x] Backend repository wiring tests expanded
+* [x] Backend repository skeleton tests updated
+* [x] Synchronous placeholder exceptions tested correctly
 * [x] No PostgreSQL implementation introduced
-* [x] No production REST endpoint integration introduced
+* [x] No endpoint-specific backend repository implementation introduced
 * [x] No gameplay behavior changed
 * [x] No League runtime behavior changed
 * [x] No Knockout runtime behavior changed
@@ -5217,143 +5219,158 @@ Implement the real HTTP networking foundation required for future REST API integ
 
 ### 🛠️ Work Done
 
-* Added the official Dart `http` dependency as the production networking package
-* Introduced `HttpTransport` as a package-independent transport boundary
+* Added the official Dart `http` package as the production networking dependency
+* Introduced `HttpTransport` as a package-independent networking boundary
 * Implemented `PackageHttpTransport` using `package:http`
-* Added immutable transport request and response models
-* Added GET, POST, PUT, PATCH, and DELETE transport support
-* Added transport ownership and close behavior
+* Added immutable HTTP transport request and response models
+* Added GET, POST, PUT, PATCH, and DELETE method support
+* Added an explicit transport close contract
+* Added protection against executing requests after transport closure
 * Implemented `HttpBackendApiClient` as the real HTTP implementation of `BackendApiClient`
 * Added strict backend configuration validation
-* Added safe base URL and relative path resolution
-* Preserved configured base paths while resolving API endpoints
+* Added safe base URL and relative endpoint resolution
+* Preserved configured base URL paths while resolving API endpoints
 * Added query parameter encoding through `Uri`
 * Added JSON request-body encoding
 * Added JSON response-body decoding
-* Added default JSON request headers
-* Added support for caller-provided request headers
-* Added Bearer authorization header injection for protected endpoints
-* Prevented Bearer injection for login and registration endpoints
-* Added authentication session storage through `AuthSessionStore`
-* Added in-memory session storage for the current integration stage
-* Added expiration and near-expiration checks to authentication sessions
-* Improved authentication session copying so refresh tokens can be cleared explicitly
+* Added default JSON content headers
+* Added custom request-header merging
+* Added Bearer authorization for protected endpoints
+* Excluded login and registration endpoints from authentication-header injection
+* Added runtime authentication session storage through `AuthSessionStore`
+* Added an in-memory session-store implementation
+* Added session expiration checks
+* Added exact threshold handling for near-expiration checks
+* Improved `AuthSession.copyWith` so refresh tokens can be explicitly cleared
 * Added configurable request timeout behavior
-* Mapped transport timeouts to typed API errors
+* Mapped timeout failures to typed API errors
 * Mapped network failures to typed API errors
-* Added HTTP status fallback mapping when no valid backend error payload exists
+* Added HTTP status fallback errors when no valid backend error exists
 * Preserved backend-provided error codes, messages, and details
 * Added HTTP status metadata to decoded API errors
-* Ensured response parsing failures are not misclassified as transport failures
-* Added explicit handling for HTTP 204 and 205 responses
-* Rejected empty success payloads for other successful HTTP statuses
-* Hardened API response envelope decoding
-* Hardened API error payload decoding
-* Added compatibility decoding for backend error-code casing
-* Preserved the existing `ApiResult` abstraction
-* Adopted `BackendConfig` as the canonical backend client configuration
-* Preserved `BackendApiClientConfig` temporarily as a deprecated compatibility type
-* Updated `PendingBackendApiClient` to use concrete backend configuration and session-store types
-* Updated `RepositoryFactory` to create `HttpBackendApiClient` only for backend runtime
-* Added optional HTTP transport injection to the repository composition root
-* Preserved optional backend API client injection for testing
+* Ensured response parsing failures are not classified as network failures
+* Added explicit empty-response support for HTTP 204 and HTTP 205
+* Rejected empty success payloads for other HTTP success statuses
+* Hardened API response-envelope decoding
+* Hardened API error-payload decoding
+* Added compatibility for backend error-code casing and formatting
+* Adopted `BackendConfig` as the canonical networking configuration
+* Preserved `BackendApiClientConfig` as a deprecated compatibility type
+* Updated `PendingBackendApiClient` to use `BackendConfig` and `AuthSessionStore`
+* Preserved `PendingBackendApiClient` as a deliberately disconnected implementation
+* Updated `RepositoryFactory` to create `HttpBackendApiClient` only in backend runtime
+* Added optional HTTP transport injection for testing and composition
+* Preserved optional backend client injection
 * Preserved optional authentication session-store injection
-* Ensured all backend repositories share the same backend API client
-* Made backend repository API client dependencies required and explicit
-* Preserved backend repositories as disconnected skeletons
+* Ensured Auth, League, and Knockout backend repositories share one client
+* Made backend repository API-client dependencies required
+* Removed nullable API-client fallback behavior from backend repositories
+* Preserved backend feature repositories as disconnected skeletons
 * Preserved mock repositories as the default application runtime
 * Preserved mock Purchase and Ads repositories in backend runtime
-* Reviewed `AppRepositories` as the application repository container
+* Reviewed `AppRepositories` as the repository dependency container
 * Reviewed `AppEnvironment` and Dart define configuration
-* Documented that the production transport currently has application lifetime
-* Added deterministic networking and session tests
-* Expanded repository factory tests for injected clients and transports
-* Confirmed that no repository performs real endpoint-specific operations yet
+* Documented the application-lifetime ownership of the default HTTP transport
+* Added deterministic HTTP-client tests
+* Added authentication session boundary tests
+* Expanded repository factory dependency-injection tests
+* Updated backend repository tests after making `apiClient` required
+* Corrected placeholder tests to expect synchronous exceptions
+* Confirmed no endpoint-specific repository calls were introduced
 
 ---
 
 ### ⚠️ Notes / Decisions
 
-* Mock repositories remain the default runtime implementation
-* Backend runtime must still be selected explicitly
-* `HttpBackendApiClient` is now a real networking client
+* Mock repositories remain the default application runtime
+* Backend runtime must be selected explicitly
+* `HttpBackendApiClient` now performs real HTTP transport operations
 * Backend feature repositories remain disconnected skeletons
-* Real login, registration, profile, League, and Knockout endpoint operations are still deferred
-* `PendingBackendApiClient` remains only as a compatibility and explicit placeholder implementation
+* Registration, login, player profile, League, and Knockout repository operations remain deferred
+* `PendingBackendApiClient` remains available only as an explicit placeholder
 * `BackendConfig` is now the preferred configuration type
 * `BackendApiClientConfig` remains temporarily available for compatibility
 * Automatic request retries are intentionally not implemented
-* Retrying competitive mutations without idempotency guarantees could duplicate submissions
-* Token refresh is not implemented yet
+* Retrying competitive mutations without idempotency protection could duplicate submissions
+* Token-refresh behavior is not implemented yet
 * Authentication sessions are currently stored only in memory
 * Secure persistent token storage remains deferred
-* HTTP 204 and 205 responses are normalized to an empty success map
-* Other empty successful HTTP responses are treated as malformed payloads
+* HTTP 204 and 205 responses are normalized to empty successful data
+* Empty responses for other successful HTTP statuses are treated as malformed
 * Backend error details are preserved whenever possible
-* Network failures and payload parsing failures remain distinct
+* Network failures and response parsing failures remain distinct
+* `backendNotConnected` throws synchronously through its `Never` return type
+* Tests for disconnected repository methods must therefore pass closures to `expect`
 * The HTTP transport created by `RepositoryFactory` currently has application lifetime
-* A dedicated disposable application composition root may be introduced later
+* A disposable application composition root may be introduced later
 * Purchase and Ads integrations remain mock-driven
 * PostgreSQL implementation remains deferred
 * Server-side gameplay validation remains deferred
 * Server-authoritative competitive state remains the production target
-* No gameplay, League, or Knockout runtime behavior changed during this session
-* Physical devices must use a reachable backend host instead of `localhost`
-* Android Emulator backend access may require `10.0.2.2`
-* iPhone devices may require the development machine's local network IP
+* No gameplay, League, or Knockout behavior changed during this session
+* Physical devices must use a backend address reachable from the device
+* Android Emulator development may require `10.0.2.2`
+* Physical iPhones may require the development machine's local network IP
+* Dependency update notices for indirect test packages do not block analysis or tests
 
 ---
 
 ### 🧪 Validation
 
 * [x] HTTP transport abstraction reviewed
-* [x] Package HTTP transport reviewed
+* [x] Package-backed HTTP transport reviewed
+* [x] Transport ownership behavior reviewed
 * [x] Transport close behavior reviewed
 * [x] Backend configuration validation reviewed
+* [x] Base URL validation reviewed
 * [x] Base URL resolution reviewed
-* [x] Base path preservation reviewed
+* [x] Configured base-path preservation reviewed
 * [x] Query parameter encoding reviewed
-* [x] Request method mapping reviewed
-* [x] JSON body encoding reviewed
+* [x] HTTP method mapping reviewed
+* [x] JSON request encoding reviewed
 * [x] JSON response decoding reviewed
-* [x] Default header composition reviewed
-* [x] Custom header preservation reviewed
-* [x] Authorization header injection reviewed
-* [x] Public authentication path detection reviewed
+* [x] Default request headers reviewed
+* [x] Custom request-header merging reviewed
+* [x] Authorization-header injection reviewed
+* [x] Public authentication-path detection reviewed
 * [x] Authentication session expiration reviewed
-* [x] Authentication session copying reviewed
+* [x] Near-expiration boundary behavior reviewed
+* [x] Refresh-token clearing reviewed
 * [x] Timeout error mapping reviewed
 * [x] Network error mapping reviewed
 * [x] HTTP status error mapping reviewed
-* [x] Backend error envelope decoding reviewed
-* [x] Backend error detail preservation reviewed
+* [x] Backend error-envelope decoding reviewed
+* [x] Direct error-payload decoding reviewed
+* [x] Backend error-detail preservation reviewed
 * [x] Malformed JSON handling reviewed
-* [x] Malformed success envelope handling reviewed
-* [x] Empty 204 response handling reviewed
-* [x] Empty 205 response handling reviewed
-* [x] Empty 200 response rejection reviewed
+* [x] Malformed success-envelope handling reviewed
+* [x] Empty HTTP 204 response handling reviewed
+* [x] Empty HTTP 205 response handling reviewed
+* [x] Empty HTTP 200 response rejection reviewed
 * [x] API error decoding reviewed
 * [x] API response decoding reviewed
 * [x] Backend API client contract reviewed
 * [x] Pending backend client compatibility reviewed
+* [x] Synchronous placeholder failure behavior reviewed
 * [x] Repository factory wiring reviewed
-* [x] Backend API client sharing reviewed
+* [x] Shared backend client wiring reviewed
 * [x] HTTP transport injection reviewed
 * [x] Authentication session-store injection reviewed
-* [x] Backend auth repository wiring reviewed
+* [x] Backend Auth repository wiring reviewed
 * [x] Backend League repository wiring reviewed
 * [x] Backend Knockout repository wiring reviewed
+* [x] Required backend repository dependencies reviewed
 * [x] Mock runtime preservation reviewed
 * [x] Backend runtime selection reviewed
 * [x] Application environment configuration reviewed
 * [x] Official HTTP dependency reviewed
-* [x] No endpoint-specific repository implementation introduced
+* [x] No endpoint-specific repository integration introduced
 * [x] No PostgreSQL persistence introduced
 * [x] No gameplay behavior changed
 * [x] No League calculations changed
 * [x] No Knockout calculations changed
-* [x] flutter analyze passed
-* [x] flutter test passed
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed
 
 ---
 
@@ -5367,19 +5384,22 @@ Planned focus:
 * [ ] Implement backend login repository flow
 * [ ] Implement authenticated player profile retrieval
 * [ ] Decode `AuthResponseDto`
-* [ ] Map backend player DTOs to domain models
+* [ ] Map backend player-profile DTOs to domain models
 * [ ] Convert authentication session DTOs to runtime sessions
-* [ ] Persist access and refresh tokens in `AuthSessionStore`
-* [ ] Restore authentication state from stored sessions
-* [ ] Clear authentication session during logout
+* [ ] Save access and refresh tokens in `AuthSessionStore`
+* [ ] Restore authentication state from the stored session
+* [ ] Clear authentication state during logout
 * [ ] Define expired-session behavior
-* [ ] Prepare refresh-token integration boundary
+* [ ] Prepare the refresh-token integration boundary
 * [ ] Map backend authentication errors to domain-facing failures
-* [ ] Add authentication repository HTTP tests
-* [ ] Add malformed authentication payload tests
+* [ ] Add registration HTTP request tests
+* [ ] Add login HTTP request tests
+* [ ] Add authenticated profile request tests
+* [ ] Add malformed authentication response tests
 * [ ] Add session save and clear tests
 * [ ] Preserve mock authentication as the default runtime
-* [ ] Preserve League and Knockout backend repositories as disconnected skeletons
+* [ ] Preserve League backend repositories as disconnected skeletons
+* [ ] Preserve Knockout backend repositories as disconnected skeletons
 * [ ] Preserve existing gameplay behavior
 * [ ] Preserve existing League behavior
 * [ ] Preserve existing Knockout behavior
@@ -5429,3 +5449,4 @@ Planned focus:
 Current session: Session 31 — Backend Authentication Integration
 
 Status: Ready ⏳
+

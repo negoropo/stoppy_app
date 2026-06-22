@@ -6,38 +6,26 @@ import 'package:stoppy_app/core/backend/pending_backend_api_client.dart';
 
 void main() {
   group('PendingBackendApiClient', () {
-    test(
-      'throws explicit not implemented error instead of networking',
-          () async {
-        final client = PendingBackendApiClient(
-          config: const BackendConfig(
-            baseUrl: 'https://api.test',
-          ),
-          authSessionStore: InMemoryAuthSessionStore(),
-        );
+    late PendingBackendApiClient client;
 
-        await expectLater(
-          client.get('/player/profile'),
-          throwsA(
-            isA<ApiException>().having(
-                  (exception) => exception.error.code,
-              'code',
-              ApiErrorCode.notImplemented,
-            ),
-          ),
-        );
-      },
-    );
-
-    test('all HTTP methods fail with not implemented error', () async {
-      final client = PendingBackendApiClient(
+    setUp(() {
+      client = PendingBackendApiClient(
         config: const BackendConfig(
           baseUrl: 'https://api.test',
         ),
         authSessionStore: InMemoryAuthSessionStore(),
       );
+    });
 
-      final operations = <Future<Object?> Function()>[
+    test('throws explicit not implemented error instead of networking', () {
+      expect(
+            () => client.get('/player/profile'),
+        _throwsNotImplemented,
+      );
+    });
+
+    test('all HTTP methods fail with not implemented error', () {
+      final operations = <void Function()>[
             () => client.get('/test'),
             () => client.post('/test'),
             () => client.put('/test'),
@@ -46,18 +34,16 @@ void main() {
       ];
 
       for (final operation in operations) {
-        await expectLater(
-          operation(),
-          throwsA(
-            isA<ApiException>().having(
-                  (exception) => exception.error.code,
-              'code',
-              ApiErrorCode.notImplemented,
-            ),
-          ),
-        );
+        expect(operation, _throwsNotImplemented);
       }
     });
-
   });
 }
+
+final Matcher _throwsNotImplemented = throwsA(
+  isA<ApiException>().having(
+        (exception) => exception.error.code,
+    'code',
+    ApiErrorCode.notImplemented,
+  ),
+);
