@@ -1,4 +1,6 @@
 enum ApiErrorCode {
+  invalidConfiguration,
+  requestTimeout,
   unauthenticated,
   forbidden,
   notFound,
@@ -9,10 +11,11 @@ enum ApiErrorCode {
   networkUnavailable,
   notImplemented,
   malformedPayload,
+  unexpectedResponse,
   unknown,
 }
 
-class ApiError {
+final class ApiError {
   const ApiError({
     required this.code,
     required this.message,
@@ -32,41 +35,59 @@ class ApiError {
     }
 
     final normalized = <String, Object?>{};
+
     for (final entry in json.entries) {
-      if (entry.key is String) {
-        normalized[entry.key as String] = entry.value;
+      final key = entry.key;
+
+      if (key is String) {
+        normalized[key] = entry.value;
       }
     }
 
     final message = normalized['message'];
+
     return ApiError(
       code: _codeFromString(
-        normalized['code'] is String ? normalized['code'] as String : null,
+        normalized['code'] is String
+            ? normalized['code'] as String
+            : null,
       ),
       message: message is String && message.trim().isNotEmpty
-          ? message
+          ? message.trim()
           : 'Unknown API error.',
       details: _detailsFromJson(normalized['details']),
     );
   }
 
   Map<String, Object?> toJson() {
-    return {
+    return <String, Object?>{
       'code': code.name,
       'message': message,
       if (details.isNotEmpty) 'details': details,
     };
   }
 
+  ApiError copyWith({
+    ApiErrorCode? code,
+    String? message,
+    Map<String, Object?>? details,
+  }) {
+    return ApiError(
+      code: code ?? this.code,
+      message: message ?? this.message,
+      details: details ?? this.details,
+    );
+  }
+
   static ApiErrorCode _codeFromString(String? value) {
-    final normalizedValue = value?.trim();
+    final normalizedValue = value?.trim().toLowerCase();
 
     if (normalizedValue == null || normalizedValue.isEmpty) {
       return ApiErrorCode.unknown;
     }
 
     for (final code in ApiErrorCode.values) {
-      if (code.name == normalizedValue ||
+      if (code.name.toLowerCase() == normalizedValue ||
           _toSnakeCase(code.name) == normalizedValue) {
         return code;
       }
@@ -76,24 +97,30 @@ class ApiError {
   }
 
   static String _toSnakeCase(String value) {
-    return value.replaceAllMapped(
+    return value
+        .replaceAllMapped(
       RegExp('[A-Z]'),
-      (match) => '_${match.group(0)!.toLowerCase()}',
-    );
+          (match) => '_${match.group(0)!.toLowerCase()}',
+    )
+        .toLowerCase();
   }
 
   static Map<String, Object?> _detailsFromJson(Object? value) {
     if (value is! Map) {
-      return const {};
+      return const <String, Object?>{};
     }
 
     final details = <String, Object?>{};
+
     for (final entry in value.entries) {
-      if (entry.key is String) {
-        details[entry.key as String] = entry.value;
+      final key = entry.key;
+
+      if (key is String) {
+        details[key] = entry.value;
       }
     }
-    return Map.unmodifiable(details);
+
+    return Map<String, Object?>.unmodifiable(details);
   }
 }
 

@@ -439,7 +439,18 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Malformed response payloads become typed API errors.
 * Auth responses keep profile and JWT/session transport data in data-layer DTOs.
 * Competitive run validation claims are transport contracts only; they do not alter local gameplay or scoring.
-* No HTTP client, network transport, token refresh, or PostgreSQL access is implemented yet.
+* No repository-to-backend feature call, token refresh, or PostgreSQL access is implemented yet.
+
+### Session 30 Networking Client Preparation
+
+`HttpBackendApiClient` now provides the future production implementation of the existing `BackendApiClient` contract.
+
+* `HttpTransport` keeps package-specific HTTP types out of repositories and contracts.
+* The backend client is created only for explicit `RepositoryRuntime.backend` selection.
+* Mock repositories remain the default runtime.
+* Auth headers are derived from `AuthSessionStore` and omitted for expired sessions and public auth endpoints.
+* HTTP failures are converted to typed `ApiError` values before reaching a repository.
+* No retry, refresh-token flow, backend endpoint call from a repository, or server persistence is activated in this session.
 
 ### Domain Logic
 

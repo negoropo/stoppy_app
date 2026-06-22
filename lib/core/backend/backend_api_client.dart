@@ -1,6 +1,6 @@
 import 'api_response.dart';
 
-abstract class BackendApiClient {
+abstract interface class BackendApiClient {
   Future<ApiResponse<Map<String, Object?>>> get(
       String path, {
         Map<String, String> queryParameters = const {},

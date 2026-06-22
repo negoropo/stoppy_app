@@ -1,15 +1,17 @@
 import 'api_response.dart';
+import 'auth_session.dart';
 import 'backend_api_client.dart';
+import 'backend_api_client_config.dart';
 import 'backend_repository_not_configured.dart';
 
-class PendingBackendApiClient implements BackendApiClient {
+final class PendingBackendApiClient implements BackendApiClient {
   const PendingBackendApiClient({
     required this.config,
     required this.authSessionStore,
   });
 
-  final Object config;
-  final Object authSessionStore;
+  final BackendConfig config;
+  final AuthSessionStore authSessionStore;
 
   @override
   Future<ApiResponse<Map<String, Object?>>> get(
@@ -17,7 +19,10 @@ class PendingBackendApiClient implements BackendApiClient {
         Map<String, String> queryParameters = const {},
         Map<String, String> headers = const {},
       }) {
-    return backendNotConnected('PendingBackendApiClient', 'get');
+    return backendNotConnected(
+      'PendingBackendApiClient',
+      'get',
+    );
   }
 
   @override
@@ -26,7 +31,10 @@ class PendingBackendApiClient implements BackendApiClient {
         Map<String, Object?> body = const {},
         Map<String, String> headers = const {},
       }) {
-    return backendNotConnected('PendingBackendApiClient', 'post');
+    return backendNotConnected(
+      'PendingBackendApiClient',
+      'post',
+    );
   }
 
   @override
@@ -35,7 +43,10 @@ class PendingBackendApiClient implements BackendApiClient {
         Map<String, Object?> body = const {},
         Map<String, String> headers = const {},
       }) {
-    return backendNotConnected('PendingBackendApiClient', 'put');
+    return backendNotConnected(
+      'PendingBackendApiClient',
+      'put',
+    );
   }
 
   @override
@@ -44,7 +55,10 @@ class PendingBackendApiClient implements BackendApiClient {
         Map<String, Object?> body = const {},
         Map<String, String> headers = const {},
       }) {
-    return backendNotConnected('PendingBackendApiClient', 'patch');
+    return backendNotConnected(
+      'PendingBackendApiClient',
+      'patch',
+    );
   }
 
   @override
@@ -53,6 +67,9 @@ class PendingBackendApiClient implements BackendApiClient {
         Map<String, String> queryParameters = const {},
         Map<String, String> headers = const {},
       }) {
-    return backendNotConnected('PendingBackendApiClient', 'delete');
+    return backendNotConnected(
+      'PendingBackendApiClient',
+      'delete',
+    );
   }
 }

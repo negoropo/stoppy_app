@@ -14,7 +14,7 @@ Examples:
 - `POST /api/v1/runs/league`
 - `POST /api/v1/runs/knockout`
 
-Requests and responses use `Content-Type: application/json`. Authenticated requests will use `Authorization: Bearer <accessToken>` once real networking is introduced.
+Requests and responses use `Content-Type: application/json`. The prepared HTTP client adds `Authorization: Bearer <accessToken>` only when a valid session exists and the path is not public.
 
 ## Response Envelope
 
@@ -51,9 +51,51 @@ The Flutter app prepares backend integration through environment configuration a
 - `STP_REPOSITORY_RUNTIME=mock` keeps mock repositories active.
 - `STP_REPOSITORY_RUNTIME=backend` creates backend repository skeletons.
 - `STP_API_BASE_URL` defines the future REST API base URL.
-- No real network calls are made until a concrete `BackendApiClient` implementation is added.
+- The HTTP client exists, but mock runtime remains the default and repository methods are not activated against a backend in this session.
 
 Backend repositories should receive a `BackendApiClient` plus an auth session store. The API client should attach the current access token when required, decode the response envelope, and surface `ApiError` for repository-level mapping.
+
+## Networking Client Preparation
+
+`HttpBackendApiClient` is the production transport-ready implementation of `BackendApiClient`.
+
+- `HttpTransport` isolates `package:http` from repositories and allows tests to use a fake transport.
+- Only `http` and `https` backend base URLs are accepted.
+- Paths are resolved from `BackendConfig.baseUrl`; both trailing-slash and non-trailing-slash base URLs are supported.
+- Requests use `Accept: application/json` and send `Content-Type: application/json` only when a JSON body exists.
+- Query parameters use Dart `Uri` APIs and bodies use `jsonEncode`.
+- HTTP 204 is represented as a successful empty data map so existing repository contracts keep non-null success data.
+
+### Timeout and Retry Policy
+
+- The default timeout is 15 seconds and is configured through `BackendConfig.timeout`.
+- Timeouts map to the typed `requestTimeout` API error code.
+- Transport failures map to `networkUnavailable` without exposing `package:http` exceptions.
+- No automatic retry is performed, especially for POST, PUT, PATCH, or DELETE. A future retry policy must be explicitly idempotency-aware before it can retry competitive or economy operations.
+
+### HTTP Status Mapping
+
+When no backend failure envelope supplies a more specific error, status codes map as follows:
+
+| HTTP status | API error code |
+| --- | --- |
+| 401 | `unauthenticated` |
+| 403 | `forbidden` |
+| 404 | `notFound` |
+| 409 | `conflict` |
+| 422 | `validationFailed` |
+| 429 | `rateLimited` |
+| 5xx | `serverError` |
+| other non-2xx | `unexpectedResponse` |
+
+Malformed successful JSON maps to `malformedPayload`. Non-JSON error responses still receive a safe HTTP-status-derived error.
+
+### Authentication Header Behavior
+
+- A non-expired `AuthSession` adds `Authorization: Bearer <accessToken>`.
+- Missing or expired sessions do not add an authorization header.
+- Public login and registration paths never add an authorization header.
+- Token refresh is intentionally deferred; the client never logs access or refresh tokens.
 
 ## DTO Strategy
 

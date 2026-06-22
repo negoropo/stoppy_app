@@ -1,16 +1,17 @@
-class ApiContract {
-  const ApiContract._();
-
+abstract final class ApiContract {
   static const version = 'v1';
   static const apiPrefix = '/api/$version';
 
   static const contentTypeHeader = 'Content-Type';
+  static const acceptHeader = 'Accept';
   static const authorizationHeader = 'Authorization';
+
   static const jsonContentType = 'application/json';
   static const bearerScheme = 'Bearer';
 
   static const authRegister = '$apiPrefix/auth/register';
   static const authLogin = '$apiPrefix/auth/login';
+
   static const playerProfile = '$apiPrefix/player/profile';
 
   static const leagueEntry = '$apiPrefix/league/enter';
@@ -29,4 +30,27 @@ class ApiContract {
   static const knockoutRecords = '$apiPrefix/knockout/records';
   static const knockoutHallOfFame = '$apiPrefix/knockout/hall-of-fame';
   static const knockoutRunSubmission = '$apiPrefix/runs/knockout';
+
+  static bool isPublicAuthPath(String path) {
+    final normalizedPath = _normalizePath(path);
+
+    return normalizedPath == authRegister || normalizedPath == authLogin;
+  }
+
+  static String _normalizePath(String value) {
+    final trimmed = value.trim();
+    final parsed = Uri.tryParse(trimmed);
+
+    if (parsed == null) {
+      return trimmed;
+    }
+
+    final normalizedPath = parsed.path;
+
+    if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
+      return normalizedPath.substring(0, normalizedPath.length - 1);
+    }
+
+    return normalizedPath;
+  }
 }

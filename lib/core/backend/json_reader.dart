@@ -4,9 +4,9 @@ class JsonReader {
   const JsonReader(this._json, {this.context = 'JSON payload'});
 
   factory JsonReader.fromObject(
-      Object? value, {
-        String context = 'JSON payload',
-      }) {
+    Object? value, {
+    String context = 'JSON payload',
+  }) {
     if (value is Map) {
       final normalized = <String, Object?>{};
       for (final entry in value.entries) {
@@ -140,10 +140,7 @@ class JsonReader {
     throw _invalidField(key, 'a non-negative integer or null');
   }
 
-  double optionalNonNegativeDouble(
-      String key, {
-        required double defaultValue,
-      }) {
+  double optionalNonNegativeDouble(String key, {required double defaultValue}) {
     final value = _json[key];
 
     if (value == null) {
@@ -220,10 +217,10 @@ class JsonReader {
         .entries
         .map(
           (entry) => JsonReader.fromObject(
-        entry.value,
-        context: '$context.$key[${entry.key}]',
-      ),
-    )
+            entry.value,
+            context: '$context.$key[${entry.key}]',
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -240,10 +237,10 @@ class JsonReader {
         .entries
         .map(
           (entry) => JsonReader.fromObject(
-        entry.value,
-        context: '$context.$key[${entry.key}]',
-      ),
-    )
+            entry.value,
+            context: '$context.$key[${entry.key}]',
+          ),
+        )
         .toList(growable: false);
   }
 

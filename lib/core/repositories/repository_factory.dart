@@ -1,8 +1,3 @@
-import '../backend/auth_session.dart';
-import '../backend/backend_api_client.dart';
-import '../backend/backend_api_client_config.dart';
-import '../backend/pending_backend_api_client.dart';
-import '../config/app_environment.dart';
 import '../../features/ads/data/mock_ad_repository.dart';
 import '../../features/auth/data/backend/backend_auth_repository.dart';
 import '../../features/auth/data/mock_auth_repository.dart';
@@ -11,18 +6,26 @@ import '../../features/knockout/data/mock_knockout_repository.dart';
 import '../../features/league/data/backend/backend_league_repository.dart';
 import '../../features/league/data/mock_league_repository.dart';
 import '../../features/purchases/data/mock_purchase_repository.dart';
+import '../backend/auth_session.dart';
+import '../backend/backend_api_client.dart';
+import '../backend/backend_api_client_config.dart';
+import '../backend/http_backend_api_client.dart';
+import '../backend/http_transport.dart';
+import '../config/app_environment.dart';
 import 'app_repositories.dart';
 
-class RepositoryFactory {
+final class RepositoryFactory {
   const RepositoryFactory({
     required this.environment,
     this.backendApiClient,
     this.authSessionStore,
+    this.httpTransport,
   });
 
   final AppEnvironment environment;
   final BackendApiClient? backendApiClient;
   final AuthSessionStore? authSessionStore;
+  final HttpTransport? httpTransport;
 
   AppRepositories createRepositories() {
     return switch (environment.repositoryRuntime) {
@@ -42,24 +45,33 @@ class RepositoryFactory {
   }
 
   AppRepositories _createBackendRepositories() {
-    final sessionStore = authSessionStore ?? InMemoryAuthSessionStore();
+    final client = backendApiClient ?? _createBackendApiClient();
 
-    final client =
-        backendApiClient ??
-            PendingBackendApiClient(
-              config: BackendApiClientConfig(baseUrl: environment.apiBaseUrl),
-              authSessionStore: sessionStore,
-            );
-
-    // Purchases and ads still use mock repositories because their backend/IAP
-    // boundaries are not part of this session. Competitive repositories can be
-    // switched to backend skeletons through the same composition root.
+    // Purchases and ads remain mock-driven until their real IAP and backend
+    // integration boundaries are implemented.
     return AppRepositories(
-      authRepository: BackendAuthRepository(apiClient: client),
+      authRepository: BackendAuthRepository(
+        apiClient: client,
+      ),
       purchaseRepository: const MockPurchaseRepository(),
       adRepository: MockAdRepository(),
-      leagueRepository: BackendLeagueRepository(apiClient: client),
-      knockoutRepository: BackendKnockoutRepository(apiClient: client),
+      leagueRepository: BackendLeagueRepository(
+        apiClient: client,
+      ),
+      knockoutRepository: BackendKnockoutRepository(
+        apiClient: client,
+      ),
+    );
+  }
+
+  BackendApiClient _createBackendApiClient() {
+    return HttpBackendApiClient(
+      config: BackendConfig(
+        baseUrl: environment.apiBaseUrl,
+      ),
+      transport: httpTransport ?? PackageHttpTransport(),
+      authSessionStore:
+      authSessionStore ?? InMemoryAuthSessionStore(),
     );
   }
 }

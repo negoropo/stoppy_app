@@ -1,16 +1,23 @@
 import 'api_error.dart';
 
-class ApiResponse<T> {
-  const ApiResponse.success(this.data) : error = null, isSuccess = true;
+final class ApiResponse<T> {
+  const ApiResponse.success(this.data)
+      : error = null,
+        isSuccess = true;
 
-  const ApiResponse.failure(this.error) : data = null, isSuccess = false;
+  const ApiResponse.failure(this.error)
+      : data = null,
+        isSuccess = false;
 
   final T? data;
   final ApiError? error;
   final bool isSuccess;
 
+  bool get isFailure => !isSuccess;
+
   T requireData() {
     final value = data;
+
     if (isSuccess && value != null) {
       return value;
     }
@@ -21,6 +28,21 @@ class ApiResponse<T> {
             code: ApiErrorCode.unknown,
             message: 'API response did not contain data.',
           ),
+    );
+  }
+
+  ApiError requireError() {
+    final currentError = error;
+
+    if (isFailure && currentError != null) {
+      return currentError;
+    }
+
+    throw const ApiException(
+      ApiError(
+        code: ApiErrorCode.unknown,
+        message: 'API response did not contain an error.',
+      ),
     );
   }
 
@@ -38,6 +60,7 @@ class ApiResponse<T> {
     }
 
     final success = json['success'];
+
     if (success is! bool) {
       return const ApiResponse.failure(
         ApiError(
@@ -59,6 +82,7 @@ class ApiResponse<T> {
 
       try {
         final decodedData = decodeData(json['data']);
+
         if (decodedData == null) {
           return const ApiResponse.failure(
             ApiError(
@@ -78,11 +102,40 @@ class ApiResponse<T> {
             message: exception.message,
           ),
         );
+      } on TypeError {
+        return const ApiResponse.failure(
+          ApiError(
+            code: ApiErrorCode.malformedPayload,
+            message: 'Successful API response contained invalid field types.',
+          ),
+        );
+      } on ArgumentError catch (exception) {
+        return ApiResponse.failure(
+          ApiError(
+            code: ApiErrorCode.malformedPayload,
+            message: exception.message?.toString() ?? 'Invalid API data.',
+          ),
+        );
       }
     }
 
+    if (!json.containsKey('error')) {
+      return const ApiResponse.failure(
+        ApiError(
+          code: ApiErrorCode.malformedPayload,
+          message: 'Failed API response must contain an error.',
+        ),
+      );
+    }
+
     try {
-      return ApiResponse.failure(ApiError.fromJson(json['error']));
+      final decodedError = ApiError.fromJson(json['error']);
+
+      if (decodedError.code == ApiErrorCode.malformedPayload) {
+        return ApiResponse.failure(decodedError);
+      }
+
+      return ApiResponse.failure(decodedError);
     } on ApiException catch (exception) {
       return ApiResponse.failure(exception.error);
     } on FormatException catch (exception) {
@@ -92,23 +145,29 @@ class ApiResponse<T> {
           message: exception.message,
         ),
       );
+    } on TypeError {
+      return const ApiResponse.failure(
+        ApiError(
+          code: ApiErrorCode.malformedPayload,
+          message: 'API error response contained invalid field types.',
+        ),
+      );
     }
   }
 
-  Map<String, Object?> toJson(Object? Function(T data) encodeData) {
+  Map<String, Object?> toJson(
+      Object? Function(T data) encodeData,
+      ) {
     if (isSuccess) {
-      return {'success': true, 'data': encodeData(requireData())};
+      return <String, Object?>{
+        'success': true,
+        'data': encodeData(requireData()),
+      };
     }
 
-    return {
+    return <String, Object?>{
       'success': false,
-      'error':
-      (error ??
-          const ApiError(
-            code: ApiErrorCode.unknown,
-            message: 'Unknown API error.',
-          ))
-          .toJson(),
+      'error': requireError().toJson(),
     };
   }
 }

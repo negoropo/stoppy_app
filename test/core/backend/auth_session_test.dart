@@ -29,5 +29,44 @@ void main() {
       expect(session.isExpired(DateTime(2026, 6, 16, 12)), isTrue);
       expect(session.isExpired(DateTime(2026, 6, 16, 11, 59)), isFalse);
     });
+
+    test('session expires at the exact expiration instant', () {
+      final expiresAt = DateTime.utc(2026, 6, 22, 10);
+
+      final session = AuthSession(
+        accessToken: 'token',
+        expiresAt: expiresAt,
+      );
+
+      expect(session.isExpired(expiresAt), isTrue);
+    });
+
+    test('session is expiring soon at the exact threshold boundary', () {
+      final session = AuthSession(
+        accessToken: 'token',
+        expiresAt: DateTime.utc(2026, 6, 22, 10, 1),
+      );
+
+      expect(
+        session.isExpiringSoon(
+          DateTime.utc(2026, 6, 22, 10),
+          threshold: const Duration(minutes: 1),
+        ),
+        isTrue,
+      );
+    });
+
+    test('copyWith can clear refresh token', () {
+      final session = AuthSession(
+        accessToken: 'token',
+        refreshToken: 'refresh',
+        expiresAt: DateTime.utc(2026, 6, 23),
+      );
+
+      final updated = session.copyWith(refreshToken: null);
+
+      expect(updated.refreshToken, isNull);
+    });
+
   });
 }

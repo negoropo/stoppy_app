@@ -1,6 +1,6 @@
+import 'package:stoppy_app/core/backend/api_contract.dart';
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
-import 'package:stoppy_app/core/backend/api_contract.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
@@ -13,10 +13,12 @@ import 'package:stoppy_app/features/league/domain/models/weekly_league_history_e
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 
-class BackendLeagueRepository implements LeagueRepository {
-  const BackendLeagueRepository({this.apiClient});
+final class BackendLeagueRepository implements LeagueRepository {
+  const BackendLeagueRepository({
+    required this.apiClient,
+  });
 
-  final BackendApiClient? apiClient;
+  final BackendApiClient apiClient;
 
   static const enterPath = ApiContract.leagueEntry;
   static const snapshotPath = ApiContract.leagueSnapshot;
@@ -24,25 +26,20 @@ class BackendLeagueRepository implements LeagueRepository {
   static const recordsPath = ApiContract.leagueRecords;
   static const achievementsPath = ApiContract.leagueAchievements;
   static const weeklyRunsPath = ApiContract.leagueRuns;
-  static const leagueRunPath = ApiContract.leagueRunSubmission;
-
-  BackendApiClient get _client {
-    final client = apiClient;
-    if (client == null) {
-      return backendNotConnected('BackendLeagueRepository', 'apiClient');
-    }
-    return client;
-  }
+  static const runSubmissionPath = ApiContract.leagueRunSubmission;
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) {
-    final _ = _client;
-    return backendNotConnected('BackendLeagueRepository', 'currentEntry');
+    return backendNotConnected(
+      'BackendLeagueRepository',
+      'currentEntry',
+    );
   }
 
   @override
-  Future<List<LeagueRankingEntry>> fetchDivisionRanking(int divisionNumber) {
-    final _ = _client;
+  Future<List<LeagueRankingEntry>> fetchDivisionRanking(
+      int divisionNumber,
+      ) {
     return backendNotConnected(
       'BackendLeagueRepository',
       'fetchDivisionRanking',
@@ -50,26 +47,39 @@ class BackendLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) {
-    final _ = _client;
-    return backendNotConnected('BackendLeagueRepository', 'enterWeeklyLeague');
+  Future<LeaguePlayerEntry> enterWeeklyLeague(
+      PlayerProfile profile,
+      ) {
+    return backendNotConnected(
+      'BackendLeagueRepository',
+      'enterWeeklyLeague',
+    );
   }
 
   @override
-  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) {
-    final _ = _client;
-    return backendNotConnected('BackendLeagueRepository', 'submitLeagueRun');
+  Future<LeagueRunSubmissionResult> submitLeagueRun(
+      WeeklyLeagueRun run,
+      ) {
+    return backendNotConnected(
+      'BackendLeagueRepository',
+      'submitLeagueRun',
+    );
   }
 
   @override
-  Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId) {
-    final _ = _client;
-    return backendNotConnected('BackendLeagueRepository', 'fetchPlayerRecords');
+  Future<PlayerLeagueRecords> fetchPlayerRecords(
+      String playerId,
+      ) {
+    return backendNotConnected(
+      'BackendLeagueRepository',
+      'fetchPlayerRecords',
+    );
   }
 
   @override
-  Future<PlayerLeagueAchievements> fetchPlayerAchievements(String playerId) {
-    final _ = _client;
+  Future<PlayerLeagueAchievements> fetchPlayerAchievements(
+      String playerId,
+      ) {
     return backendNotConnected(
       'BackendLeagueRepository',
       'fetchPlayerAchievements',
@@ -77,9 +87,13 @@ class BackendLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(String playerId) {
-    final _ = _client;
-    return backendNotConnected('BackendLeagueRepository', 'fetchPlayerHistory');
+  Future<List<WeeklyLeagueHistoryEntry>> fetchPlayerHistory(
+      String playerId,
+      ) {
+    return backendNotConnected(
+      'BackendLeagueRepository',
+      'fetchPlayerHistory',
+    );
   }
 
   @override
@@ -87,7 +101,6 @@ class BackendLeagueRepository implements LeagueRepository {
     required String playerId,
     required LeagueSeasonId seasonId,
   }) {
-    final _ = _client;
     return backendNotConnected(
       'BackendLeagueRepository',
       'fetchPlayerWeeklyRuns',
@@ -99,7 +112,6 @@ class BackendLeagueRepository implements LeagueRepository {
     required String playerId,
     required int divisionNumber,
   }) {
-    final _ = _client;
     return backendNotConnected(
       'BackendLeagueRepository',
       'fetchPlayerSnapshot',
@@ -110,7 +122,6 @@ class BackendLeagueRepository implements LeagueRepository {
   Future<LeagueSeasonSettlementResult> settleCurrentSeason({
     required DateTime now,
   }) {
-    final _ = _client;
     return backendNotConnected(
       'BackendLeagueRepository',
       'settleCurrentSeason',

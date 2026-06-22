@@ -1,32 +1,28 @@
+import 'package:stoppy_app/core/backend/api_contract.dart';
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
-import 'package:stoppy_app/core/backend/api_contract.dart';
 
 import '../../domain/models/auth_state.dart';
 import '../../domain/models/player_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
 
-class BackendAuthRepository implements AuthRepository {
-  const BackendAuthRepository({this.apiClient});
+final class BackendAuthRepository implements AuthRepository {
+  const BackendAuthRepository({
+    required this.apiClient,
+  });
 
-  final BackendApiClient? apiClient;
+  final BackendApiClient apiClient;
 
   static const registerPath = ApiContract.authRegister;
   static const loginPath = ApiContract.authLogin;
   static const profilePath = ApiContract.playerProfile;
 
-  BackendApiClient get _client {
-    final client = apiClient;
-    if (client == null) {
-      return backendNotConnected('BackendAuthRepository', 'apiClient');
-    }
-    return client;
-  }
-
   @override
   Future<AuthState> currentAuthState() {
-    final _ = _client;
-    return backendNotConnected('BackendAuthRepository', 'currentAuthState');
+    return backendNotConnected(
+      'BackendAuthRepository',
+      'currentAuthState',
+    );
   }
 
   @override
@@ -34,8 +30,10 @@ class BackendAuthRepository implements AuthRepository {
     required String username,
     required String password,
   }) {
-    final _ = _client;
-    return backendNotConnected('BackendAuthRepository', 'register');
+    return backendNotConnected(
+      'BackendAuthRepository',
+      'register',
+    );
   }
 
   @override
@@ -43,19 +41,27 @@ class BackendAuthRepository implements AuthRepository {
     required String username,
     required String password,
   }) {
-    final _ = _client;
-    return backendNotConnected('BackendAuthRepository', 'login');
+    return backendNotConnected(
+      'BackendAuthRepository',
+      'login',
+    );
   }
 
   @override
-  Future<PlayerProfile> updatePlayerProfile(PlayerProfile playerProfile) {
-    final _ = _client;
-    return backendNotConnected('BackendAuthRepository', 'updatePlayerProfile');
+  Future<PlayerProfile> updatePlayerProfile(
+      PlayerProfile playerProfile,
+      ) {
+    return backendNotConnected(
+      'BackendAuthRepository',
+      'updatePlayerProfile',
+    );
   }
 
   @override
   Future<void> logout() {
-    final _ = _client;
-    return backendNotConnected('BackendAuthRepository', 'logout');
+    return backendNotConnected(
+      'BackendAuthRepository',
+      'logout',
+    );
   }
 }

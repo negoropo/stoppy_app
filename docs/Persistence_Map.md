@@ -73,3 +73,10 @@ The following column-level direction is intentionally descriptive rather than a 
 | knockout_hall_of_fame | derived view | champion identity, title count, won months | Champion-only aggregate. |
 
 DTOs mirror the REST representation of these records, not direct PostgreSQL rows. Backend adapters own the translation between database rows, API payloads, and domain models.
+
+## Session 30 Transport Boundary
+
+- `HttpBackendApiClient` is a client-side REST transport boundary only; it does not persist data or activate server repositories in the default app runtime.
+- `HttpTransport` is replaceable in tests and keeps `package:http` implementation details out of repository contracts.
+- Backend runtime selection remains explicit through `RepositoryRuntime.backend`; mock repositories remain the normal local/test runtime.
+- Future server adapters must preserve API error envelopes and idempotency validation so transport retries cannot duplicate runs or economy mutations.

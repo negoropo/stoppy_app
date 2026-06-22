@@ -4,7 +4,7 @@ import '../../features/knockout/domain/repositories/knockout_repository.dart';
 import '../../features/league/domain/repositories/league_repository.dart';
 import '../../features/purchases/domain/repositories/purchase_repository.dart';
 
-class AppRepositories {
+final class AppRepositories {
   const AppRepositories({
     required this.authRepository,
     required this.purchaseRepository,

@@ -3,7 +3,7 @@ class AuthSession {
     required this.accessToken,
     this.refreshToken,
     required this.expiresAt,
-  });
+  }) : assert(accessToken != '');
 
   final String accessToken;
   final String? refreshToken;
@@ -14,26 +14,30 @@ class AuthSession {
   }
 
   bool isExpiringSoon(
-    DateTime now, {
-    Duration threshold = const Duration(minutes: 1),
-  }) {
-    return expiresAt.subtract(threshold).isBefore(now);
+      DateTime now, {
+        Duration threshold = const Duration(minutes: 1),
+      }) {
+    assert(threshold >= Duration.zero);
+
+    return !expiresAt.subtract(threshold).isAfter(now);
   }
 
   AuthSession copyWith({
     String? accessToken,
-    String? refreshToken,
+    Object? refreshToken = _unset,
     DateTime? expiresAt,
   }) {
     return AuthSession(
       accessToken: accessToken ?? this.accessToken,
-      refreshToken: refreshToken ?? this.refreshToken,
+      refreshToken: identical(refreshToken, _unset)
+          ? this.refreshToken
+          : refreshToken as String?,
       expiresAt: expiresAt ?? this.expiresAt,
     );
   }
 }
 
-abstract class AuthSessionStore {
+abstract interface class AuthSessionStore {
   Future<AuthSession?> read();
 
   Future<void> save(AuthSession session);
@@ -41,7 +45,7 @@ abstract class AuthSessionStore {
   Future<void> clear();
 }
 
-class InMemoryAuthSessionStore implements AuthSessionStore {
+final class InMemoryAuthSessionStore implements AuthSessionStore {
   AuthSession? _session;
 
   @override
@@ -59,3 +63,5 @@ class InMemoryAuthSessionStore implements AuthSessionStore {
     _session = null;
   }
 }
+
+const Object _unset = Object();

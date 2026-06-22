@@ -50,6 +50,8 @@ class DomainErrorMapper {
 
   String _messageFor(ApiError error) {
     return switch (error.code) {
+      ApiErrorCode.invalidConfiguration => error.message,
+      ApiErrorCode.requestTimeout => 'The request timed out. Please try again.',
       ApiErrorCode.unauthenticated => 'Please log in again.',
       ApiErrorCode.forbidden => 'You do not have permission to do that.',
       ApiErrorCode.notFound => 'The requested resource was not found.',
@@ -62,6 +64,8 @@ class DomainErrorMapper {
       ApiErrorCode.notImplemented => error.message,
       ApiErrorCode.malformedPayload =>
         'Received an invalid response. Please try again later.',
+      ApiErrorCode.unexpectedResponse =>
+        'Received an unexpected response. Please try again later.',
       ApiErrorCode.unknown => 'Something went wrong. Please try again.',
     };
   }
