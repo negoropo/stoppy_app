@@ -1,16 +1,9 @@
 import 'ad_type.dart';
 
-enum AdLoadStatus {
-  loading,
-  loaded,
-  failed,
-}
+enum AdLoadStatus { loading, loaded, failed }
 
 class AdLoadState {
-  const AdLoadState({
-    required this.adType,
-    required this.status,
-  });
+  const AdLoadState({required this.adType, required this.status});
 
   final AdType adType;
   final AdLoadStatus status;
@@ -21,10 +14,7 @@ class AdLoadState {
 
   bool get hasFailed => status == AdLoadStatus.failed;
 
-  AdLoadState copyWith({
-    AdType? adType,
-    AdLoadStatus? status,
-  }) {
+  AdLoadState copyWith({AdType? adType, AdLoadStatus? status}) {
     return AdLoadState(
       adType: adType ?? this.adType,
       status: status ?? this.status,

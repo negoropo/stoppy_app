@@ -1,11 +1,6 @@
 import 'player_profile.dart';
 
-enum AuthStatus {
-  unauthenticated,
-  loading,
-  authenticated,
-  error,
-}
+enum AuthStatus { unauthenticated, loading, authenticated, error }
 
 class AuthState {
   const AuthState({
@@ -14,27 +9,15 @@ class AuthState {
     this.errorMessage,
   });
 
-  const AuthState.unauthenticated()
-      : this(
-    status: AuthStatus.unauthenticated,
-  );
+  const AuthState.unauthenticated() : this(status: AuthStatus.unauthenticated);
 
-  const AuthState.loading()
-      : this(
-    status: AuthStatus.loading,
-  );
+  const AuthState.loading() : this(status: AuthStatus.loading);
 
   const AuthState.authenticated(PlayerProfile playerProfile)
-      : this(
-    status: AuthStatus.authenticated,
-    playerProfile: playerProfile,
-  );
+    : this(status: AuthStatus.authenticated, playerProfile: playerProfile);
 
   const AuthState.error(String message)
-      : this(
-    status: AuthStatus.error,
-    errorMessage: message,
-  );
+    : this(status: AuthStatus.error, errorMessage: message);
 
   final AuthStatus status;
   final PlayerProfile? playerProfile;

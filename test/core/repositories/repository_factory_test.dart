@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
 import 'package:stoppy_app/core/backend/api_response.dart';
+import 'package:stoppy_app/core/backend/auth_session.dart';
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/http_backend_api_client.dart';
 import 'package:stoppy_app/core/backend/http_transport.dart';
@@ -30,12 +32,14 @@ void main() {
 
     test('uses backend repositories when backend runtime is selected', () {
       final transport = _FakeTransport();
+      final sessionStore = InMemoryAuthSessionStore();
 
       final repositories = RepositoryFactory(
         environment: const AppEnvironment.backend(
           apiBaseUrl: 'https://api.test',
         ),
         httpTransport: transport,
+        authSessionStore: sessionStore,
       ).createRepositories();
 
       expect(repositories.authRepository, isA<BackendAuthRepository>());
@@ -48,29 +52,82 @@ void main() {
       repositories.authRepository as BackendAuthRepository;
 
       expect(authRepository.apiClient, isA<HttpBackendApiClient>());
-    });
+      expect(authRepository.authSessionStore, same(sessionStore));
+      expect(
+        (authRepository.apiClient as HttpBackendApiClient).authSessionStore,
+        same(sessionStore),
+      );
 
-    test('uses the injected backend API client for all backend repositories', () {
-      final apiClient = _FakeBackendApiClient();
-
-      final repositories = RepositoryFactory(
-        environment: const AppEnvironment.backend(
-          apiBaseUrl: 'https://api.test',
-        ),
-        backendApiClient: apiClient,
-      ).createRepositories();
-
-      final authRepository =
-      repositories.authRepository as BackendAuthRepository;
       final leagueRepository =
       repositories.leagueRepository as BackendLeagueRepository;
       final knockoutRepository =
       repositories.knockoutRepository as BackendKnockoutRepository;
 
-      expect(authRepository.apiClient, same(apiClient));
-      expect(leagueRepository.apiClient, same(apiClient));
-      expect(knockoutRepository.apiClient, same(apiClient));
+      expect(
+            () => leagueRepository.currentEntry('player-1'),
+        throwsA(
+          isA<ApiException>().having(
+                (exception) => exception.error.code,
+            'code',
+            ApiErrorCode.notImplemented,
+          ),
+        ),
+      );
+
+      expect(
+            () => knockoutRepository.fetchCurrentTournament(),
+        throwsA(
+          isA<ApiException>().having(
+                (exception) => exception.error.code,
+            'code',
+            ApiErrorCode.notImplemented,
+          ),
+        ),
+      );
     });
+
+    test(
+      'uses the injected backend API client for all backend repositories',
+          () {
+        final apiClient = _FakeBackendApiClient();
+        final sessionStore = InMemoryAuthSessionStore();
+
+        final repositories = RepositoryFactory(
+          environment: const AppEnvironment.backend(
+            apiBaseUrl: 'https://api.test',
+          ),
+          backendApiClient: apiClient,
+          authSessionStore: sessionStore,
+        ).createRepositories();
+
+        final authRepository =
+        repositories.authRepository as BackendAuthRepository;
+        final leagueRepository =
+        repositories.leagueRepository as BackendLeagueRepository;
+        final knockoutRepository =
+        repositories.knockoutRepository as BackendKnockoutRepository;
+
+        expect(authRepository.apiClient, same(apiClient));
+        expect(authRepository.authSessionStore, same(sessionStore));
+        expect(leagueRepository.apiClient, same(apiClient));
+        expect(knockoutRepository.apiClient, same(apiClient));
+      },
+    );
+
+    test(
+      'backend runtime rejects an injected API client without a session store',
+          () {
+        expect(
+              () => RepositoryFactory(
+            environment: const AppEnvironment.backend(
+              apiBaseUrl: 'https://api.test',
+            ),
+            backendApiClient: _FakeBackendApiClient(),
+          ).createRepositories(),
+          throwsAssertionError,
+        );
+      },
+    );
 
     test('mock runtime does not use injected backend dependencies', () {
       final apiClient = _FakeBackendApiClient();

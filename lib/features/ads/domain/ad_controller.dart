@@ -47,8 +47,8 @@ class AdController {
   }
 
   Future<AdShowResult> showInterstitialOnExit(
-      PlayerProfile? playerProfile,
-      ) async {
+    PlayerProfile? playerProfile,
+  ) async {
     if (_areNonOptionalAdsRemoved(playerProfile)) {
       return const AdShowResult(shown: false, rewardGranted: false);
     }

@@ -1,9 +1,6 @@
 import 'api_error.dart';
 
-Never backendNotConnected(
-    String repositoryName,
-    String methodName,
-    ) {
+Never backendNotConnected(String repositoryName, String methodName) {
   assert(repositoryName != '');
   assert(methodName != '');
 
@@ -11,12 +8,9 @@ Never backendNotConnected(
     ApiError(
       code: ApiErrorCode.notImplemented,
       message:
-      '$repositoryName.$methodName is prepared for the future REST backend '
+          '$repositoryName.$methodName is prepared for the future REST backend '
           'but is not connected yet.',
-      details: {
-        'repository': repositoryName,
-        'method': methodName,
-      },
+      details: {'repository': repositoryName, 'method': methodName},
     ),
   );
 }

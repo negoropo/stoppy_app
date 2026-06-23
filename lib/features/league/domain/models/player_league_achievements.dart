@@ -5,9 +5,9 @@ class PlayerLeagueAchievements {
     this.promotions = 0,
     this.relegations = 0,
   }) : assert(playerId != ''),
-        assert(bestDivisionReached == null || bestDivisionReached > 0),
-        assert(promotions >= 0),
-        assert(relegations >= 0);
+       assert(bestDivisionReached == null || bestDivisionReached > 0),
+       assert(promotions >= 0),
+       assert(relegations >= 0);
 
   factory PlayerLeagueAchievements.empty(String playerId) {
     return PlayerLeagueAchievements(playerId: playerId);
@@ -26,8 +26,7 @@ class PlayerLeagueAchievements {
   }) {
     return PlayerLeagueAchievements(
       playerId: playerId ?? this.playerId,
-      bestDivisionReached:
-      bestDivisionReached ?? this.bestDivisionReached,
+      bestDivisionReached: bestDivisionReached ?? this.bestDivisionReached,
       promotions: promotions ?? this.promotions,
       relegations: relegations ?? this.relegations,
     );

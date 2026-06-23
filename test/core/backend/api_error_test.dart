@@ -29,5 +29,73 @@ void main() {
 
       expect(error.details, {'runId': 'run-1'});
     });
+
+    test('decodes camelCase and snake_case error codes', () {
+      expect(
+        ApiError.fromJson({
+          'code': 'validationFailed',
+          'message': 'Invalid.',
+        }).code,
+        ApiErrorCode.validationFailed,
+      );
+
+      expect(
+        ApiError.fromJson({
+          'code': 'validation_failed',
+          'message': 'Invalid.',
+        }).code,
+        ApiErrorCode.validationFailed,
+      );
+    });
+
+    test('maps unknown error codes to unknown', () {
+      final error = ApiError.fromJson({
+        'code': 'future_backend_error',
+        'message': 'Future error.',
+      });
+
+      expect(error.code, ApiErrorCode.unknown);
+      expect(error.message, 'Future error.');
+    });
+
+    test('uses a fallback for missing or empty messages', () {
+      expect(
+        ApiError.fromJson({'code': 'serverError'}).message,
+        'Unknown API error.',
+      );
+
+      expect(
+        ApiError.fromJson({
+          'code': 'serverError',
+          'message': '   ',
+        }).message,
+        'Unknown API error.',
+      );
+    });
+
+    test('ignores invalid details payloads', () {
+      final error = ApiError.fromJson({
+        'code': 'validationFailed',
+        'message': 'Invalid.',
+        'details': ['invalid'],
+      });
+
+      expect(error.details, isEmpty);
+    });
+
+    test('serializes non-empty details', () {
+      const error = ApiError(
+        code: ApiErrorCode.validationFailed,
+        message: 'Invalid.',
+        details: {'field': 'username'},
+      );
+
+      expect(error.toJson(), {
+        'code': 'validationFailed',
+        'message': 'Invalid.',
+        'details': {'field': 'username'},
+      });
+    });
+
   });
 }

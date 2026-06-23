@@ -51,18 +51,29 @@ class PlayerProfileDto {
   }
 
   factory PlayerProfileDto.fromJson(Object? json) {
-    final reader = JsonReader.fromObject(json, context: 'PlayerProfileDto');
-    final currentLeagueDivision = reader.optionalPositiveInt(
-      currentLeagueDivisionKey,
+    final reader = JsonReader.fromObject(
+      json,
+      context: 'PlayerProfileDto',
     );
+
     return PlayerProfileDto(
-      id: reader.requiredString(idKey),
-      username: reader.requiredString(usernameKey),
+      id: reader.requiredString(idKey).trim(),
+      username: reader.requiredString(usernameKey).trim(),
       createdAt: reader.requiredDateTime(createdAtKey),
-      gamePoints: reader.optionalInt(gamePointsKey, defaultValue: 5),
-      lastDailyGpAwardedAt: reader.optionalDateTime(lastDailyGpAwardedAtKey),
-      adsRemoved: reader.optionalBool(adsRemovedKey, defaultValue: false),
-      currentLeagueDivision: currentLeagueDivision,
+      gamePoints: reader.optionalNonNegativeInt(
+        gamePointsKey,
+        defaultValue: 5,
+      ),
+      lastDailyGpAwardedAt: reader.optionalDateTime(
+        lastDailyGpAwardedAtKey,
+      ),
+      adsRemoved: reader.optionalBool(
+        adsRemovedKey,
+        defaultValue: false,
+      ),
+      currentLeagueDivision: reader.optionalPositiveInt(
+        currentLeagueDivisionKey,
+      ),
       hasWeeklyLeagueEntry: reader.optionalBool(
         hasWeeklyLeagueEntryKey,
         defaultValue: false,
@@ -93,22 +104,38 @@ class PlayerProfileDto {
     String? username,
     DateTime? createdAt,
     int? gamePoints,
-    DateTime? lastDailyGpAwardedAt,
+    Object? lastDailyGpAwardedAt = _unset,
     bool? adsRemoved,
-    int? currentLeagueDivision,
+    Object? currentLeagueDivision = _unset,
     bool? hasWeeklyLeagueEntry,
     bool? reservedLeagueSlot,
   }) {
+    assert(
+    identical(lastDailyGpAwardedAt, _unset) ||
+        lastDailyGpAwardedAt is DateTime?,
+    'lastDailyGpAwardedAt must be a DateTime, null, or omitted.',
+    );
+
+    assert(
+    identical(currentLeagueDivision, _unset) ||
+        currentLeagueDivision is int?,
+    'currentLeagueDivision must be an int, null, or omitted.',
+    );
+
     return PlayerProfileDto(
       id: id ?? this.id,
       username: username ?? this.username,
       createdAt: createdAt ?? this.createdAt,
       gamePoints: gamePoints ?? this.gamePoints,
-      lastDailyGpAwardedAt: lastDailyGpAwardedAt ?? this.lastDailyGpAwardedAt,
+      lastDailyGpAwardedAt: identical(lastDailyGpAwardedAt, _unset)
+          ? this.lastDailyGpAwardedAt
+          : lastDailyGpAwardedAt as DateTime?,
       adsRemoved: adsRemoved ?? this.adsRemoved,
-      currentLeagueDivision:
-          currentLeagueDivision ?? this.currentLeagueDivision,
-      hasWeeklyLeagueEntry: hasWeeklyLeagueEntry ?? this.hasWeeklyLeagueEntry,
+      currentLeagueDivision: identical(currentLeagueDivision, _unset)
+          ? this.currentLeagueDivision
+          : currentLeagueDivision as int?,
+      hasWeeklyLeagueEntry:
+      hasWeeklyLeagueEntry ?? this.hasWeeklyLeagueEntry,
       reservedLeagueSlot: reservedLeagueSlot ?? this.reservedLeagueSlot,
     );
   }
@@ -119,7 +146,8 @@ class PlayerProfileDto {
       usernameKey: username,
       createdAtKey: createdAt.toIso8601String(),
       gamePointsKey: gamePoints,
-      lastDailyGpAwardedAtKey: lastDailyGpAwardedAt?.toIso8601String(),
+      lastDailyGpAwardedAtKey:
+      lastDailyGpAwardedAt?.toIso8601String(),
       adsRemovedKey: adsRemoved,
       currentLeagueDivisionKey: currentLeagueDivision,
       hasWeeklyLeagueEntryKey: hasWeeklyLeagueEntry,
@@ -142,3 +170,5 @@ class PlayerProfileMapper
     return dto.toDomain();
   }
 }
+
+const Object _unset = Object();

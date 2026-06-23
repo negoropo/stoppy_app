@@ -11,12 +11,9 @@ import 'http_transport.dart';
 
 final class BackendConfigurationException extends ApiException {
   BackendConfigurationException(String message)
-      : super(
-    ApiError(
-      code: ApiErrorCode.invalidConfiguration,
-      message: message,
-    ),
-  );
+    : super(
+        ApiError(code: ApiErrorCode.invalidConfiguration, message: message),
+      );
 }
 
 final class HttpBackendApiClient implements BackendApiClient {
@@ -26,10 +23,10 @@ final class HttpBackendApiClient implements BackendApiClient {
     required AuthSessionStore authSessionStore,
     DateTime Function()? now,
   }) : _baseUri = _parseBaseUri(config.baseUrl),
-        _timeout = config.timeout,
-        _transport = transport,
-        _authSessionStore = authSessionStore,
-        _now = now ?? DateTime.now {
+       _timeout = config.timeout,
+       _transport = transport,
+       _authSessionStore = authSessionStore,
+       _now = now ?? DateTime.now {
     if (_timeout <= Duration.zero) {
       throw BackendConfigurationException(
         'Backend request timeout must be greater than zero.',
@@ -43,12 +40,14 @@ final class HttpBackendApiClient implements BackendApiClient {
   final AuthSessionStore _authSessionStore;
   final DateTime Function() _now;
 
+  AuthSessionStore get authSessionStore => _authSessionStore;
+
   @override
   Future<ApiResponse<Map<String, Object?>>> get(
-      String path, {
-        Map<String, String> queryParameters = const {},
-        Map<String, String> headers = const {},
-      }) {
+    String path, {
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
+  }) {
     return _request(
       HttpMethod.get,
       path,
@@ -59,52 +58,37 @@ final class HttpBackendApiClient implements BackendApiClient {
 
   @override
   Future<ApiResponse<Map<String, Object?>>> post(
-      String path, {
-        Map<String, Object?> body = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return _request(
-      HttpMethod.post,
-      path,
-      body: body,
-      headers: headers,
-    );
+    String path, {
+    Map<String, Object?> body = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return _request(HttpMethod.post, path, body: body, headers: headers);
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> put(
-      String path, {
-        Map<String, Object?> body = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return _request(
-      HttpMethod.put,
-      path,
-      body: body,
-      headers: headers,
-    );
+    String path, {
+    Map<String, Object?> body = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return _request(HttpMethod.put, path, body: body, headers: headers);
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> patch(
-      String path, {
-        Map<String, Object?> body = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return _request(
-      HttpMethod.patch,
-      path,
-      body: body,
-      headers: headers,
-    );
+    String path, {
+    Map<String, Object?> body = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return _request(HttpMethod.patch, path, body: body, headers: headers);
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> delete(
-      String path, {
-        Map<String, String> queryParameters = const {},
-        Map<String, String> headers = const {},
-      }) {
+    String path, {
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
+  }) {
     return _request(
       HttpMethod.delete,
       path,
@@ -114,12 +98,12 @@ final class HttpBackendApiClient implements BackendApiClient {
   }
 
   Future<ApiResponse<Map<String, Object?>>> _request(
-      HttpMethod method,
-      String path, {
-        Map<String, String> queryParameters = const {},
-        Map<String, Object?>? body,
-        Map<String, String> headers = const {},
-      }) async {
+    HttpMethod method,
+    String path, {
+    Map<String, String> queryParameters = const {},
+    Map<String, Object?>? body,
+    Map<String, String> headers = const {},
+  }) async {
     final uri = _resolveUri(path, queryParameters);
 
     final requestHeaders = await _buildHeaders(
@@ -128,13 +112,26 @@ final class HttpBackendApiClient implements BackendApiClient {
       hasBody: body != null,
     );
 
+    final String? encodedBody;
+
+    try {
+      encodedBody = body == null
+          ? null
+          : jsonEncode(Map<String, Object?>.of(body));
+    } on JsonUnsupportedObjectError {
+      return const ApiResponse.failure(
+        ApiError(
+          code: ApiErrorCode.malformedPayload,
+          message: 'Backend request body contains unsupported values.',
+        ),
+      );
+    }
+
     final request = HttpTransportRequest(
       method: method,
       uri: uri,
       headers: requestHeaders,
-      body: body == null
-          ? null
-          : jsonEncode(Map<String, Object?>.of(body)),
+      body: encodedBody,
     );
 
     final HttpTransportResponse response;
@@ -178,10 +175,20 @@ final class HttpBackendApiClient implements BackendApiClient {
     }
 
     final parsedPath = Uri.tryParse(trimmedPath);
+    final containsParentTraversal = trimmedPath
+        .split('/')
+        .map(Uri.decodeComponent)
+        .any((segment) => segment == '..');
 
-    if (parsedPath == null || parsedPath.hasScheme || parsedPath.hasAuthority) {
+    if (parsedPath == null ||
+        parsedPath.hasScheme ||
+        parsedPath.hasAuthority ||
+        parsedPath.hasQuery ||
+        parsedPath.hasFragment ||
+        containsParentTraversal) {
       throw BackendConfigurationException(
-        'Backend request path must be a relative API path.',
+        'Backend request path must be a relative API path without query '
+            'parameters, fragments, or parent traversal.',
       );
     }
 
@@ -191,7 +198,9 @@ final class HttpBackendApiClient implements BackendApiClient {
 
     final baseUri = _baseUri.path.endsWith('/')
         ? _baseUri
-        : _baseUri.replace(path: '${_baseUri.path}/');
+        : _baseUri.replace(
+      path: '${_baseUri.path}/',
+    );
 
     final resolvedUri = baseUri.resolve(normalizedPath);
 
@@ -205,10 +214,10 @@ final class HttpBackendApiClient implements BackendApiClient {
   }
 
   Future<Map<String, String>> _buildHeaders(
-      String path,
-      Map<String, String> customHeaders, {
-        required bool hasBody,
-      }) async {
+    String path,
+    Map<String, String> customHeaders, {
+    required bool hasBody,
+  }) async {
     final headers = Map<String, String>.of(customHeaders);
 
     _removeHeaderIgnoreCase(headers, ApiContract.acceptHeader);
@@ -227,8 +236,12 @@ final class HttpBackendApiClient implements BackendApiClient {
       // Token refresh belongs to a future authentication policy. Expired
       // access tokens are omitted rather than being sent to the backend.
       if (session != null && !session.isExpired(_now())) {
-        headers[ApiContract.authorizationHeader] =
-        '${ApiContract.bearerScheme} ${session.accessToken}';
+        final accessToken = session.accessToken.trim();
+
+        if (accessToken.isNotEmpty) {
+          headers[ApiContract.authorizationHeader] =
+              '${ApiContract.bearerScheme} $accessToken';
+        }
       }
     }
 
@@ -236,8 +249,8 @@ final class HttpBackendApiClient implements BackendApiClient {
   }
 
   ApiResponse<Map<String, Object?>> _decodeResponse(
-      HttpTransportResponse response,
-      ) {
+    HttpTransportResponse response,
+  ) {
     final statusCode = response.statusCode;
     final body = response.body.trim();
 
@@ -250,11 +263,8 @@ final class HttpBackendApiClient implements BackendApiClient {
         return ApiResponse.failure(
           ApiError(
             code: ApiErrorCode.malformedPayload,
-            message:
-            'Backend returned an empty response for HTTP $statusCode.',
-            details: <String, Object?>{
-              'httpStatus': statusCode,
-            },
+            message: 'Backend returned an empty response for HTTP $statusCode.',
+            details: <String, Object?>{'httpStatus': statusCode},
           ),
         );
       }
@@ -262,48 +272,36 @@ final class HttpBackendApiClient implements BackendApiClient {
       return _decodeSuccessEnvelope(body, statusCode);
     }
 
-    return ApiResponse.failure(
-      _decodeError(statusCode, body),
-    );
+    return ApiResponse.failure(_decodeError(statusCode, body));
   }
 
   ApiResponse<Map<String, Object?>> _decodeSuccessEnvelope(
-      String body,
-      int statusCode,
-      ) {
+    String body,
+    int statusCode,
+  ) {
     try {
       final decoded = jsonDecode(body);
 
-      return ApiResponse<Map<String, Object?>>.fromJson(
-        decoded,
-            (data) {
-          if (data is! Map) {
-            throw const ApiException(
-              ApiError(
-                code: ApiErrorCode.malformedPayload,
-                message:
-                'Successful API response data must be a JSON object.',
-              ),
-            );
-          }
-
-          return Map<String, Object?>.unmodifiable(
-            data.cast<String, Object?>(),
+      return ApiResponse<Map<String, Object?>>.fromJson(decoded, (data) {
+        if (data is! Map) {
+          throw const ApiException(
+            ApiError(
+              code: ApiErrorCode.malformedPayload,
+              message: 'Successful API response data must be a JSON object.',
+            ),
           );
-        },
-      );
+        }
+
+        return Map<String, Object?>.unmodifiable(data.cast<String, Object?>());
+      });
     } on ApiException catch (exception) {
-      return ApiResponse.failure(
-        _withHttpStatus(exception.error, statusCode),
-      );
+      return ApiResponse.failure(_withHttpStatus(exception.error, statusCode));
     } on FormatException {
       return ApiResponse.failure(
         ApiError(
           code: ApiErrorCode.malformedPayload,
           message: 'Backend response was not valid JSON.',
-          details: <String, Object?>{
-            'httpStatus': statusCode,
-          },
+          details: <String, Object?>{'httpStatus': statusCode},
         ),
       );
     } on TypeError {
@@ -311,18 +309,13 @@ final class HttpBackendApiClient implements BackendApiClient {
         ApiError(
           code: ApiErrorCode.malformedPayload,
           message: 'Backend response contained invalid JSON field types.',
-          details: <String, Object?>{
-            'httpStatus': statusCode,
-          },
+          details: <String, Object?>{'httpStatus': statusCode},
         ),
       );
     }
   }
 
-  ApiError _decodeError(
-      int statusCode,
-      String body,
-      ) {
+  ApiError _decodeError(int statusCode, String body) {
     if (body.isNotEmpty) {
       try {
         final decoded = jsonDecode(body);
@@ -331,16 +324,15 @@ final class HttpBackendApiClient implements BackendApiClient {
           final json = decoded.cast<String, Object?>();
 
           try {
-            final envelope = ApiResponse<Map<String, Object?>>.fromJson(
-              json,
-                  (data) {
-                if (data is! Map) {
-                  return const <String, Object?>{};
-                }
+            final envelope = ApiResponse<Map<String, Object?>>.fromJson(json, (
+              data,
+            ) {
+              if (data is! Map) {
+                return const <String, Object?>{};
+              }
 
-                return data.cast<String, Object?>();
-              },
-            );
+              return data.cast<String, Object?>();
+            });
 
             final envelopeError = envelope.error;
 
@@ -370,15 +362,15 @@ final class HttpBackendApiClient implements BackendApiClient {
         }
       } on FormatException {
         // Non-JSON error responses are represented using their HTTP status.
+      } on TypeError {
+        // Invalid JSON object key or field types fall back to status mapping.
       }
     }
 
     return ApiError(
       code: _errorCodeForStatus(statusCode),
       message: _messageForStatus(statusCode),
-      details: <String, Object?>{
-        'httpStatus': statusCode,
-      },
+      details: <String, Object?>{'httpStatus': statusCode},
     );
   }
 
@@ -393,7 +385,7 @@ final class HttpBackendApiClient implements BackendApiClient {
         uri.userInfo.isNotEmpty) {
       throw BackendConfigurationException(
         'Backend base URL must be a valid HTTP(S) URL without credentials, '
-            'query parameters, or fragments.',
+        'query parameters, or fragments.',
       );
     }
 
@@ -434,22 +426,16 @@ final class HttpBackendApiClient implements BackendApiClient {
     };
   }
 
-  static ApiError _withHttpStatus(
-      ApiError error,
-      int statusCode,
-      ) {
+  static ApiError _withHttpStatus(ApiError error, int statusCode) {
     return error.copyWith(
-      details: <String, Object?>{
-        ...error.details,
-        'httpStatus': statusCode,
-      },
+      details: <String, Object?>{...error.details, 'httpStatus': statusCode},
     );
   }
 
   static void _removeHeaderIgnoreCase(
-      Map<String, String> headers,
-      String name,
-      ) {
+    Map<String, String> headers,
+    String name,
+  ) {
     final normalizedName = name.toLowerCase();
 
     final matchingKeys = headers.keys

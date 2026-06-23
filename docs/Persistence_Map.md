@@ -80,3 +80,11 @@ DTOs mirror the REST representation of these records, not direct PostgreSQL rows
 - `HttpTransport` is replaceable in tests and keeps `package:http` implementation details out of repository contracts.
 - Backend runtime selection remains explicit through `RepositoryRuntime.backend`; mock repositories remain the normal local/test runtime.
 - Future server adapters must preserve API error envelopes and idempotency validation so transport retries cannot duplicate runs or economy mutations.
+
+## Session 31 Authentication Session Boundary
+
+- `AuthSession` is currently held by `InMemoryAuthSessionStore` only and is not persisted to PostgreSQL or device storage by the Flutter client.
+- The backend remains the issuer and validator of Stoppy access/refresh tokens.
+- Registration, login, and profile restoration use the same server-issued `AuthResponseDto` session contract.
+- Secure device persistence, refresh-token rotation, social-provider credential exchange, and backend logout invalidation are deferred to future sessions.
+- PlayerProfile remains independent of external provider identities; provider credentials must never become Stoppy access tokens.

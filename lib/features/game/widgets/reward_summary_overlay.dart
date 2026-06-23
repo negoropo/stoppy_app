@@ -65,7 +65,7 @@ class RewardSummaryOverlay extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'Target hit! Next level max PP: '
-                      '${_formatPoints(nextTierMaxPrecisionPoints!)}',
+                  '${_formatPoints(nextTierMaxPrecisionPoints!)}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Color(0xFFFFD166),
@@ -95,7 +95,7 @@ class RewardSummaryOverlay extends StatelessWidget {
   String _formatPoints(int value) {
     return value.toString().replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (match) => ',',
+      (match) => ',',
     );
   }
 }

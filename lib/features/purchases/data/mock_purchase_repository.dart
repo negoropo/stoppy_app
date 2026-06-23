@@ -4,7 +4,6 @@ import '../domain/models/purchase_product_type.dart';
 import '../domain/models/purchase_result.dart';
 import '../domain/repositories/purchase_repository.dart';
 
-
 class MockPurchaseRepository implements PurchaseRepository {
   const MockPurchaseRepository();
 

@@ -51,7 +51,7 @@ The Flutter app prepares backend integration through environment configuration a
 - `STP_REPOSITORY_RUNTIME=mock` keeps mock repositories active.
 - `STP_REPOSITORY_RUNTIME=backend` creates backend repository skeletons.
 - `STP_API_BASE_URL` defines the future REST API base URL.
-- The HTTP client exists, but mock runtime remains the default and repository methods are not activated against a backend in this session.
+- The HTTP client exists, mock runtime remains the default, and only backend authentication is connected when backend runtime is explicitly selected.
 
 Backend repositories should receive a `BackendApiClient` plus an auth session store. The API client should attach the current access token when required, decode the response envelope, and surface `ApiError` for repository-level mapping.
 
@@ -136,7 +136,18 @@ Successful registration/login responses return:
 - `accessToken` is required and non-empty.
 - `refreshToken` is optional to allow a future session policy change.
 - `expiresAt` is an ISO-8601 UTC date-time.
-- Token storage and refresh calls are intentionally not implemented in this session.
+- Session storage is currently in-memory. Secure persistent storage and refresh-token execution are intentionally deferred.
+
+## Backend Authentication Integration
+
+When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connects registration, login, logout, and authenticated profile restoration to `BackendApiClient`.
+
+- Registration and login share the same `AuthResponseDto` completion pipeline.
+- A profile and Stoppy-issued `AuthSession` are mapped before the session is saved.
+- Expired returned sessions and malformed authentication payloads are rejected without replacing the existing local session.
+- On app restoration, unauthenticated or forbidden profile responses clear the in-memory session; temporary failures preserve it and surface an auth-domain error.
+- Future Google, Apple, and Facebook login flows must validate provider credentials on the backend and return this same Stoppy `AuthResponseDto`; provider identity tokens are not stored as Stoppy sessions.
+- League and Knockout backend repository methods remain disconnected skeletons.
 
 ## Error Strategy
 

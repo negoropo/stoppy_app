@@ -10,27 +10,22 @@ void main() {
 
     setUp(() {
       client = PendingBackendApiClient(
-        config: const BackendConfig(
-          baseUrl: 'https://api.test',
-        ),
+        config: const BackendConfig(baseUrl: 'https://api.test'),
         authSessionStore: InMemoryAuthSessionStore(),
       );
     });
 
     test('throws explicit not implemented error instead of networking', () {
-      expect(
-            () => client.get('/player/profile'),
-        _throwsNotImplemented,
-      );
+      expect(() => client.get('/player/profile'), _throwsNotImplemented);
     });
 
     test('all HTTP methods fail with not implemented error', () {
       final operations = <void Function()>[
-            () => client.get('/test'),
-            () => client.post('/test'),
-            () => client.put('/test'),
-            () => client.patch('/test'),
-            () => client.delete('/test'),
+        () => client.get('/test'),
+        () => client.post('/test'),
+        () => client.put('/test'),
+        () => client.patch('/test'),
+        () => client.delete('/test'),
       ];
 
       for (final operation in operations) {
@@ -42,7 +37,7 @@ void main() {
 
 final Matcher _throwsNotImplemented = throwsA(
   isA<ApiException>().having(
-        (exception) => exception.error.code,
+    (exception) => exception.error.code,
     'code',
     ApiErrorCode.notImplemented,
   ),

@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 30 completed.
+Session 31 completed.
 
-Current session: Session 31 — Backend Authentication Integration
+Current session: Session 32 — Secure Session Persistence + Refresh Token Policy
 
 ---
 

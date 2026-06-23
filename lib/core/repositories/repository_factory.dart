@@ -45,33 +45,45 @@ final class RepositoryFactory {
   }
 
   AppRepositories _createBackendRepositories() {
-    final client = backendApiClient ?? _createBackendApiClient();
+    assert(
+    backendApiClient == null || authSessionStore != null,
+    'An injected backendApiClient requires the matching AuthSessionStore '
+        'when using the backend repository runtime.',
+    );
+
+    final sessionStore = authSessionStore ?? InMemoryAuthSessionStore();
+
+    // A generated HTTP client and the authentication repository must share
+    // exactly the same session store. This allows login and registration to
+    // persist the token that the HTTP client later sends as a Bearer token.
+    //
+    // When a custom BackendApiClient is injected, the caller must also inject
+    // the matching AuthSessionStore used by that client.
+    final client = backendApiClient ?? _createBackendApiClient(sessionStore);
 
     // Purchases and ads remain mock-driven until their real IAP and backend
     // integration boundaries are implemented.
     return AppRepositories(
       authRepository: BackendAuthRepository(
         apiClient: client,
+        authSessionStore: sessionStore,
       ),
       purchaseRepository: const MockPurchaseRepository(),
       adRepository: MockAdRepository(),
-      leagueRepository: BackendLeagueRepository(
-        apiClient: client,
-      ),
-      knockoutRepository: BackendKnockoutRepository(
-        apiClient: client,
-      ),
+      leagueRepository: BackendLeagueRepository(apiClient: client),
+      knockoutRepository: BackendKnockoutRepository(apiClient: client),
     );
   }
 
-  BackendApiClient _createBackendApiClient() {
+  BackendApiClient _createBackendApiClient(
+      AuthSessionStore sessionStore,
+      ) {
     return HttpBackendApiClient(
       config: BackendConfig(
         baseUrl: environment.apiBaseUrl,
       ),
       transport: httpTransport ?? PackageHttpTransport(),
-      authSessionStore:
-      authSessionStore ?? InMemoryAuthSessionStore(),
+      authSessionStore: sessionStore,
     );
   }
 }

@@ -813,8 +813,8 @@ class MockKnockoutRepository implements KnockoutRepository {
         // duel has been settled.
         played += 1;
 
-// Repechage advancement does not count as a duel win.
-// It only means the player advanced as a replacement candidate.
+        // Repechage advancement does not count as a duel win.
+        // It only means the player advanced as a replacement candidate.
         if (match.winnerPlayerId == playerId) {
           won += 1;
         }

@@ -15,61 +15,46 @@ final class PendingBackendApiClient implements BackendApiClient {
 
   @override
   Future<ApiResponse<Map<String, Object?>>> get(
-      String path, {
-        Map<String, String> queryParameters = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return backendNotConnected(
-      'PendingBackendApiClient',
-      'get',
-    );
+    String path, {
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return backendNotConnected('PendingBackendApiClient', 'get');
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> post(
-      String path, {
-        Map<String, Object?> body = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return backendNotConnected(
-      'PendingBackendApiClient',
-      'post',
-    );
+    String path, {
+    Map<String, Object?> body = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return backendNotConnected('PendingBackendApiClient', 'post');
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> put(
-      String path, {
-        Map<String, Object?> body = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return backendNotConnected(
-      'PendingBackendApiClient',
-      'put',
-    );
+    String path, {
+    Map<String, Object?> body = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return backendNotConnected('PendingBackendApiClient', 'put');
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> patch(
-      String path, {
-        Map<String, Object?> body = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return backendNotConnected(
-      'PendingBackendApiClient',
-      'patch',
-    );
+    String path, {
+    Map<String, Object?> body = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return backendNotConnected('PendingBackendApiClient', 'patch');
   }
 
   @override
   Future<ApiResponse<Map<String, Object?>>> delete(
-      String path, {
-        Map<String, String> queryParameters = const {},
-        Map<String, String> headers = const {},
-      }) {
-    return backendNotConnected(
-      'PendingBackendApiClient',
-      'delete',
-    );
+    String path, {
+    Map<String, String> queryParameters = const {},
+    Map<String, String> headers = const {},
+  }) {
+    return backendNotConnected('PendingBackendApiClient', 'delete');
   }
 }

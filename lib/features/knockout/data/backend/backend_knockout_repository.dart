@@ -14,9 +14,7 @@ import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_h
 import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
 
 final class BackendKnockoutRepository implements KnockoutRepository {
-  const BackendKnockoutRepository({
-    required this.apiClient,
-  });
+  const BackendKnockoutRepository({required this.apiClient});
 
   final BackendApiClient apiClient;
 
@@ -42,10 +40,7 @@ final class BackendKnockoutRepository implements KnockoutRepository {
     required String tournamentId,
     required String playerId,
   }) {
-    return backendNotConnected(
-      'BackendKnockoutRepository',
-      'currentEntry',
-    );
+    return backendNotConnected('BackendKnockoutRepository', 'currentEntry');
   }
 
   @override
@@ -53,16 +48,11 @@ final class BackendKnockoutRepository implements KnockoutRepository {
     required KnockoutTournament tournament,
     required PlayerProfile playerProfile,
   }) {
-    return backendNotConnected(
-      'BackendKnockoutRepository',
-      'registerPlayer',
-    );
+    return backendNotConnected('BackendKnockoutRepository', 'registerPlayer');
   }
 
   @override
-  Future<KnockoutTournament> closeRegistration({
-    required String tournamentId,
-  }) {
+  Future<KnockoutTournament> closeRegistration({required String tournamentId}) {
     return backendNotConnected(
       'BackendKnockoutRepository',
       'closeRegistration',
@@ -70,13 +60,8 @@ final class BackendKnockoutRepository implements KnockoutRepository {
   }
 
   @override
-  Future<KnockoutTournament> startTournament({
-    required String tournamentId,
-  }) {
-    return backendNotConnected(
-      'BackendKnockoutRepository',
-      'startTournament',
-    );
+  Future<KnockoutTournament> startTournament({required String tournamentId}) {
+    return backendNotConnected('BackendKnockoutRepository', 'startTournament');
   }
 
   @override
@@ -84,10 +69,7 @@ final class BackendKnockoutRepository implements KnockoutRepository {
     required String tournamentId,
     required String playerId,
   }) {
-    return backendNotConnected(
-      'BackendKnockoutRepository',
-      'fetchActiveDuel',
-    );
+    return backendNotConnected('BackendKnockoutRepository', 'fetchActiveDuel');
   }
 
   @override
@@ -120,9 +102,7 @@ final class BackendKnockoutRepository implements KnockoutRepository {
   }
 
   @override
-  Future<KnockoutPlayerRecords> fetchPlayerRecords(
-      String playerId,
-      ) {
+  Future<KnockoutPlayerRecords> fetchPlayerRecords(String playerId) {
     return backendNotConnected(
       'BackendKnockoutRepository',
       'fetchPlayerRecords',
@@ -131,8 +111,8 @@ final class BackendKnockoutRepository implements KnockoutRepository {
 
   @override
   Future<List<KnockoutTournamentHistoryEntry>> fetchPlayerHistory(
-      String playerId,
-      ) {
+    String playerId,
+  ) {
     return backendNotConnected(
       'BackendKnockoutRepository',
       'fetchPlayerHistory',
@@ -141,9 +121,6 @@ final class BackendKnockoutRepository implements KnockoutRepository {
 
   @override
   Future<List<KnockoutHallOfFameEntry>> fetchHallOfFame() {
-    return backendNotConnected(
-      'BackendKnockoutRepository',
-      'fetchHallOfFame',
-    );
+    return backendNotConnected('BackendKnockoutRepository', 'fetchHallOfFame');
   }
 }

@@ -24,14 +24,14 @@ class StoppyApp extends StatelessWidget {
     this.environment,
     this.repositories,
   }) : assert(
-  repositories == null ||
-      (authRepository == null &&
-          purchaseRepository == null &&
-          adRepository == null &&
-          leagueRepository == null &&
-          knockoutRepository == null),
-  'Use either repositories bundle or individual repositories, not both.',
-  );
+         repositories == null ||
+             (authRepository == null &&
+                 purchaseRepository == null &&
+                 adRepository == null &&
+                 leagueRepository == null &&
+                 knockoutRepository == null),
+         'Use either repositories bundle or individual repositories, not both.',
+       );
 
   final AuthRepository? authRepository;
   final PurchaseRepository? purchaseRepository;
@@ -45,9 +45,9 @@ class StoppyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedRepositories =
         repositories ??
-            RepositoryFactory(
-              environment: environment ?? AppEnvironment.fromDartDefines(),
-            ).createRepositories();
+        RepositoryFactory(
+          environment: environment ?? AppEnvironment.fromDartDefines(),
+        ).createRepositories();
 
     return MaterialApp(
       title: 'Stoppy',
@@ -56,12 +56,12 @@ class StoppyApp extends StatelessWidget {
       home: AuthGate(
         authRepository: authRepository ?? resolvedRepositories.authRepository,
         purchaseRepository:
-        purchaseRepository ?? resolvedRepositories.purchaseRepository,
+            purchaseRepository ?? resolvedRepositories.purchaseRepository,
         adRepository: adRepository ?? resolvedRepositories.adRepository,
         leagueRepository:
-        leagueRepository ?? resolvedRepositories.leagueRepository,
+            leagueRepository ?? resolvedRepositories.leagueRepository,
         knockoutRepository:
-        knockoutRepository ?? resolvedRepositories.knockoutRepository,
+            knockoutRepository ?? resolvedRepositories.knockoutRepository,
       ),
     );
   }

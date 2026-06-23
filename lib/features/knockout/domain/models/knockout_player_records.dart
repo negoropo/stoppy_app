@@ -11,7 +11,7 @@ class KnockoutPlayerRecords {
        assert(tournamentsWon >= 0),
        assert(tournamentsWon <= tournamentsPlayed),
        assert(highestRoundReached >= 0),
-        assert(tournamentsPlayed > 0 || highestRoundReached == 0),
+       assert(tournamentsPlayed > 0 || highestRoundReached == 0),
        assert(totalDuelsPlayed >= 0),
        assert(totalDuelsWon >= 0),
        assert(totalDuelsWon <= totalDuelsPlayed);

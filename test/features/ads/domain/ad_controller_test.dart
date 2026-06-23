@@ -50,7 +50,7 @@ void main() {
 
     test(
       'rewarded extra life remains available when adsRemoved is true',
-          () async {
+      () async {
         final repository = MockAdRepository();
         final controller = AdController(adRepository: repository);
 
@@ -88,7 +88,7 @@ void main() {
 
     test(
       'rewarded accepted prevents interstitial when exit is not called',
-          () async {
+      () async {
         final repository = MockAdRepository();
         final controller = AdController(adRepository: repository);
 
@@ -161,11 +161,11 @@ void main() {
 
       final lastLoadedRunLevel = await controller
           .refreshBannerAfterSafeZoneStop(
-        playerProfile: playerProfile(),
-        currentRunLevel: 11,
-        lastBannerLoadedRunLevel: 1,
-        wasSafeZoneStop: false,
-      );
+            playerProfile: playerProfile(),
+            currentRunLevel: 11,
+            lastBannerLoadedRunLevel: 1,
+            wasSafeZoneStop: false,
+          );
 
       expect(lastLoadedRunLevel, 1);
       expect(repository.preloadCounts[AdType.banner], 1);
@@ -179,11 +179,11 @@ void main() {
 
       final lastLoadedRunLevel = await controller
           .refreshBannerAfterSafeZoneStop(
-        playerProfile: playerProfile(adsRemoved: true),
-        currentRunLevel: 20,
-        lastBannerLoadedRunLevel: 1,
-        wasSafeZoneStop: true,
-      );
+            playerProfile: playerProfile(adsRemoved: true),
+            currentRunLevel: 20,
+            lastBannerLoadedRunLevel: 1,
+            wasSafeZoneStop: true,
+          );
 
       expect(lastLoadedRunLevel, 1);
       expect(repository.preloadCounts[AdType.banner], 0);
@@ -199,13 +199,16 @@ void main() {
       expect(repository.preloadCounts[AdType.rewarded], 1);
     });
 
-    test('banner also preloads at run start when ads are not removed', () async {
-      final repository = MockAdRepository();
-      final controller = AdController(adRepository: repository);
+    test(
+      'banner also preloads at run start when ads are not removed',
+      () async {
+        final repository = MockAdRepository();
+        final controller = AdController(adRepository: repository);
 
-      await controller.preloadBeforeRun(playerProfile());
+        await controller.preloadBeforeRun(playerProfile());
 
-      expect(repository.preloadCounts[AdType.banner], 1);
-    });
+        expect(repository.preloadCounts[AdType.banner], 1);
+      },
+    );
   });
 }

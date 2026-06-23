@@ -14,9 +14,10 @@ class LoginScreen extends StatelessWidget {
   final bool isSubmitting;
   final String? errorMessage;
   final Future<void> Function({
-  required String username,
-  required String password,
-  }) onLogin;
+    required String username,
+    required String password,
+  })
+  onLogin;
 
   final VoidCallback onShowRegister;
 

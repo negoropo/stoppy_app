@@ -13,7 +13,7 @@ void main() {
   group('HttpBackendApiClient', () {
     test(
       'builds GET URI with query parameters for base URL without slash',
-          () async {
+      () async {
         final transport = _FakeTransport.success();
         final client = _client(transport: transport);
         final queryParameters = <String, String>{
@@ -30,10 +30,7 @@ void main() {
           transport.requests.single.uri.toString(),
           'https://api.stoppy.test/api/v1/league/snapshot?division=2&playerId=player+1',
         );
-        expect(queryParameters, {
-          'division': '2',
-          'playerId': 'player 1',
-        });
+        expect(queryParameters, {'division': '2', 'playerId': 'player 1'});
       },
     );
 
@@ -60,15 +57,9 @@ void main() {
         'nested': {'v': 1},
       };
 
-      await client.post(
-        ApiContract.authLogin,
-        body: body,
-      );
+      await client.post(ApiContract.authLogin, body: body);
 
-      expect(
-        jsonDecode(transport.requests.single.body!),
-        body,
-      );
+      expect(jsonDecode(transport.requests.single.body!), body);
       expect(body, {
         'username': 'Tester',
         'nested': {'v': 1},
@@ -83,48 +74,27 @@ void main() {
       final transport = _FakeTransport.success();
       final client = _client(transport: transport);
 
-      await client.put(
-        '/api/v1/resource',
-        body: {'value': 1},
-      );
-      await client.patch(
-        '/api/v1/resource',
-        body: {'value': 2},
-      );
-      await client.delete(
-        '/api/v1/resource',
-        queryParameters: {'force': '1'},
-      );
+      await client.put('/api/v1/resource', body: {'value': 1});
+      await client.patch('/api/v1/resource', body: {'value': 2});
+      await client.delete('/api/v1/resource', queryParameters: {'force': '1'});
 
-      expect(
-        transport.requests.map((request) => request.method),
-        [
-          HttpMethod.put,
-          HttpMethod.patch,
-          HttpMethod.delete,
-        ],
-      );
-      expect(
-        transport.requests.last.uri.queryParameters['force'],
-        '1',
-      );
-      expect(
-        transport.requests.last.body,
-        isNull,
-      );
+      expect(transport.requests.map((request) => request.method), [
+        HttpMethod.put,
+        HttpMethod.patch,
+        HttpMethod.delete,
+      ]);
+      expect(transport.requests.last.uri.queryParameters['force'], '1');
+      expect(transport.requests.last.body, isNull);
     });
 
     test(
       'merges custom headers while preserving required JSON headers',
-          () async {
+      () async {
         final transport = _FakeTransport.success();
         final store = InMemoryAuthSessionStore();
         await store.save(_validSession());
 
-        final client = _client(
-          transport: transport,
-          sessionStore: store,
-        );
+        final client = _client(transport: transport, sessionStore: store);
 
         final headers = <String, String>{
           'X-Request-Id': 'request-1',
@@ -132,18 +102,11 @@ void main() {
           'authorization': 'Caller token',
         };
 
-        await client.post(
-          '/api/v1/private',
-          body: const {},
-          headers: headers,
-        );
+        await client.post('/api/v1/private', body: const {}, headers: headers);
 
         final sentHeaders = transport.requests.single.headers;
 
-        expect(
-          sentHeaders['X-Request-Id'],
-          'request-1',
-        );
+        expect(sentHeaders['X-Request-Id'], 'request-1');
         expect(
           sentHeaders[ApiContract.acceptHeader],
           ApiContract.jsonContentType,
@@ -153,14 +116,8 @@ void main() {
           'Bearer access-token',
         );
 
-        expect(
-          headers['Accept'],
-          'text/plain',
-        );
-        expect(
-          headers['authorization'],
-          'Caller token',
-        );
+        expect(headers['Accept'], 'text/plain');
+        expect(headers['authorization'], 'Caller token');
       },
     );
 
@@ -180,7 +137,7 @@ void main() {
 
     test(
       'does not add authorization for expired or public auth requests',
-          () async {
+      () async {
         final transport = _FakeTransport.success();
         final store = InMemoryAuthSessionStore();
 
@@ -201,17 +158,12 @@ void main() {
 
         await store.save(_validSession());
 
-        await client.post(
-          ApiContract.authLogin,
-          body: const {},
-        );
+        await client.post(ApiContract.authLogin, body: const {});
 
         expect(
           transport.requests.every(
-                (request) =>
-            !request.headers.containsKey(
-              ApiContract.authorizationHeader,
-            ),
+            (request) =>
+                !request.headers.containsKey(ApiContract.authorizationHeader),
           ),
           isTrue,
         );
@@ -235,101 +187,63 @@ void main() {
       final first = await client.get('/api/v1/one');
       final second = await client.post('/api/v1/two');
 
-      expect(
-        first.requireData()['id'],
-        'get',
-      );
-      expect(
-        second.requireData()['id'],
-        'post',
-      );
+      expect(first.requireData()['id'], 'get');
+      expect(second.requireData()['id'], 'post');
     });
 
     test('represents empty 204 responses as an empty success map', () async {
       final client = _client(
         transport: _FakeTransport(
-              (_) async => HttpTransportResponse(
-            statusCode: 204,
-            body: '',
-          ),
+          (_) async => HttpTransportResponse(statusCode: 204, body: ''),
         ),
       );
 
       final response = await client.delete('/api/v1/resource');
 
-      expect(
-        response.isSuccess,
-        isTrue,
-      );
-      expect(
-        response.requireData(),
-        isEmpty,
-      );
+      expect(response.isSuccess, isTrue);
+      expect(response.requireData(), isEmpty);
     });
 
     test('represents empty 205 responses as an empty success map', () async {
       final client = _client(
         transport: _FakeTransport(
-              (_) async => HttpTransportResponse(
-            statusCode: 205,
-            body: '',
-          ),
+          (_) async => HttpTransportResponse(statusCode: 205, body: ''),
         ),
       );
 
       final response = await client.post('/api/v1/reset');
 
-      expect(
-        response.isSuccess,
-        isTrue,
-      );
-      expect(
-        response.requireData(),
-        isEmpty,
-      );
+      expect(response.isSuccess, isTrue);
+      expect(response.requireData(), isEmpty);
     });
 
     test('rejects an empty 200 response as malformed payload', () async {
       final client = _client(
         transport: _FakeTransport(
-              (_) async => HttpTransportResponse(
-            statusCode: 200,
-            body: '',
-          ),
+          (_) async => HttpTransportResponse(statusCode: 200, body: ''),
         ),
       );
 
       final response = await client.get('/api/v1/resource');
 
-      expect(
-        response.isSuccess,
-        isFalse,
-      );
-      expect(
-        response.error?.code,
-        ApiErrorCode.malformedPayload,
-      );
-      expect(
-        response.error?.details['httpStatus'],
-        200,
-      );
+      expect(response.isSuccess, isFalse);
+      expect(response.error?.code, ApiErrorCode.malformedPayload);
+      expect(response.error?.details['httpStatus'], 200);
     });
 
     test(
       'preserves backend failure envelopes and validation details',
-          () async {
+      () async {
         final client = _client(
           transport: _FakeTransport(
-                (_) async => HttpTransportResponse(
+            (_) async => HttpTransportResponse(
               statusCode: 422,
               body: jsonEncode({
                 'success': false,
                 'error': {
                   'code': 'validationFailed',
                   'message': 'Invalid run.',
-                  'details': {
-                    'field': 'score',
-                  },
+                  'details': {'field': 'score'},
                 },
               }),
             ),
@@ -338,31 +252,16 @@ void main() {
 
         final response = await client.post('/api/v1/runs/league');
 
-        expect(
-          response.error?.code,
-          ApiErrorCode.validationFailed,
-        );
-        expect(
-          response.error?.details['field'],
-          'score',
-        );
-        expect(
-          response.error?.details['httpStatus'],
-          422,
-        );
+        expect(response.error?.code, ApiErrorCode.validationFailed);
+        expect(response.error?.details['field'], 'score');
+        expect(response.error?.details['httpStatus'], 422);
       },
     );
 
     test('maps malformed success JSON and non-JSON errors safely', () async {
       final transport = _FakeTransport.sequence([
-        HttpTransportResponse(
-          statusCode: 200,
-          body: '{not-json',
-        ),
-        HttpTransportResponse(
-          statusCode: 500,
-          body: 'Internal server error',
-        ),
+        HttpTransportResponse(statusCode: 200, body: '{not-json'),
+        HttpTransportResponse(statusCode: 500, body: 'Internal server error'),
       ]);
 
       final client = _client(transport: transport);
@@ -370,20 +269,14 @@ void main() {
       final malformed = await client.get('/api/v1/one');
       final serverError = await client.get('/api/v1/two');
 
-      expect(
-        malformed.error?.code,
-        ApiErrorCode.malformedPayload,
-      );
-      expect(
-        serverError.error?.code,
-        ApiErrorCode.serverError,
-      );
+      expect(malformed.error?.code, ApiErrorCode.malformedPayload);
+      expect(serverError.error?.code, ApiErrorCode.serverError);
     });
 
     test('maps invalid success data types to malformed payload', () async {
       final client = _client(
         transport: _FakeTransport(
-              (_) async => HttpTransportResponse(
+          (_) async => HttpTransportResponse(
             statusCode: 200,
             body: '{"success":true,"data":["invalid"]}',
           ),
@@ -392,10 +285,7 @@ void main() {
 
       final response = await client.get('/api/v1/resource');
 
-      expect(
-        response.error?.code,
-        ApiErrorCode.malformedPayload,
-      );
+      expect(response.error?.code, ApiErrorCode.malformedPayload);
     });
 
     test('maps HTTP status codes to typed API errors', () async {
@@ -413,11 +303,8 @@ void main() {
       final transport = _FakeTransport.sequence(
         statuses.keys
             .map(
-              (status) => HttpTransportResponse(
-            statusCode: status,
-            body: '',
-          ),
-        )
+              (status) => HttpTransportResponse(statusCode: status, body: ''),
+            )
             .toList(),
       );
 
@@ -426,54 +313,41 @@ void main() {
       for (final expected in statuses.values) {
         final response = await client.get('/api/v1/status');
 
-        expect(
-          response.error?.code,
-          expected,
-        );
+        expect(response.error?.code, expected);
       }
     });
 
     test(
       'maps timeout and transport exceptions without exposing transport types',
-          () async {
+      () async {
         final timeoutClient = _client(
           transport: _FakeTransport(
-                (_) => Completer<HttpTransportResponse>().future,
+            (_) => Completer<HttpTransportResponse>().future,
           ),
           timeout: const Duration(milliseconds: 1),
         );
 
         final networkClient = _client(
-          transport: _FakeTransport(
-                (_) => throw StateError('offline'),
-          ),
+          transport: _FakeTransport((_) => throw StateError('offline')),
         );
 
         final timedOut = await timeoutClient.get('/api/v1/slow');
         final unavailable = await networkClient.get('/api/v1/offline');
 
-        expect(
-          timedOut.error?.code,
-          ApiErrorCode.requestTimeout,
-        );
-        expect(
-          unavailable.error?.code,
-          ApiErrorCode.networkUnavailable,
-        );
+        expect(timedOut.error?.code, ApiErrorCode.requestTimeout);
+        expect(unavailable.error?.code, ApiErrorCode.networkUnavailable);
       },
     );
 
     test('rejects malformed and non-HTTP backend base URLs', () {
       expect(
-            () => _client(
-          transport: _FakeTransport.success(),
-          baseUrl: 'not a URL',
-        ),
+        () =>
+            _client(transport: _FakeTransport.success(), baseUrl: 'not a URL'),
         throwsA(isA<BackendConfigurationException>()),
       );
 
       expect(
-            () => _client(
+        () => _client(
           transport: _FakeTransport.success(),
           baseUrl: 'ftp://api.stoppy.test',
         ),
@@ -481,26 +355,138 @@ void main() {
       );
     });
 
-    test(
-      'rejects backend base URLs with query fragment or credentials',
-          () {
-        const invalidUrls = <String>[
-          'https://api.stoppy.test?environment=test',
-          'https://api.stoppy.test#backend',
-          'https://user:password@api.stoppy.test',
-        ];
+    test('rejects backend base URLs with query fragment or credentials', () {
+      const invalidUrls = <String>[
+        'https://api.stoppy.test?environment=test',
+        'https://api.stoppy.test#backend',
+        'https://user:password@api.stoppy.test',
+      ];
 
-        for (final baseUrl in invalidUrls) {
-          expect(
-                () => _client(
-              transport: _FakeTransport.success(),
-              baseUrl: baseUrl,
-            ),
-            throwsA(isA<BackendConfigurationException>()),
-          );
-        }
-      },
-    );
+      for (final baseUrl in invalidUrls) {
+        expect(
+          () => _client(transport: _FakeTransport.success(), baseUrl: baseUrl),
+          throwsA(isA<BackendConfigurationException>()),
+        );
+      }
+    });
+
+    test('rejects request bodies with unsupported JSON values', () async {
+      final transport = _FakeTransport.success();
+      final client = _client(transport: transport);
+
+      final response = await client.post(
+        '/api/v1/resource',
+        body: {
+          'createdAt': DateTime.utc(2026, 6, 23),
+        },
+      );
+
+      expect(response.isSuccess, isFalse);
+      expect(response.error?.code, ApiErrorCode.malformedPayload);
+      expect(transport.requests, isEmpty);
+    });
+
+    test('rejects relative paths with parent traversal', () async {
+      final client = _client(
+        transport: _FakeTransport.success(),
+      );
+
+      await expectLater(
+        client.get('../outside-api'),
+        throwsA(isA<BackendConfigurationException>()),
+      );
+
+      await expectLater(
+        client.get('/api/v1/../admin'),
+        throwsA(isA<BackendConfigurationException>()),
+      );
+    });
+
+    test('rejects request paths containing query parameters or fragments', () async {
+      final client = _client(
+        transport: _FakeTransport.success(),
+      );
+
+      await expectLater(
+        client.get('/api/v1/player/profile?source=test'),
+        throwsA(isA<BackendConfigurationException>()),
+      );
+
+      await expectLater(
+        client.get('/api/v1/player/profile#section'),
+        throwsA(isA<BackendConfigurationException>()),
+      );
+    });
+
+
+
+    test('trims the stored access token before building authorization', () async {
+      final transport = _FakeTransport.success();
+      final store = InMemoryAuthSessionStore();
+
+      await store.save(
+        AuthSession(
+          accessToken: '  access-token  ',
+          expiresAt: DateTime.utc(2026, 6, 23),
+        ),
+      );
+
+      final client = _client(
+        transport: transport,
+        sessionStore: store,
+      );
+
+      await client.get('/api/v1/private');
+
+      expect(
+        transport.requests.single.headers[ApiContract.authorizationHeader],
+        'Bearer access-token',
+      );
+    });
+
+    test('does not send authorization for a blank stored access token', () async {
+      final transport = _FakeTransport.success();
+      final store = InMemoryAuthSessionStore();
+
+      await store.save(
+        AuthSession(
+          accessToken: '   ',
+          expiresAt: DateTime.utc(2026, 6, 23),
+        ),
+      );
+
+      final client = _client(
+        transport: transport,
+        sessionStore: store,
+      );
+
+      await client.get('/api/v1/private');
+
+      expect(
+        transport.requests.single.headers.containsKey(
+          ApiContract.authorizationHeader,
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects cyclic request bodies', () async {
+      final transport = _FakeTransport.success();
+      final client = _client(transport: transport);
+
+      final cyclic = <String, Object?>{};
+      cyclic['self'] = cyclic;
+
+      final response = await client.post(
+        '/api/v1/resource',
+        body: cyclic,
+      );
+
+      expect(response.isSuccess, isFalse);
+      expect(response.error?.code, ApiErrorCode.malformedPayload);
+      expect(transport.requests, isEmpty);
+    });
+
   });
 }
 
@@ -512,10 +498,7 @@ HttpBackendApiClient _client({
   DateTime Function()? now,
 }) {
   return HttpBackendApiClient(
-    config: BackendConfig(
-      baseUrl: baseUrl,
-      timeout: timeout,
-    ),
+    config: BackendConfig(baseUrl: baseUrl, timeout: timeout),
     transport: transport,
     authSessionStore: sessionStore ?? InMemoryAuthSessionStore(),
     now: now ?? _fixedNow,
@@ -538,16 +521,14 @@ final class _FakeTransport implements HttpTransport {
 
   factory _FakeTransport.success() {
     return _FakeTransport(
-          (_) async => HttpTransportResponse(
+      (_) async => HttpTransportResponse(
         statusCode: 200,
         body: '{"success":true,"data":{}}',
       ),
     );
   }
 
-  factory _FakeTransport.sequence(
-      List<HttpTransportResponse> responses,
-      ) {
+  factory _FakeTransport.sequence(List<HttpTransportResponse> responses) {
     var index = 0;
 
     return _FakeTransport((_) async {
@@ -559,9 +540,7 @@ final class _FakeTransport implements HttpTransport {
     });
   }
 
-  final Future<HttpTransportResponse> Function(
-      HttpTransportRequest request,
-      )
+  final Future<HttpTransportResponse> Function(HttpTransportRequest request)
   _handler;
 
   final List<HttpTransportRequest> requests = [];
@@ -569,9 +548,7 @@ final class _FakeTransport implements HttpTransport {
   bool isClosed = false;
 
   @override
-  Future<HttpTransportResponse> execute(
-      HttpTransportRequest request,
-      ) {
+  Future<HttpTransportResponse> execute(HttpTransportRequest request) {
     if (isClosed) {
       throw StateError('Fake transport has already been closed.');
     }

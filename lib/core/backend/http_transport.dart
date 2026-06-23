@@ -36,8 +36,8 @@ abstract interface class HttpTransport {
 
 final class PackageHttpTransport implements HttpTransport {
   PackageHttpTransport({http.Client? client})
-      : _client = client ?? http.Client(),
-        _ownsClient = client == null;
+    : _client = client ?? http.Client(),
+      _ownsClient = client == null;
 
   final http.Client _client;
   final bool _ownsClient;

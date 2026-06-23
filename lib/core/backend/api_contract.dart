@@ -34,21 +34,30 @@ abstract final class ApiContract {
   static bool isPublicAuthPath(String path) {
     final normalizedPath = _normalizePath(path);
 
-    return normalizedPath == authRegister || normalizedPath == authLogin;
+    return normalizedPath == authRegister ||
+        normalizedPath == authLogin;
   }
 
   static String _normalizePath(String value) {
     final trimmed = value.trim();
+
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+
     final parsed = Uri.tryParse(trimmed);
 
-    if (parsed == null) {
+    if (parsed == null || parsed.hasScheme || parsed.hasAuthority) {
       return trimmed;
     }
 
     final normalizedPath = parsed.path;
 
     if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
-      return normalizedPath.substring(0, normalizedPath.length - 1);
+      return normalizedPath.substring(
+        0,
+        normalizedPath.length - 1,
+      );
     }
 
     return normalizedPath;

@@ -55,7 +55,10 @@ class KnockoutPlayerEntryDto {
       registeredAt: reader.requiredDateTime('registeredAt'),
       accountCreatedAt: reader.requiredDateTime('accountCreatedAt'),
       entryCostGamePoints: reader.requiredNonNegativeInt('entryCostGamePoints'),
-      lifetimeRunCount: reader.optionalNonNegativeInt('lifetimeRunCount', defaultValue: 0),
+      lifetimeRunCount: reader.optionalNonNegativeInt(
+        'lifetimeRunCount',
+        defaultValue: 0,
+      ),
       lifetimeAverageRunScore: reader.optionalNonNegativeDouble(
         'lifetimeAverageRunScore',
         defaultValue: 0,
@@ -137,8 +140,14 @@ class KnockoutMatchDto {
       status: _matchStatusFromName(reader.requiredString('status')),
       playerOneId: reader.optionalString('playerOneId'),
       playerTwoId: reader.optionalString('playerTwoId'),
-      playerOneScore: reader.optionalNonNegativeInt('playerOneScore', defaultValue: 0),
-      playerTwoScore: reader.optionalNonNegativeInt('playerTwoScore', defaultValue: 0),
+      playerOneScore: reader.optionalNonNegativeInt(
+        'playerOneScore',
+        defaultValue: 0,
+      ),
+      playerTwoScore: reader.optionalNonNegativeInt(
+        'playerTwoScore',
+        defaultValue: 0,
+      ),
       playerOneRunCount: reader.optionalNonNegativeInt(
         'playerOneRunCount',
         defaultValue: 0,
@@ -526,7 +535,7 @@ class KnockoutHallOfFameEntryDto {
         const ApiError(
           code: ApiErrorCode.malformedPayload,
           message:
-          'KnockoutHallOfFameEntryDto.wonTournamentMonths length must match titlesWon.',
+              'KnockoutHallOfFameEntryDto.wonTournamentMonths length must match titlesWon.',
         ),
       );
     }

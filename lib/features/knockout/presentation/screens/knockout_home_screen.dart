@@ -355,8 +355,6 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
       ),
     );
   }
-
-
 }
 
 class _KnockoutCard extends StatelessWidget {
@@ -441,7 +439,6 @@ class _ActiveDuelSection extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _KnockoutRecordsSection extends StatelessWidget {
@@ -563,7 +560,6 @@ class _KnockoutHallOfFameSection extends StatelessWidget {
 
   final List<KnockoutHallOfFameEntry> entries;
 
-
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
@@ -590,7 +586,7 @@ class _KnockoutHallOfFameSection extends StatelessWidget {
               children: [
                 Text(
                   '${entry.displayName} • '
-                      '${entry.titlesWon == 1 ? '1 title' : '${entry.titlesWon} titles'}',
+                  '${entry.titlesWon == 1 ? '1 title' : '${entry.titlesWon} titles'}',
                   style: _KnockoutText.body,
                 ),
                 Text(

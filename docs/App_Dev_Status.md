@@ -5450,3 +5450,391 @@ Current session: Session 31 — Backend Authentication Integration
 
 Status: Ready ⏳
 
+---
+
+## 🔄 Session Update
+
+### Session: Session 31 — Backend Authentication Integration
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement backend-driven username/password authentication flows for registration, login, authenticated player-profile restoration, local session management, and domain-facing authentication error mapping while preserving the mock-driven default runtime, existing repository contracts, gameplay systems, League runtime, Knockout runtime, and future compatibility with external authentication providers.
+
+---
+
+### 📦 Deliverables
+
+* [x] Backend registration flow implemented
+* [x] Backend login flow implemented
+* [x] Authenticated player-profile retrieval implemented
+* [x] Authentication response decoding implemented
+* [x] Player-profile DTO mapping implemented
+* [x] Authentication-session DTO mapping implemented
+* [x] Access-token session storage implemented
+* [x] Refresh-token session storage implemented
+* [x] Authentication-state restoration implemented
+* [x] Expired local session detection implemented
+* [x] Expired local sessions cleared before profile restoration
+* [x] Expired backend-returned sessions rejected
+* [x] Invalid backend-returned sessions rejected
+* [x] Existing sessions preserved after failed authentication
+* [x] Existing sessions preserved after malformed authentication responses
+* [x] Existing sessions preserved after network and server restoration failures
+* [x] Sessions cleared after authenticated-profile `401` responses
+* [x] Sessions cleared after authenticated-profile `403` responses
+* [x] Local logout implemented
+* [x] Local logout made idempotent
+* [x] Backend logout invalidation explicitly deferred
+* [x] Shared authentication-completion pipeline implemented
+* [x] Registration and login response handling unified
+* [x] Registration credential validation implemented
+* [x] Login credential validation implemented
+* [x] Registration and login password policies separated
+* [x] Username normalization implemented
+* [x] Password values preserved without trimming
+* [x] Registration minimum-password rule preserved
+* [x] Login accepts legacy passwords shorter than registration policy
+* [x] Blank login passwords rejected
+* [x] Authentication API errors mapped to domain exceptions
+* [x] Conflict errors preserved for username-registration failures
+* [x] Validation errors preserved for presentation
+* [x] Authentication failures mapped to stable user-facing messages
+* [x] Forbidden errors mapped to stable user-facing messages
+* [x] Timeout errors mapped to stable user-facing messages
+* [x] Rate-limit errors mapped to stable user-facing messages
+* [x] Network failures mapped to stable user-facing messages
+* [x] Server failures mapped to stable user-facing messages
+* [x] Malformed responses mapped to stable user-facing messages
+* [x] Unexpected responses mapped to stable user-facing messages
+* [x] Sensitive transport details excluded from presentation errors
+* [x] Authentication session DTO validation hardened
+* [x] Empty access tokens rejected
+* [x] Whitespace-only access tokens rejected
+* [x] Empty refresh tokens rejected when provided
+* [x] Null refresh tokens omitted from serialized session payloads
+* [x] Authentication request DTO validation reviewed
+* [x] Authentication response DTO composition reviewed
+* [x] Player-profile DTO validation hardened
+* [x] Negative GP values rejected
+* [x] Invalid League division values rejected
+* [x] Player ID normalization implemented
+* [x] Username normalization implemented in profile payloads
+* [x] Nullable player-profile fields can be cleared through `copyWith`
+* [x] Nullable player-profile fields remain unchanged when omitted
+* [x] Authentication session copying reviewed
+* [x] Refresh-token clearing preserved
+* [x] Session expiration-boundary behavior reviewed
+* [x] Session near-expiration behavior reviewed
+* [x] Repository factory authentication wiring completed
+* [x] Shared `AuthSessionStore` wiring enforced
+* [x] `HttpBackendApiClient` and `BackendAuthRepository` share one session store
+* [x] Injected backend client requires an explicit matching session store
+* [x] Backend dependency validation limited to backend runtime
+* [x] Mock runtime remains isolated from backend dependencies
+* [x] Mock authentication remains the default runtime
+* [x] Backend League repository remains a disconnected skeleton
+* [x] Backend Knockout repository remains a disconnected skeleton
+* [x] Purchase repository remains mock-driven
+* [x] Ads repository remains mock-driven
+* [x] Player-profile update remains explicitly unsupported
+* [x] Server-authoritative player-profile updates preserved as the target
+* [x] HTTP request-body serialization hardened
+* [x] Unsupported JSON request values mapped to typed API failures
+* [x] Cyclic JSON request data handling reviewed
+* [x] Relative request-path validation hardened
+* [x] Parent-path traversal rejected
+* [x] Encoded parent-path traversal rejected
+* [x] Request paths containing query strings rejected
+* [x] Request paths containing fragments rejected
+* [x] Access tokens trimmed before Bearer injection
+* [x] Blank stored access tokens excluded from Bearer injection
+* [x] Public authentication paths remain excluded from Bearer injection
+* [x] API error decoding tests expanded
+* [x] API response decoding tests expanded
+* [x] Authentication DTO tests expanded
+* [x] Authentication session tests expanded
+* [x] Backend authentication repository tests expanded
+* [x] HTTP backend API client tests expanded
+* [x] Repository factory tests expanded
+* [x] API contract tests prepared
+* [x] No secure device token storage introduced
+* [x] No refresh-token execution introduced
+* [x] No social-provider SDK introduced
+* [x] No backend logout endpoint introduced
+* [x] No League backend integration introduced
+* [x] No Knockout backend integration introduced
+* [x] No gameplay behavior changed
+* [x] No League runtime behavior changed
+* [x] No Knockout runtime behavior changed
+
+---
+
+### 🛠️ Work Done
+
+* Implemented `BackendAuthRepository.register`
+* Implemented `BackendAuthRepository.login`
+* Implemented `BackendAuthRepository.currentAuthState`
+* Implemented idempotent local logout
+* Preserved `updatePlayerProfile` as an explicitly unsupported backend operation
+* Added backend registration requests through `ApiContract.authRegister`
+* Added backend login requests through `ApiContract.authLogin`
+* Added authenticated profile requests through `ApiContract.playerProfile`
+* Added a shared `_authenticate` flow for registration and login
+* Added a shared authentication-completion pipeline
+* Decoded `AuthResponseDto` after successful authentication
+* Mapped `PlayerProfileDto` into the `PlayerProfile` domain model
+* Mapped `AuthSessionDto` into the runtime `AuthSession`
+* Validated access tokens before replacing local sessions
+* Validated authentication-session expiration before saving
+* Ensured malformed or expired returned sessions do not replace existing sessions
+* Restored authenticated player state from valid stored sessions
+* Cleared expired sessions before attempting backend restoration
+* Cleared sessions only when profile restoration proves authorization is invalid
+* Preserved sessions during temporary network, timeout, server, and malformed-response failures
+* Added separate registration and login credential validators
+* Kept minimum password length as a registration-only policy
+* Allowed login attempts using passwords shorter than the current registration policy
+* Rejected blank login credentials locally
+* Normalized usernames before transport serialization
+* Preserved password contents exactly as supplied
+* Added `AuthDomainException` mapping through `DomainErrorMapper`
+* Preserved backend validation and conflict messages where presentation requires them
+* Added stable messages for timeout, authentication, authorization, rate-limit, network, server, malformed, unexpected, and unknown failures
+* Hardened `AuthSessionDto` token validation
+* Omitted absent refresh tokens from DTO serialization
+* Hardened `PlayerProfileDto` GP and League-division validation
+* Improved `PlayerProfileDto.copyWith` to distinguish omitted values from explicit null values
+* Preserved the `AuthSession` const constructor
+* Preserved exact session-expiration boundary behavior
+* Preserved explicit refresh-token clearing through `AuthSession.copyWith`
+* Updated `RepositoryFactory` so generated clients and authentication repositories share exactly one session store
+* Added backend-runtime dependency assertions for injected clients
+* Preserved const construction of `RepositoryFactory`
+* Kept backend assertions out of mock runtime
+* Hardened HTTP request-body serialization
+* Prevented unsupported body values from reaching the HTTP transport
+* Hardened endpoint-path validation against parent traversal
+* Prevented endpoint paths from embedding query parameters or fragments
+* Added defensive Bearer-token trimming
+* Prevented blank stored tokens from being sent
+* Hardened `ApiError` decoding and serialization tests
+* Hardened `ApiResponse` envelope validation and decoder-failure tests
+* Expanded authentication DTO round-trip and malformed-payload tests
+* Expanded session-store, expiration, near-expiration, and copy tests
+* Expanded backend authentication behavior tests
+* Expanded HTTP backend client security and serialization tests
+* Expanded repository-factory dependency-sharing tests
+* Preserved future external-provider compatibility through the shared authentication-completion pipeline
+* Kept provider credentials outside domain models
+* Kept Stoppy-issued access and refresh tokens as the application session authority
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Username/password remains the only implemented authentication method
+* Google, Apple, and Facebook authentication remain deferred
+* Future social authentication must exchange provider credentials with the Stoppy backend
+* Provider identity tokens must never be stored as Stoppy access tokens
+* The backend must validate provider credentials before issuing a Stoppy session
+* `PlayerProfile` and its internal player ID remain independent from authentication providers
+* A future player account may be linked to multiple authentication identities
+* Automatic account merging by matching email is not planned
+* Social login should reuse the existing authentication-completion pipeline
+* Social-provider methods were not added prematurely to `AuthRepository`
+* The public competitive username remains required independently of the login provider
+* New social-authenticated players may require a unique username during onboarding
+* Authentication sessions remain stored only in memory
+* Closing and reopening the application currently removes the session
+* Secure device persistence remains deferred to Session 32
+* Refresh tokens are decoded and stored but are not executed
+* Expiring-soon sessions do not trigger refresh yet
+* Expired local sessions are cleared immediately
+* Expired sessions returned from authentication endpoints are rejected
+* Existing sessions are not replaced until the complete new authentication response is validated
+* Backend logout invalidation is not implemented
+* Logout currently clears only the local session
+* HTTP client errors are normally represented through `ApiResponse.failure`
+* Normal HTTP `401` and `403` responses do not escape as raw exceptions
+* Profile restoration clears sessions only for `unauthenticated` and `forbidden`
+* Network and backend availability errors do not silently log the player out
+* Player-profile update remains disconnected because no safe backend update contract exists
+* Sending full client-owned player profiles would weaken server authority
+* League and Knockout backend repositories remain disconnected
+* Purchase and Ads repositories remain mock-driven
+* Mock repositories remain the default runtime
+* Backend runtime must still be selected explicitly
+* Automatic HTTP retries remain intentionally excluded
+* Competitive and economy mutations require idempotency protection before retries are introduced
+* Request paths cannot contain embedded query strings or fragments
+* Query parameters must be supplied through the dedicated request argument
+* Request paths cannot escape the configured API base path through parent traversal
+* API error details are treated as immutable by convention
+* `ApiError` retains a const constructor for compile-time error definitions
+* Dependency notices for indirect test packages do not block the session
+* No gameplay, League, or Knockout behavior changed during this session
+
+---
+
+### 🧪 Validation
+
+* [x] Backend registration request path reviewed
+* [x] Backend login request path reviewed
+* [x] Authenticated profile request path reviewed
+* [x] Authentication request schema reviewed
+* [x] Authentication response schema reviewed
+* [x] Player-profile mapping reviewed
+* [x] Session DTO mapping reviewed
+* [x] Access-token validation reviewed
+* [x] Refresh-token validation reviewed
+* [x] Session expiration validation reviewed
+* [x] Existing-session preservation reviewed
+* [x] Profile restoration reviewed
+* [x] `401` session clearing reviewed
+* [x] `403` session clearing reviewed
+* [x] Network-failure session preservation reviewed
+* [x] Malformed-profile session preservation reviewed
+* [x] Local logout behavior reviewed
+* [x] Logout idempotency reviewed
+* [x] Registration validation reviewed
+* [x] Login validation reviewed
+* [x] Legacy short-password login behavior reviewed
+* [x] Domain error mapping reviewed
+* [x] Sensitive error-detail exposure reviewed
+* [x] Player-profile GP validation reviewed
+* [x] Player-profile League-division validation reviewed
+* [x] Nullable DTO field clearing reviewed
+* [x] Repository factory session-store sharing reviewed
+* [x] Injected backend dependency validation reviewed
+* [x] Mock runtime isolation reviewed
+* [x] Request-body JSON serialization reviewed
+* [x] Unsupported JSON value handling reviewed
+* [x] Parent-path traversal validation reviewed
+* [x] Encoded traversal validation reviewed
+* [x] Query-in-path validation reviewed
+* [x] Fragment-in-path validation reviewed
+* [x] Bearer-token normalization reviewed
+* [x] Blank-token exclusion reviewed
+* [x] Public authentication path exclusion reviewed
+* [x] API error decoding reviewed
+* [x] API response-envelope decoding reviewed
+* [x] Authentication DTO tests reviewed
+* [x] Authentication session tests reviewed
+* [x] Backend authentication repository tests reviewed
+* [x] HTTP backend API client tests reviewed
+* [x] Repository factory tests reviewed
+* [x] Future social-authentication compatibility reviewed
+* [x] No secure session persistence introduced
+* [x] No refresh-token execution introduced
+* [x] No social-provider integration introduced
+* [x] No backend logout invalidation introduced
+* [x] No League backend integration introduced
+* [x] No Knockout backend integration introduced
+* [x] No gameplay behavior changed
+* [x] No League calculations changed
+* [x] No Knockout calculations changed
+
+Final commands to confirm after the last path-validation correction:
+
+```bash
+dart format --set-exit-if-changed lib test
+flutter analyze
+flutter test
+```
+
+---
+
+### 📌 Next Session
+
+Session 32 — Secure Session Persistence + Refresh Token Policy
+
+Planned focus:
+
+* [ ] Introduce a secure persistent authentication-session store
+* [ ] Evaluate `flutter_secure_storage` for access and refresh tokens
+* [ ] Preserve `AuthSessionStore` as the storage abstraction
+* [ ] Keep `InMemoryAuthSessionStore` available for tests
+* [ ] Define session serialization for secure storage
+* [ ] Restore persisted sessions during application startup
+* [ ] Define corrupted stored-session behavior
+* [ ] Define missing-field stored-session behavior
+* [ ] Define expired persisted-session behavior
+* [ ] Define access-token near-expiration policy
+* [ ] Define refresh-token execution rules
+* [ ] Add refresh-token API contract
+* [ ] Add refresh-token request and response DTOs
+* [ ] Reuse the existing authentication-completion pipeline
+* [ ] Prevent concurrent duplicate refresh requests
+* [ ] Define refresh failure behavior
+* [ ] Clear local sessions after invalid refresh credentials
+* [ ] Preserve sessions during temporary refresh network failures where safe
+* [ ] Avoid automatic retries for non-idempotent operations
+* [ ] Add secure-session persistence tests
+* [ ] Add application-restart restoration tests
+* [ ] Add refresh-token success tests
+* [ ] Add expired-refresh-token tests
+* [ ] Add malformed-refresh-response tests
+* [ ] Add concurrent-refresh tests
+* [ ] Preserve username/password authentication
+* [ ] Keep social-provider exchange deferred
+* [ ] Preserve mock authentication as the default runtime
+* [ ] Preserve League backend repositories as disconnected skeletons
+* [ ] Preserve Knockout backend repositories as disconnected skeletons
+* [ ] Preserve existing gameplay behavior
+* [ ] Preserve existing League behavior
+* [ ] Preserve existing Knockout behavior
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup (completed)
+* ✅ Session 2 — Base structure and documentation (completed)
+* ✅ Session 3 — Game base rendering (completed)
+* ✅ Session 4 — Collision and validation (completed)
+* ✅ Session 5 — Level system (completed)
+* ✅ Session 6 — Run Points (RP) (removed from active gameplay in Session 16.1)
+* ✅ Session 7 — Lives system (removed from active gameplay in Session 16.1)
+* ✅ Session 8 — Precision Points (PP) (reworked in Session 16.1)
+* ✅ Session 9 — Registration/Login (completed)
+* ✅ Session 10 — GP System (completed)
+* ✅ Session 11 — Purchases (completed)
+* ✅ Session 12 — Ads (completed)
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow (superseded by Session 16.1)
+* ✅ Session 13 — League Structure (completed)
+* ✅ Session 14 — Weekly League Entry + Runtime Integration (completed)
+* ✅ Session 15 — Weekly League Scoring + Ranking UI (completed)
+* ✅ Session 16 — Weekly League History + Personal Records (completed)
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System (completed)
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow (completed)
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow (completed)
+* ✅ Session 19 — League Polish + Edge Case Hardening (completed)
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle (completed)
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression (completed)
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status (completed)
+* ✅ Session 23 — Knockout Tournament History + Records (completed)
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish (completed)
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish (completed)
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning (completed)
+* ✅ Session 27 — Backend Repository Contracts Preparation (completed)
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation (completed)
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening (completed)
+* ✅ Session 30 — Backend Networking Client Preparation (completed)
+* ✅ Session 31 — Backend Authentication Integration (completed)
+* ⏳ Session 32 — Secure Session Persistence + Refresh Token Policy (ready)
+
+---
+
+### 🧭 Current State
+
+Current session: Session 32 — Secure Session Persistence + Refresh Token Policy
+
+Status: Ready ⏳
+
+

@@ -322,33 +322,33 @@ void main() {
   });
 
   group('KnockoutHallOfFameEntry', () {
-    test('KnockoutHallOfFameEntry stores champion title counts and title months', () {
-      final singleTitle = KnockoutHallOfFameEntry(
-        playerId: 'champion-1',
-        displayName: 'Champion One',
-        titlesWon: 1,
-        wonTournamentMonths: [DateTime(2026, 6)],
-      );
+    test(
+      'KnockoutHallOfFameEntry stores champion title counts and title months',
+      () {
+        final singleTitle = KnockoutHallOfFameEntry(
+          playerId: 'champion-1',
+          displayName: 'Champion One',
+          titlesWon: 1,
+          wonTournamentMonths: [DateTime(2026, 6)],
+        );
 
-      final multipleTitles = KnockoutHallOfFameEntry(
-        playerId: 'champion-2',
-        displayName: 'Champion Two',
-        titlesWon: 2,
-        wonTournamentMonths: [
-          DateTime(2026, 7),
+        final multipleTitles = KnockoutHallOfFameEntry(
+          playerId: 'champion-2',
+          displayName: 'Champion Two',
+          titlesWon: 2,
+          wonTournamentMonths: [DateTime(2026, 7), DateTime(2026, 6)],
+        );
+
+        expect(singleTitle.titlesWon, 1);
+        expect(singleTitle.wonTournamentMonths, [DateTime(2026, 6)]);
+
+        expect(multipleTitles.titlesWon, 2);
+        expect(multipleTitles.wonTournamentMonths, [
           DateTime(2026, 6),
-        ],
-      );
-
-      expect(singleTitle.titlesWon, 1);
-      expect(singleTitle.wonTournamentMonths, [DateTime(2026, 6)]);
-
-      expect(multipleTitles.titlesWon, 2);
-      expect(multipleTitles.wonTournamentMonths, [
-        DateTime(2026, 6),
-        DateTime(2026, 7),
-      ]);
-    });
+          DateTime(2026, 7),
+        ]);
+      },
+    );
   });
 }
 

@@ -400,7 +400,7 @@ The app should continue to depend on domain-facing repository contracts. Product
 
 `AuthSession` and `AuthSessionStore` prepare the future token/session layer.
 
-* Tokens are not used for real networking yet.
+* Backend authentication uses the session token only when backend runtime is explicitly selected.
 * `InMemoryAuthSessionStore` is temporary and testable.
 * A secure device/session store can replace it later without changing repository contracts.
 
@@ -426,9 +426,8 @@ This boundary keeps backend payload shape independent from Flutter widgets and d
 
 `PendingBackendApiClient` is a non-network placeholder.
 
-* It prevents accidental real network calls before the networking session.
-* It preserves the final API client shape.
-* A real REST implementation should replace it behind the same `BackendApiClient` contract.
+* It remains useful for explicit tests and intentionally disconnected flows.
+* `HttpBackendApiClient` is now the real REST client implementation behind the same `BackendApiClient` contract.
 
 ### Session 29 Contract Hardening
 
@@ -439,7 +438,7 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Malformed response payloads become typed API errors.
 * Auth responses keep profile and JWT/session transport data in data-layer DTOs.
 * Competitive run validation claims are transport contracts only; they do not alter local gameplay or scoring.
-* No repository-to-backend feature call, token refresh, or PostgreSQL access is implemented yet.
+* No League/Knockout repository-to-backend feature call, token refresh, or PostgreSQL access is implemented yet.
 
 ### Session 30 Networking Client Preparation
 
@@ -450,7 +449,17 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Mock repositories remain the default runtime.
 * Auth headers are derived from `AuthSessionStore` and omitted for expired sessions and public auth endpoints.
 * HTTP failures are converted to typed `ApiError` values before reaching a repository.
-* No retry, refresh-token flow, backend endpoint call from a repository, or server persistence is activated in this session.
+* No retry, refresh-token flow, League/Knockout backend endpoint call, or server persistence is activated in this session.
+
+### Session 31 Backend Authentication Integration
+
+`BackendAuthRepository` connects the existing auth contract to the prepared HTTP client only when backend runtime is explicitly selected.
+
+* Registration and login map `AuthRequestDto` to a shared `AuthResponseDto` completion pipeline.
+* The same `AuthSessionStore` instance is provided to both the repository and `HttpBackendApiClient`.
+* Sessions are currently in-memory only; secure persistence and refresh-token execution remain deferred.
+* Expired sessions and 401/403 profile restoration failures clear the local session. Temporary network, server, and malformed payload failures preserve it and surface a domain-facing auth error.
+* Mock auth remains the default runtime. League and Knockout backend repositories remain disconnected.
 
 ### Domain Logic
 

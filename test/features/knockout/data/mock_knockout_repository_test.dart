@@ -618,9 +618,7 @@ void main() {
       expect(hallOfFame.single.playerId, match.playerOneId);
       expect(hallOfFame.single.displayName, startsWith('Player'));
       expect(hallOfFame.single.titlesWon, 1);
-      expect(hallOfFame.single.wonTournamentMonths, [
-        DateTime(2026, 6),
-      ]);
+      expect(hallOfFame.single.wonTournamentMonths, [DateTime(2026, 6)]);
     });
 
     test('returns player history ordered by newest completion first', () async {
@@ -781,13 +779,10 @@ void main() {
       expect(hallOfFame.first.titlesWon, 2);
       expect(hallOfFame.first.titlesWon, 2);
 
-      expect(
-        hallOfFame.first.wonTournamentMonths,
-        [
-          DateTime(2026, 6),
-          DateTime(2026, 7),
-        ],
-      );
+      expect(hallOfFame.first.wonTournamentMonths, [
+        DateTime(2026, 6),
+        DateTime(2026, 7),
+      ]);
     });
 
     test(

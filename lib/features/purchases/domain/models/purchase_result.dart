@@ -1,11 +1,7 @@
 import '../../../auth/domain/models/player_profile.dart';
 import 'purchase_product.dart';
 
-enum PurchaseError {
-  productNotFound,
-  alreadyOwned,
-  unknown,
-}
+enum PurchaseError { productNotFound, alreadyOwned, unknown }
 
 class PurchaseResult {
   const PurchaseResult._({
@@ -21,20 +17,14 @@ class PurchaseResult {
     required PlayerProfile playerProfile,
     String? message,
   }) : this._(
-    success: true,
-    product: product,
-    playerProfile: playerProfile,
-    message: message,
-  );
+         success: true,
+         product: product,
+         playerProfile: playerProfile,
+         message: message,
+       );
 
-  const PurchaseResult.failure({
-    required PurchaseError error,
-    String? message,
-  }) : this._(
-    success: false,
-    error: error,
-    message: message,
-  );
+  const PurchaseResult.failure({required PurchaseError error, String? message})
+    : this._(success: false, error: error, message: message);
 
   final bool success;
   final PurchaseProduct? product;

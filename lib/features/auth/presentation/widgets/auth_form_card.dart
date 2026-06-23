@@ -91,7 +91,10 @@ class _AuthFormCardState extends State<AuthFormCard> {
                       borderSide: BorderSide(color: Color(0xFFFFD166)),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFFFFD166), width: 2),
+                      borderSide: BorderSide(
+                        color: Color(0xFFFFD166),
+                        width: 2,
+                      ),
                     ),
                   ),
                   style: const TextStyle(color: Colors.white),
@@ -116,7 +119,10 @@ class _AuthFormCardState extends State<AuthFormCard> {
                       borderSide: BorderSide(color: Color(0xFFFFD166)),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFFFFD166), width: 2),
+                      borderSide: BorderSide(
+                        color: Color(0xFFFFD166),
+                        width: 2,
+                      ),
                     ),
                   ),
                   style: const TextStyle(color: Colors.white),

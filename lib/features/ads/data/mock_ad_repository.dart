@@ -69,10 +69,7 @@ class MockAdRepository implements AdRepository {
     await Future.delayed(showDelay);
 
     if (!isAdLoaded(adType)) {
-      return const AdShowResult(
-        shown: false,
-        rewardGranted: false,
-      );
+      return const AdShowResult(shown: false, rewardGranted: false);
     }
 
     showCounts[adType] = (showCounts[adType] ?? 0) + 1;
@@ -83,10 +80,7 @@ class MockAdRepository implements AdRepository {
     );
 
     if (adType == AdType.rewarded) {
-      return AdShowResult(
-        shown: true,
-        rewardGranted: rewardedShowSucceeds,
-      );
+      return AdShowResult(shown: true, rewardGranted: rewardedShowSucceeds);
     }
 
     if (adType == AdType.interstitial) {
@@ -96,10 +90,7 @@ class MockAdRepository implements AdRepository {
       );
     }
 
-    return const AdShowResult(
-      shown: true,
-      rewardGranted: false,
-    );
+    return const AdShowResult(shown: true, rewardGranted: false);
   }
 
   @override
@@ -110,9 +101,6 @@ class MockAdRepository implements AdRepository {
   @override
   AdLoadState getAdLoadState(AdType adType) {
     return _adLoadStates[adType] ??
-        AdLoadState(
-          adType: adType,
-          status: AdLoadStatus.failed,
-        );
+        AdLoadState(adType: adType, status: AdLoadStatus.failed);
   }
 }

@@ -3,7 +3,10 @@ class AuthSession {
     required this.accessToken,
     this.refreshToken,
     required this.expiresAt,
-  }) : assert(accessToken != '');
+  }) : assert(
+  accessToken != '',
+  'accessToken must not be empty.',
+  );
 
   final String accessToken;
   final String? refreshToken;
@@ -17,7 +20,10 @@ class AuthSession {
       DateTime now, {
         Duration threshold = const Duration(minutes: 1),
       }) {
-    assert(threshold >= Duration.zero);
+    assert(
+    threshold >= Duration.zero,
+    'threshold must not be negative.',
+    );
 
     return !expiresAt.subtract(threshold).isAfter(now);
   }
@@ -27,6 +33,11 @@ class AuthSession {
     Object? refreshToken = _unset,
     DateTime? expiresAt,
   }) {
+    assert(
+    identical(refreshToken, _unset) || refreshToken is String?,
+    'refreshToken must be a String, null, or omitted.',
+    );
+
     return AuthSession(
       accessToken: accessToken ?? this.accessToken,
       refreshToken: identical(refreshToken, _unset)

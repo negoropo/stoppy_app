@@ -9,13 +9,13 @@ class PurchaseProduct {
     required this.displayPrice,
     this.gamePointsAmount = 0,
   }) : assert(
-  type != PurchaseProductType.gamePointPack || gamePointsAmount > 0,
-  'GamePointPack must have a positive gamePointsAmount',
-  ),
-        assert(
-        type != PurchaseProductType.removeAds || gamePointsAmount == 0,
-        'RemoveAds should not have gamePointsAmount',
-        );
+         type != PurchaseProductType.gamePointPack || gamePointsAmount > 0,
+         'GamePointPack must have a positive gamePointsAmount',
+       ),
+       assert(
+         type != PurchaseProductType.removeAds || gamePointsAmount == 0,
+         'RemoveAds should not have gamePointsAmount',
+       );
 
   final String id;
   final String title;

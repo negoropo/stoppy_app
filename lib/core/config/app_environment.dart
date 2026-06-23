@@ -1,7 +1,4 @@
-enum RepositoryRuntime {
-  mock,
-  backend,
-}
+enum RepositoryRuntime { mock, backend }
 
 final class AppEnvironment {
   const AppEnvironment({
@@ -15,12 +12,11 @@ final class AppEnvironment {
   final String apiBaseUrl;
 
   const AppEnvironment.mock()
-      : repositoryRuntime = RepositoryRuntime.mock,
-        apiBaseUrl = defaultApiBaseUrl;
+    : repositoryRuntime = RepositoryRuntime.mock,
+      apiBaseUrl = defaultApiBaseUrl;
 
-  const AppEnvironment.backend({
-    this.apiBaseUrl = defaultApiBaseUrl,
-  }) : repositoryRuntime = RepositoryRuntime.backend;
+  const AppEnvironment.backend({this.apiBaseUrl = defaultApiBaseUrl})
+    : repositoryRuntime = RepositoryRuntime.backend;
 
   factory AppEnvironment.fromDartDefines() {
     const runtimeName = String.fromEnvironment(
