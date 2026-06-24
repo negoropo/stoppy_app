@@ -5837,4 +5837,364 @@ Current session: Session 32 — Secure Session Persistence + Refresh Token Polic
 
 Status: Ready ⏳
 
+---
+
+## 🔄 Session Update
+
+### Session: Session 32 — Secure Session Persistence + Refresh Token Policy
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement secure persistent authentication-session storage and a controlled refresh-token policy while preserving the existing authentication repository contracts, mock-driven default runtime, backend architecture, gameplay systems, League runtime, Knockout runtime, and server-authoritative competitive model.
+
+---
+
+### 📦 Deliverables
+
+* [x] Secure persistent authentication-session storage implemented
+* [x] `flutter_secure_storage` integrated
+* [x] `AuthSessionStore` preserved as the session-storage abstraction
+* [x] `InMemoryAuthSessionStore` preserved for mock runtime and tests
+* [x] Secure storage isolated behind `SecureKeyValueStore`
+* [x] Versioned persisted-session schema implemented
+* [x] Versioned secure-storage key implemented
+* [x] Access token persisted securely
+* [x] Refresh token persisted securely when available
+* [x] Session expiration persisted in UTC
+* [x] Player-profile data excluded from secure session storage
+* [x] Stored access tokens normalized
+* [x] Stored refresh tokens normalized
+* [x] Null refresh tokens omitted from persisted payloads
+* [x] Unexpected persisted-session fields rejected
+* [x] Malformed persisted-session payloads rejected
+* [x] Unsupported persisted-session schema versions rejected
+* [x] Blank persisted access tokens rejected
+* [x] Blank persisted refresh tokens rejected
+* [x] Invalid persisted expiration values rejected
+* [x] Corrupted persisted sessions cleared where possible
+* [x] Corrupted persisted sessions never returned to the authorization pipeline
+* [x] Expired sessions without refresh credentials cleared
+* [x] Expired sessions with refresh credentials preserved for renewal
+* [x] Secure-storage read failures represented through typed exceptions
+* [x] Secure-storage save failures represented through typed exceptions
+* [x] Secure-storage clear failures represented through typed exceptions
+* [x] Storage exception diagnostics exclude sensitive values
+* [x] Generic `AuthSessionStoreException` introduced
+* [x] Generic `AuthSessionStoreOperation` introduced
+* [x] Secure-storage implementation decoupled from repositories
+* [x] Backend runtime wired to secure session persistence
+* [x] Mock runtime remains memory-only
+* [x] Repository factory dependency validation enforced at runtime
+* [x] Injected backend client requires a matching session store
+* [x] Custom backend client and custom HTTP transport cannot be injected together
+* [x] Generated HTTP client and authentication repository share one session store
+* [x] Refresh-token API path added
+* [x] Refresh-token request DTO implemented
+* [x] Refresh-token response DTO implemented
+* [x] Refresh-token request validation implemented
+* [x] Refresh-token response validation implemented
+* [x] Omitted rotated refresh tokens preserve the previous credential
+* [x] Returned rotated refresh tokens replace the previous credential
+* [x] Blank previous refresh tokens rejected
+* [x] Refresh responses containing expired sessions rejected
+* [x] Refresh responses containing malformed sessions rejected
+* [x] Near-expiration session policy implemented
+* [x] Still-valid sessions without refresh tokens remain usable
+* [x] Expired sessions without refresh tokens become unauthenticated
+* [x] Concurrent refresh requests coalesced
+* [x] Duplicate concurrent refresh-token rotation prevented
+* [x] In-flight refresh state cleared after completion
+* [x] New refresh operations allowed after previous completion
+* [x] Successful refreshed sessions persisted before success is returned
+* [x] Refresh persistence failures propagated
+* [x] Invalid refresh credentials clear the local session where possible
+* [x] Refresh `401` responses invalidate local credentials
+* [x] Refresh `403` responses invalidate local credentials
+* [x] Temporary refresh failures preserve the stored refresh credential
+* [x] Timeout refresh failures preserve the stored session
+* [x] Network refresh failures preserve the stored session
+* [x] Server refresh failures preserve the stored session
+* [x] Malformed refresh responses preserve the previous session
+* [x] Local cleanup failures do not replace authoritative authentication errors
+* [x] Login requests remain public
+* [x] Registration requests remain public
+* [x] Refresh requests remain public
+* [x] Public authentication endpoints never receive Bearer headers
+* [x] Protected endpoints receive valid Bearer tokens
+* [x] Expired access tokens are never sent
+* [x] Blank stored access tokens are never sent
+* [x] Caller-supplied authorization headers cannot override session authorization
+* [x] Authentication-session DTO validation centralized
+* [x] Authentication-session DTO serialization normalized
+* [x] Authentication-session DTO expiration normalized to UTC
+* [x] Authentication-response DTO composition reviewed
+* [x] Refresh-response DTO round-trip coverage added
+* [x] Authentication-response DTO round-trip coverage added
+* [x] API public-auth path normalization hardened
+* [x] Invalid request-path percent encoding rejected
+* [x] Local storage failures assigned a dedicated API error code
+* [x] `ApiErrorCode.localStorageUnavailable` introduced
+* [x] Local storage failures mapped to a stable presentation message
+* [x] `ApiException` preserved as an extensible base exception
+* [x] Android minimum SDK raised to API 23
+* [x] `flutter_secure_storage` kept in runtime dependencies
+* [x] No provider credentials persisted
+* [x] No backend logout endpoint introduced
+* [x] No automatic HTTP retry policy introduced
+* [x] No League backend integration introduced
+* [x] No Knockout backend integration introduced
+* [x] No gameplay behavior changed
+* [x] No League runtime behavior changed
+* [x] No Knockout runtime behavior changed
+
+---
+
+### 🛠️ Work Done
+
+* Added `flutter_secure_storage` as a runtime dependency
+* Added `SecureKeyValueStore` as a narrow platform-storage adapter
+* Added `FlutterSecureKeyValueStore`
+* Added `SecureAuthSessionStore`
+* Added the versioned `stoppy.auth.session.v1` storage key
+* Added persisted-session schema version validation
+* Added strict persisted-session field validation
+* Added secure session JSON encoding and decoding
+* Added token normalization at secure-storage boundaries
+* Added UTC normalization for persisted expiration values
+* Added corrupted-session cleanup
+* Added expired-session cleanup when no refresh credential exists
+* Preserved expired sessions that can still be refreshed
+* Added `AuthSessionStoreOperation`
+* Added `AuthSessionStoreException`
+* Removed storage-implementation-specific exception types
+* Added safe storage-exception string formatting
+* Updated `BackendAuthRepository` to map session-store failures
+* Updated logout to map secure-storage cleanup failures
+* Updated authentication completion to require successful session persistence
+* Added `AuthSessionRefreshCoordinator`
+* Added single in-flight refresh coordination
+* Added refresh success persistence
+* Added invalid-refresh credential cleanup
+* Added temporary refresh-failure preservation
+* Added refresh-token rotation support
+* Added refresh-token preservation when rotation is omitted
+* Added `RefreshTokenRequestDto`
+* Added `RefreshTokenResponseDto`
+* Added `ApiContract.authRefresh`
+* Centralized public authentication paths
+* Updated `HttpBackendApiClient` to exclude Bearer tokens from refresh requests
+* Prevented expired access-token injection
+* Added typed handling for session-store read failures during header construction
+* Added `ApiErrorCode.localStorageUnavailable`
+* Updated `DomainErrorMapper` with a stable local-storage message
+* Hardened invalid percent-encoding handling in request paths
+* Updated `RepositoryFactory` to build secure persistence only for backend runtime
+* Replaced debug-only backend dependency assertions with runtime validation
+* Prevented ignored transport injection when a custom backend client is supplied
+* Hardened `AuthSessionDto`
+* Normalized DTO tokens and expiration values
+* Added null-aware map entries for optional refresh tokens
+* Hardened `AuthResponseDto`
+* Expanded secure-session persistence tests
+* Expanded refresh-coordinator tests
+* Expanded backend-authentication repository tests
+* Expanded HTTP backend-client tests
+* Expanded repository-factory tests
+* Added API contract tests
+* Added authentication-session DTO tests
+* Added authentication-response DTO tests
+* Added refresh-token DTO tests
+* Updated Android `minSdk` to 23 for secure-storage compatibility
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Secure persistence is enabled only in backend runtime
+* Mock runtime continues to use in-memory authentication
+* Only server-issued session credentials and expiration metadata are persisted
+* Player-profile data is not persisted in the secure session payload
+* Competitive state remains server-authoritative
+* The persisted-session schema is explicitly versioned
+* Incompatible future schemas must be migrated or assigned a new storage key
+* Corrupted session payloads are never returned, even when cleanup temporarily fails
+* Secure-storage infrastructure failures are not treated as unauthenticated state
+* Secure-storage errors are represented separately from backend and network errors
+* Expired sessions without refresh tokens are invalid
+* Expired sessions with refresh tokens may be restored for renewal
+* A session near expiration but still valid remains usable when no refresh token exists
+* Successful refresh requires the replacement session to be securely persisted
+* A failed replacement-session save is not treated as refresh success
+* Refresh `401` and `403` responses invalidate the refresh credential
+* Temporary refresh failures preserve the session for a later retry
+* Local cleanup failure does not replace an authoritative backend authentication failure
+* The refresh endpoint never receives a Bearer access token
+* Login and registration remain public authentication endpoints
+* Expired access tokens are never sent to protected endpoints
+* Automatic HTTP retries remain intentionally excluded
+* Competitive and economy mutations still require idempotency protection before retry support
+* `ApiException` remains non-final because specialized exceptions extend it
+* `ApiErrorCode.localStorageUnavailable` distinguishes local infrastructure failures from unexpected backend responses
+* Android API 23 is now the minimum supported Android version
+* The Android application ID and release signing configuration still require production setup before launch
+* Social-provider authentication remains deferred
+* Backend logout invalidation remains deferred
+* League and Knockout backend repositories remain disconnected
+* Purchases and Ads remain mock-driven
+* No gameplay, League, or Knockout calculations changed
+
+---
+
+### 🧪 Validation
+
+* [x] Secure session payload serialization reviewed
+* [x] Secure session payload restoration reviewed
+* [x] Secure session schema validation reviewed
+* [x] Unexpected secure session fields reviewed
+* [x] Corrupted secure session cleanup reviewed
+* [x] Secure-storage read failure reviewed
+* [x] Secure-storage write failure reviewed
+* [x] Secure-storage delete failure reviewed
+* [x] Sensitive storage-error exposure reviewed
+* [x] Expired-session behavior reviewed
+* [x] Refreshable expired-session behavior reviewed
+* [x] UTC expiration normalization reviewed
+* [x] Access-token normalization reviewed
+* [x] Refresh-token normalization reviewed
+* [x] Refresh-token omission reviewed
+* [x] Refresh-token preservation reviewed
+* [x] Refresh-token rotation reviewed
+* [x] Blank refresh-token rejection reviewed
+* [x] Expired refresh-response session rejection reviewed
+* [x] Malformed refresh-response handling reviewed
+* [x] Concurrent refresh coordination reviewed
+* [x] Refresh persistence failure reviewed
+* [x] Invalid-refresh credential clearing reviewed
+* [x] Temporary refresh failure preservation reviewed
+* [x] Login Bearer exclusion reviewed
+* [x] Registration Bearer exclusion reviewed
+* [x] Refresh Bearer exclusion reviewed
+* [x] Protected endpoint Bearer injection reviewed
+* [x] Expired Bearer-token exclusion reviewed
+* [x] Blank Bearer-token exclusion reviewed
+* [x] Session-store header failure mapping reviewed
+* [x] Local-storage API error mapping reviewed
+* [x] Invalid percent encoding reviewed
+* [x] Repository-factory runtime validation reviewed
+* [x] Shared session-store wiring reviewed
+* [x] Mock runtime isolation reviewed
+* [x] Authentication-session DTO tests reviewed
+* [x] Authentication-response DTO tests reviewed
+* [x] Refresh-token DTO tests reviewed
+* [x] Secure-session persistence tests reviewed
+* [x] Refresh-coordinator tests reviewed
+* [x] Backend authentication repository tests reviewed
+* [x] HTTP backend API client tests reviewed
+* [x] Repository factory tests reviewed
+* [x] Android minimum SDK reviewed
+* [x] Runtime dependency placement reviewed
+* [x] No gameplay behavior changed
+* [x] No League calculations changed
+* [x] No Knockout calculations changed
+
+Final validation commands:
+
+```bash
+flutter pub get
+dart format --set-exit-if-changed lib test
+flutter analyze
+flutter test
+flutter build apk --debug
+```
+
+---
+
+### 📌 Next Session
+
+Session 33 — Authentication Session Startup Flow Verification
+
+Planned focus:
+
+* [ ] Verify application startup restoration from secure storage
+* [ ] Trace the startup authentication-state call path
+* [ ] Confirm backend runtime restores the persisted session once
+* [ ] Confirm mock runtime never touches secure storage
+* [ ] Add focused startup-restoration tests
+* [ ] Add focused application-restart simulation tests
+* [ ] Confirm loading and authentication-state transitions
+* [ ] Confirm storage failures produce a recoverable UI error
+* [ ] Update documentation for startup restoration
+* [ ] Preserve all gameplay and competitive behavior
+
+Session boundary:
+
+* Maximum target: 3–5 production files
+* Maximum target: 2–3 test files
+* Do not begin social authentication
+* Do not begin backend logout
+* Do not begin League or Knockout backend integration
+* Move unfinished secondary improvements into Session 34
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup
+* ✅ Session 2 — Base structure and documentation
+* ✅ Session 3 — Game base rendering
+* ✅ Session 4 — Collision and validation
+* ✅ Session 5 — Level system
+* ✅ Session 6 — Run Points (superseded)
+* ✅ Session 7 — Lives system (superseded)
+* ✅ Session 8 — Precision Points
+* ✅ Session 9 — Registration/Login
+* ✅ Session 10 — GP System
+* ✅ Session 11 — Purchases
+* ✅ Session 12 — Ads
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow
+* ✅ Session 13 — League Structure
+* ✅ Session 14 — Weekly League Entry + Runtime Integration
+* ✅ Session 15 — Weekly League Scoring + Ranking UI
+* ✅ Session 16 — Weekly League History + Personal Records
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow
+* ✅ Session 19 — League Polish + Edge Case Hardening
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status
+* ✅ Session 23 — Knockout Tournament History + Records
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning
+* ✅ Session 27 — Backend Repository Contracts Preparation
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening
+* ✅ Session 30 — Backend Networking Client Preparation
+* ✅ Session 31 — Backend Authentication Integration
+* ✅ Session 32 — Secure Session Persistence + Refresh Token Policy
+* ⏳ Session 33 — Authentication Session Startup Flow Verification
+
+---
+
+### 🧭 Current State
+
+Current session: Session 33 — Authentication Session Startup Flow Verification
+
+Status: Ready ⏳
+
+Future session policy:
+
+* Sessions should remain narrowly scoped
+* Prefer more sessions with fewer files per session
+* Avoid combining unrelated architecture improvements
+* Validate production files immediately alongside their tests
+* Defer non-critical improvements instead of expanding the active session
+* Target a shorter development and validation cycle for each session
 

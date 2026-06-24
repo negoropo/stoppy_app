@@ -1,4 +1,3 @@
-
 enum ApiErrorCode {
 invalidConfiguration,
 requestTimeout,
@@ -10,6 +9,10 @@ conflict,
 rateLimited,
 serverError,
 networkUnavailable,
+
+/// Local secure or persistent storage could not be accessed.
+localStorageUnavailable,
+
 notImplemented,
 malformedPayload,
 unexpectedResponse,
@@ -26,7 +29,8 @@ this.details = const {},
 final ApiErrorCode code;
 final String message;
 
-/// Additional structured information supplied by the backend.
+/// Additional structured information supplied by the backend or generated
+/// by a local infrastructure boundary.
 ///
 /// Callers should treat this map as immutable. The constructor remains
 /// const so errors can be declared as compile-time constants.
@@ -46,7 +50,7 @@ for (final entry in json.entries) {
 final key = entry.key;
 
 // Error decoding is intentionally tolerant. Invalid keys are ignored so
-// the HTTP status can still be used as a fallback by the API client.
+// an HTTP status can still be used as a fallback by the API client.
 if (key is String) {
 normalized[key] = entry.value;
 }
@@ -63,7 +67,9 @@ normalized['code'] is String
 message: rawMessage is String && rawMessage.trim().isNotEmpty
 ? rawMessage.trim()
     : 'Unknown API error.',
-details: _detailsFromJson(normalized['details']),
+details: _detailsFromJson(
+normalized['details'],
+),
 );
 }
 
@@ -71,7 +77,8 @@ Map<String, Object?> toJson() {
 return <String, Object?>{
 'code': code.name,
 'message': message,
-if (details.isNotEmpty) 'details': details,
+if (details.isNotEmpty)
+'details': Map<String, Object?>.unmodifiable(details),
 };
 }
 
@@ -83,7 +90,9 @@ Map<String, Object?>? details,
 return ApiError(
 code: code ?? this.code,
 message: message ?? this.message,
-details: details ?? this.details,
+details: details == null
+? this.details
+    : Map<String, Object?>.unmodifiable(details),
 );
 }
 

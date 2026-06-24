@@ -11,6 +11,110 @@ import 'package:stoppy_app/core/backend/http_transport.dart';
 
 void main() {
   group('HttpBackendApiClient', () {
+
+    test(
+      'never sends authorization to public authentication endpoints',
+          () async {
+        final transport = _FakeTransport.success();
+        final store = InMemoryAuthSessionStore();
+
+        await store.save(_validSession());
+
+        final client = _client(
+          transport: transport,
+          sessionStore: store,
+        );
+
+        await client.post(
+          ApiContract.authRegister,
+          body: const {},
+        );
+        await client.post(
+          ApiContract.authLogin,
+          body: const {},
+        );
+        await client.post(
+          ApiContract.authRefresh,
+          body: const {},
+        );
+
+        expect(transport.requests, hasLength(3));
+
+        for (final request in transport.requests) {
+          expect(
+            request.headers.containsKey(
+              ApiContract.authorizationHeader,
+            ),
+            isFalse,
+          );
+        }
+      },
+    );
+
+    test('rejects paths with invalid percent encoding', () async {
+      final transport = _FakeTransport.success();
+      final client = _client(transport: transport);
+
+      await expectLater(
+        client.get('/api/v1/player/%ZZ'),
+        throwsA(
+          isA<BackendConfigurationException>().having(
+                (exception) => exception.error.message,
+            'message',
+            'Backend request path contains invalid percent encoding.',
+          ),
+        ),
+      );
+
+      expect(transport.requests, isEmpty);
+    });
+
+    test(
+      'maps session-store read failure without executing the request',
+          () async {
+        final transport = _FakeTransport.success();
+        final storageFailure = AuthSessionStoreException(
+          operation: AuthSessionStoreOperation.read,
+          cause: Exception('secure storage unavailable'),
+        );
+
+        final store = _FailingAuthSessionStore(
+          readError: storageFailure,
+        );
+
+        final client = _client(
+          transport: transport,
+          sessionStore: store,
+        );
+
+        await expectLater(
+          client.get('/api/v1/private'),
+          throwsA(
+            isA<ApiException>()
+                .having(
+                  (exception) => exception.error.code,
+              'error code',
+              ApiErrorCode.localStorageUnavailable,
+            )
+                .having(
+                  (exception) => exception.error.message,
+              'message',
+              'Authentication storage is temporarily unavailable.',
+            )
+                .having(
+                  (exception) =>
+              exception.error.details['storageOperation'],
+              'storage operation',
+              AuthSessionStoreOperation.read.name,
+            ),
+          ),
+        );
+
+        expect(store.readCalls, 1);
+        expect(transport.requests, isEmpty);
+      },
+    );
+
     test(
       'builds GET URI with query parameters for base URL without slash',
       () async {
@@ -376,9 +480,7 @@ void main() {
 
       final response = await client.post(
         '/api/v1/resource',
-        body: {
-          'createdAt': DateTime.utc(2026, 6, 23),
-        },
+        body: {'createdAt': DateTime.utc(2026, 6, 23)},
       );
 
       expect(response.isSuccess, isFalse);
@@ -387,9 +489,7 @@ void main() {
     });
 
     test('rejects relative paths with parent traversal', () async {
-      final client = _client(
-        transport: _FakeTransport.success(),
-      );
+      final client = _client(transport: _FakeTransport.success());
 
       await expectLater(
         client.get('../outside-api'),
@@ -402,73 +502,69 @@ void main() {
       );
     });
 
-    test('rejects request paths containing query parameters or fragments', () async {
-      final client = _client(
-        transport: _FakeTransport.success(),
-      );
+    test(
+      'rejects request paths containing query parameters or fragments',
+      () async {
+        final client = _client(transport: _FakeTransport.success());
 
-      await expectLater(
-        client.get('/api/v1/player/profile?source=test'),
-        throwsA(isA<BackendConfigurationException>()),
-      );
+        await expectLater(
+          client.get('/api/v1/player/profile?source=test'),
+          throwsA(isA<BackendConfigurationException>()),
+        );
 
-      await expectLater(
-        client.get('/api/v1/player/profile#section'),
-        throwsA(isA<BackendConfigurationException>()),
-      );
-    });
+        await expectLater(
+          client.get('/api/v1/player/profile#section'),
+          throwsA(isA<BackendConfigurationException>()),
+        );
+      },
+    );
 
+    test(
+      'trims the stored access token before building authorization',
+      () async {
+        final transport = _FakeTransport.success();
+        final store = InMemoryAuthSessionStore();
 
+        await store.save(
+          AuthSession(
+            accessToken: '  access-token  ',
+            expiresAt: DateTime.utc(2026, 6, 23),
+          ),
+        );
 
-    test('trims the stored access token before building authorization', () async {
-      final transport = _FakeTransport.success();
-      final store = InMemoryAuthSessionStore();
+        final client = _client(transport: transport, sessionStore: store);
 
-      await store.save(
-        AuthSession(
-          accessToken: '  access-token  ',
-          expiresAt: DateTime.utc(2026, 6, 23),
-        ),
-      );
+        await client.get('/api/v1/private');
 
-      final client = _client(
-        transport: transport,
-        sessionStore: store,
-      );
+        expect(
+          transport.requests.single.headers[ApiContract.authorizationHeader],
+          'Bearer access-token',
+        );
+      },
+    );
 
-      await client.get('/api/v1/private');
+    test(
+      'does not send authorization for a blank stored access token',
+      () async {
+        final transport = _FakeTransport.success();
+        final store = InMemoryAuthSessionStore();
 
-      expect(
-        transport.requests.single.headers[ApiContract.authorizationHeader],
-        'Bearer access-token',
-      );
-    });
+        await store.save(
+          AuthSession(accessToken: '   ', expiresAt: DateTime.utc(2026, 6, 23)),
+        );
 
-    test('does not send authorization for a blank stored access token', () async {
-      final transport = _FakeTransport.success();
-      final store = InMemoryAuthSessionStore();
+        final client = _client(transport: transport, sessionStore: store);
 
-      await store.save(
-        AuthSession(
-          accessToken: '   ',
-          expiresAt: DateTime.utc(2026, 6, 23),
-        ),
-      );
+        await client.get('/api/v1/private');
 
-      final client = _client(
-        transport: transport,
-        sessionStore: store,
-      );
-
-      await client.get('/api/v1/private');
-
-      expect(
-        transport.requests.single.headers.containsKey(
-          ApiContract.authorizationHeader,
-        ),
-        isFalse,
-      );
-    });
+        expect(
+          transport.requests.single.headers.containsKey(
+            ApiContract.authorizationHeader,
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('rejects cyclic request bodies', () async {
       final transport = _FakeTransport.success();
@@ -477,16 +573,12 @@ void main() {
       final cyclic = <String, Object?>{};
       cyclic['self'] = cyclic;
 
-      final response = await client.post(
-        '/api/v1/resource',
-        body: cyclic,
-      );
+      final response = await client.post('/api/v1/resource', body: cyclic);
 
       expect(response.isSuccess, isFalse);
       expect(response.error?.code, ApiErrorCode.malformedPayload);
       expect(transport.requests, isEmpty);
     });
-
   });
 }
 
@@ -514,6 +606,32 @@ AuthSession _validSession() {
     accessToken: 'access-token',
     expiresAt: DateTime.utc(2026, 6, 23),
   );
+}
+
+final class _FailingAuthSessionStore implements AuthSessionStore {
+  _FailingAuthSessionStore({
+    required this.readError,
+  });
+
+  final Object readError;
+
+  int readCalls = 0;
+
+  @override
+  Future<AuthSession?> read() async {
+    readCalls++;
+    throw readError;
+  }
+
+  @override
+  Future<void> save(AuthSession session) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> clear() {
+    throw UnimplementedError();
+  }
 }
 
 final class _FakeTransport implements HttpTransport {

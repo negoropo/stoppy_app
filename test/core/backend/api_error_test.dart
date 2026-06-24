@@ -65,10 +65,7 @@ void main() {
       );
 
       expect(
-        ApiError.fromJson({
-          'code': 'serverError',
-          'message': '   ',
-        }).message,
+        ApiError.fromJson({'code': 'serverError', 'message': '   '}).message,
         'Unknown API error.',
       );
     });
@@ -96,6 +93,5 @@ void main() {
         'details': {'field': 'username'},
       });
     });
-
   });
 }

@@ -37,24 +37,15 @@ void main() {
         expiresAt: DateTime.utc(2026, 6, 16, 12),
       );
 
-      expect(
-        session.isExpired(DateTime.utc(2026, 6, 16, 12)),
-        isTrue,
-      );
+      expect(session.isExpired(DateTime.utc(2026, 6, 16, 12)), isTrue);
 
-      expect(
-        session.isExpired(DateTime.utc(2026, 6, 16, 11, 59)),
-        isFalse,
-      );
+      expect(session.isExpired(DateTime.utc(2026, 6, 16, 11, 59)), isFalse);
     });
 
     test('session expires at the exact expiration instant', () {
       final expiresAt = DateTime.utc(2026, 6, 22, 10);
 
-      final session = AuthSession(
-        accessToken: 'token',
-        expiresAt: expiresAt,
-      );
+      final session = AuthSession(accessToken: 'token', expiresAt: expiresAt);
 
       expect(session.isExpired(expiresAt), isTrue);
     });
@@ -95,12 +86,7 @@ void main() {
         expiresAt: DateTime.utc(2026, 6, 22, 9, 59),
       );
 
-      expect(
-        session.isExpiringSoon(
-          DateTime.utc(2026, 6, 22, 10),
-        ),
-        isTrue,
-      );
+      expect(session.isExpiringSoon(DateTime.utc(2026, 6, 22, 10)), isTrue);
     });
 
     test('rejects a negative expiring-soon threshold', () {
@@ -110,7 +96,7 @@ void main() {
       );
 
       expect(
-            () => session.isExpiringSoon(
+        () => session.isExpiringSoon(
           DateTime.utc(2026, 6, 22, 9),
           threshold: const Duration(seconds: -1),
         ),
@@ -127,9 +113,7 @@ void main() {
         expiresAt: DateTime.utc(2026, 6, 23),
       );
 
-      final updated = session.copyWith(
-        refreshToken: null,
-      );
+      final updated = session.copyWith(refreshToken: null);
 
       expect(updated.refreshToken, isNull);
     });
@@ -141,9 +125,7 @@ void main() {
         expiresAt: DateTime.utc(2026, 6, 23),
       );
 
-      final updated = session.copyWith(
-        accessToken: 'new-token',
-      );
+      final updated = session.copyWith(accessToken: 'new-token');
 
       expect(updated.accessToken, 'new-token');
       expect(updated.refreshToken, 'refresh');
@@ -190,10 +172,8 @@ void main() {
   group('AuthSession invariants', () {
     test('rejects an empty access token', () {
       expect(
-            () => AuthSession(
-          accessToken: '',
-          expiresAt: DateTime.utc(2026, 6, 23),
-        ),
+        () =>
+            AuthSession(accessToken: '', expiresAt: DateTime.utc(2026, 6, 23)),
         throwsAssertionError,
       );
     });

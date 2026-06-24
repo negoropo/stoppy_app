@@ -5,6 +5,7 @@ This map describes current mock-owned data and the expected future PostgreSQL pe
 | System | Current Repository | Future Database Table | Ownership | Validation Requirements |
 | --- | --- | --- | --- | --- |
 | PlayerProfile | AuthRepository / MockAuthRepository | players | Server | Unique username, authenticated writes, GP changes only through trusted economy operations, immutable registration date. |
+| AuthSession (device cache) | SecureAuthSessionStore in backend runtime | Platform secure storage, not PostgreSQL | Client device / server-issued | Versioned JSON only; access token, optional refresh token, and expiry. Corrupt payloads are removed. Tokens never use SharedPreferences or local files. |
 | WeeklyLeagueRun | LeagueRepository / MockLeagueRepository | weekly_league_runs | Server | Active weekly entry required, duplicate run protection, valid run timestamp, validated final PP score. |
 | LeaguePlayerEntry | LeagueRepository / MockLeagueRepository | league_player_entries | Server | Entry cost paid, reserved slot rules, no duplicate active entry per player/season. |
 | LeagueDivision | LeagueRepository / MockLeagueRepository | league_divisions | Server | Capacity policy, division numbering, last division expansion, settlement-safe updates. |

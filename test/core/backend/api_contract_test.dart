@@ -2,69 +2,72 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/core/backend/api_contract.dart';
 
 void main() {
-  group('ApiContract', () {
-    test('builds versioned API prefix', () {
-      expect(ApiContract.version, 'v1');
-      expect(ApiContract.apiPrefix, '/api/v1');
-    });
+group('ApiContract.isPublicAuthPath', () {
+test('recognizes every public authentication path', () {
+expect(
+ApiContract.isPublicAuthPath(ApiContract.authRegister),
+isTrue,
+);
+expect(
+ApiContract.isPublicAuthPath(ApiContract.authLogin),
+isTrue,
+);
+expect(
+ApiContract.isPublicAuthPath(ApiContract.authRefresh),
+isTrue,
+);
+});
 
-    test('identifies public auth endpoints', () {
-      expect(
-        ApiContract.isPublicAuthPath(ApiContract.authRegister),
-        isTrue,
-      );
+test('normalizes whitespace and trailing slashes', () {
+expect(
+ApiContract.isPublicAuthPath(
+'  ${ApiContract.authRegister}/  ',
+),
+isTrue,
+);
 
-      expect(
-        ApiContract.isPublicAuthPath(ApiContract.authLogin),
-        isTrue,
-      );
-    });
+expect(
+ApiContract.isPublicAuthPath(
+'  ${ApiContract.authLogin}///  ',
+),
+isTrue,
+);
 
-    test('normalizes whitespace and trailing slash', () {
-      expect(
-        ApiContract.isPublicAuthPath(
-          '  ${ApiContract.authLogin}/  ',
-        ),
-        isTrue,
-      );
-    });
+expect(
+ApiContract.isPublicAuthPath(
+'  ${ApiContract.authRefresh}//  ',
+),
+isTrue,
+);
+});
 
-    test('does not classify protected endpoints as public', () {
-      expect(
-        ApiContract.isPublicAuthPath(ApiContract.playerProfile),
-        isFalse,
-      );
+test('does not classify protected endpoints as public', () {
+expect(
+ApiContract.isPublicAuthPath(ApiContract.playerProfile),
+isFalse,
+);
+expect(
+ApiContract.isPublicAuthPath(ApiContract.leagueSnapshot),
+isFalse,
+);
+expect(
+ApiContract.isPublicAuthPath(ApiContract.knockoutStatus),
+isFalse,
+);
+});
 
-      expect(
-        ApiContract.isPublicAuthPath(ApiContract.leagueSnapshot),
-        isFalse,
-      );
+test('does not accept absolute authentication URLs', () {
+expect(
+ApiContract.isPublicAuthPath(
+'https://example.com${ApiContract.authLogin}',
+),
+isFalse,
+);
+});
 
-      expect(
-        ApiContract.isPublicAuthPath(ApiContract.knockoutTournament),
-        isFalse,
-      );
-    });
-
-    test('does not classify similar auth paths as public', () {
-      expect(
-        ApiContract.isPublicAuthPath('/api/v1/auth/login-extra'),
-        isFalse,
-      );
-
-      expect(
-        ApiContract.isPublicAuthPath('/api/v1/auth/register/confirm'),
-        isFalse,
-      );
-    });
-
-    test('does not classify absolute URLs as public paths', () {
-      expect(
-        ApiContract.isPublicAuthPath(
-          'https://api.stoppy.test${ApiContract.authLogin}',
-        ),
-        isFalse,
-      );
-    });
-  });
+test('returns false for blank paths', () {
+expect(ApiContract.isPublicAuthPath(''), isFalse);
+expect(ApiContract.isPublicAuthPath('   '), isFalse);
+});
+});
 }

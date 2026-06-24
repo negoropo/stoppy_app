@@ -108,6 +108,21 @@ Riverpod is not yet installed in this session.
 * Testabilidade
 * Baixo acoplamento
 
+### 4.4 Authentication session persistence
+
+Backend runtime owns one `AuthSessionStore` shared by the HTTP client and auth
+repository. Its secure implementation serializes only a versioned server-issued
+session (access token, optional refresh token, expiry) through platform secure
+storage. Mock runtime continues to use in-memory storage and never constructs a
+secure-storage adapter. Corrupt, incomplete, unsupported, or expired sessions
+without a refresh token are deleted safely at load time.
+
+Refresh coordination stays in the auth data layer, outside widgets. It shares
+one in-flight request across callers, atomically persists fully validated
+replacements, clears invalid/unauthorized credentials, and preserves sessions
+for temporary failures. HTTP never injects expired tokens and has no generic
+automatic retry policy, protecting competitive and economy mutations.
+
 ---
 
 ## 5. Game Engine

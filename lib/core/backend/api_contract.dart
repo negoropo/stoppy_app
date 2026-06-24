@@ -11,6 +11,7 @@ abstract final class ApiContract {
 
   static const authRegister = '$apiPrefix/auth/register';
   static const authLogin = '$apiPrefix/auth/login';
+  static const authRefresh = '$apiPrefix/auth/refresh';
 
   static const playerProfile = '$apiPrefix/player/profile';
 
@@ -28,14 +29,21 @@ abstract final class ApiContract {
   static const knockoutActiveDuel = '$apiPrefix/knockout/active-duel';
   static const knockoutHistory = '$apiPrefix/knockout/history';
   static const knockoutRecords = '$apiPrefix/knockout/records';
-  static const knockoutHallOfFame = '$apiPrefix/knockout/hall-of-fame';
-  static const knockoutRunSubmission = '$apiPrefix/runs/knockout';
+  static const knockoutHallOfFame =
+      '$apiPrefix/knockout/hall-of-fame';
+  static const knockoutRunSubmission =
+      '$apiPrefix/runs/knockout';
+
+  static const Set<String> _publicAuthPaths = {
+    authRegister,
+    authLogin,
+    authRefresh,
+  };
 
   static bool isPublicAuthPath(String path) {
-    final normalizedPath = _normalizePath(path);
-
-    return normalizedPath == authRegister ||
-        normalizedPath == authLogin;
+    return _publicAuthPaths.contains(
+      _normalizePath(path),
+    );
   }
 
   static String _normalizePath(String value) {
@@ -47,14 +55,17 @@ abstract final class ApiContract {
 
     final parsed = Uri.tryParse(trimmed);
 
-    if (parsed == null || parsed.hasScheme || parsed.hasAuthority) {
+    if (parsed == null ||
+        parsed.hasScheme ||
+        parsed.hasAuthority) {
       return trimmed;
     }
 
-    final normalizedPath = parsed.path;
+    var normalizedPath = parsed.path;
 
-    if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
-      return normalizedPath.substring(
+    while (normalizedPath.length > 1 &&
+        normalizedPath.endsWith('/')) {
+      normalizedPath = normalizedPath.substring(
         0,
         normalizedPath.length - 1,
       );

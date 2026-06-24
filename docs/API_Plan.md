@@ -10,6 +10,7 @@ Examples:
 
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
 - `GET /api/v1/player/profile`
 - `POST /api/v1/runs/league`
 - `POST /api/v1/runs/knockout`
@@ -94,8 +95,9 @@ Malformed successful JSON maps to `malformedPayload`. Non-JSON error responses s
 
 - A non-expired `AuthSession` adds `Authorization: Bearer <accessToken>`.
 - Missing or expired sessions do not add an authorization header.
-- Public login and registration paths never add an authorization header.
-- Token refresh is intentionally deferred; the client never logs access or refresh tokens.
+- Public registration, login, and refresh paths never add an authorization header.
+- Refresh requests carry the refresh token only in their JSON body. They are
+  coalesced client-side and never trigger generic request retries.
 
 ## DTO Strategy
 
@@ -136,7 +138,19 @@ Successful registration/login responses return:
 - `accessToken` is required and non-empty.
 - `refreshToken` is optional to allow a future session policy change.
 - `expiresAt` is an ISO-8601 UTC date-time.
-- Session storage is currently in-memory. Secure persistent storage and refresh-token execution are intentionally deferred.
+- Backend runtime stores this session as a versioned JSON payload in platform
+  secure storage. It never stores either token in SharedPreferences or ordinary
+  files. Mock runtime remains in-memory.
+
+## Refresh Token Contract
+
+`POST /api/v1/auth/refresh` accepts `{ "refreshToken": "..." }` and returns
+`{ "session": { ... } }` in the standard success envelope. A response may omit
+`refreshToken` when the existing refresh credential remains valid; otherwise a
+rotated non-empty refresh token replaces it. Replacement access tokens must be
+future-dated. Invalid or unauthorized refresh credentials clear local storage;
+temporary timeout, network, rate-limit, server, and malformed responses retain
+the last session for a later attempt.
 
 ## Backend Authentication Integration
 

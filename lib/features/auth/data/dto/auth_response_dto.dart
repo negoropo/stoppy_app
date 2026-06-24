@@ -3,7 +3,7 @@ import 'package:stoppy_app/core/backend/json_reader.dart';
 import 'auth_session_dto.dart';
 import 'player_profile_dto.dart';
 
-class AuthResponseDto {
+final class AuthResponseDto {
   const AuthResponseDto({
     required this.playerProfile,
     required this.session,
