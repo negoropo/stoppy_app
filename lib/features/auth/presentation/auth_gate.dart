@@ -46,16 +46,61 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  late Future<AuthState> _initialAuthStateFuture;
-  AuthState _authState = const AuthState.unauthenticated();
+  AuthState _authState = const AuthState.loading();
   bool _isRegisterMode = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  int _startupAttempt = 0;
 
   @override
   void initState() {
     super.initState();
-    _initialAuthStateFuture = widget.authRepository.currentAuthState();
+    _restoreInitialAuthState();
+  }
+
+  @override
+  void didUpdateWidget(covariant AuthGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.authRepository, widget.authRepository)) {
+      _restoreInitialAuthState();
+    }
+  }
+
+  Future<void> _restoreInitialAuthState() async {
+    final attempt = ++_startupAttempt;
+
+    setState(() {
+      _authState = const AuthState.loading();
+      _errorMessage = null;
+    });
+
+    try {
+      final restoredState = await widget.authRepository.currentAuthState();
+      if (!mounted || attempt != _startupAttempt) {
+        return;
+      }
+
+      setState(() {
+        _authState = restoredState;
+      });
+    } on AuthException catch (error) {
+      _setStartupError(attempt, error.message);
+    } catch (_) {
+      _setStartupError(
+        attempt,
+        'Unable to restore your session. Please try again.',
+      );
+    }
+  }
+
+  void _setStartupError(int attempt, String message) {
+    if (!mounted || attempt != _startupAttempt) {
+      return;
+    }
+
+    setState(() {
+      _authState = AuthState.error(message);
+    });
   }
 
   Future<void> _login({
@@ -134,49 +179,96 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<AuthState>(
-      future: _initialAuthStateFuture,
-      builder: (context, snapshot) {
-        final snapshotAuthState = snapshot.data;
-        final effectiveAuthState = _authState.isAuthenticated
-            ? _authState
-            : snapshotAuthState ?? _authState;
+    if (_authState.status == AuthStatus.loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF101418),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-        if (snapshot.connectionState != ConnectionState.done &&
-            !effectiveAuthState.isAuthenticated) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF101418),
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    if (_authState.status == AuthStatus.error) {
+      return _AuthStartupError(
+        message:
+            _authState.errorMessage ??
+            'Unable to restore your session. Please try again.',
+        onRetry: _restoreInitialAuthState,
+      );
+    }
 
-        if (effectiveAuthState.isAuthenticated) {
-          return GameScreen(
-            playerProfile: effectiveAuthState.playerProfile,
-            authRepository: widget.authRepository,
-            purchaseRepository: widget.purchaseRepository,
-            adRepository: widget.adRepository,
-            leagueRepository: widget.leagueRepository,
-            knockoutRepository: widget.knockoutRepository,
-          );
-        }
+    if (_authState.isAuthenticated) {
+      return GameScreen(
+        playerProfile: _authState.playerProfile,
+        authRepository: widget.authRepository,
+        purchaseRepository: widget.purchaseRepository,
+        adRepository: widget.adRepository,
+        leagueRepository: widget.leagueRepository,
+        knockoutRepository: widget.knockoutRepository,
+      );
+    }
 
-        if (_isRegisterMode) {
-          return RegisterScreen(
-            isSubmitting: _isSubmitting,
-            errorMessage: _errorMessage,
-            onRegister: _register,
-            onShowLogin: _showLogin,
-          );
-        }
+    if (_isRegisterMode) {
+      return RegisterScreen(
+        isSubmitting: _isSubmitting,
+        errorMessage: _errorMessage,
+        onRegister: _register,
+        onShowLogin: _showLogin,
+      );
+    }
 
-        return LoginScreen(
-          isSubmitting: _isSubmitting,
-          errorMessage: _errorMessage,
-          onLogin: _login,
-          onShowRegister: _showRegister,
-        );
-      },
+    return LoginScreen(
+      isSubmitting: _isSubmitting,
+      errorMessage: _errorMessage,
+      onLogin: _login,
+      onShowRegister: _showRegister,
+    );
+  }
+}
+
+class _AuthStartupError extends StatelessWidget {
+  const _AuthStartupError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF101418),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_off, size: 48, color: Colors.white70),
+                const SizedBox(height: 16),
+                const Text(
+                  'Session restore failed',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try again'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
