@@ -22,7 +22,7 @@ void main() {
   ) async {
     final startup = Completer<AuthState>();
     final repository = _StartupAuthRepository(
-      currentAuthState: () => startup.future,
+      onCurrentAuthState: () => startup.future,
     );
 
     await tester.pumpWidget(
@@ -43,7 +43,7 @@ void main() {
     tester,
   ) async {
     final repository = _StartupAuthRepository(
-      currentAuthState: () async => AuthState.authenticated(player),
+      onCurrentAuthState: () async => AuthState.authenticated(player),
     );
 
     await tester.pumpWidget(
@@ -60,7 +60,7 @@ void main() {
   ) async {
     var shouldFail = true;
     final repository = _StartupAuthRepository(
-      currentAuthState: () async {
+      onCurrentAuthState: () async {
         if (shouldFail) {
           throw const AuthException('Secure session storage is unavailable.');
         }
@@ -91,10 +91,10 @@ void main() {
   ) async {
     final staleStartup = Completer<AuthState>();
     final firstRepository = _StartupAuthRepository(
-      currentAuthState: () => staleStartup.future,
+      onCurrentAuthState: () => staleStartup.future,
     );
     final secondRepository = _StartupAuthRepository(
-      currentAuthState: () async => unauthenticatedState,
+      onCurrentAuthState: () async => unauthenticatedState,
     );
 
     await tester.pumpWidget(
@@ -120,15 +120,15 @@ void main() {
 }
 
 class _StartupAuthRepository implements AuthRepository {
-  _StartupAuthRepository({required this.currentAuthState});
+  _StartupAuthRepository({required this.onCurrentAuthState});
 
-  final Future<AuthState> Function() currentAuthState;
+  final Future<AuthState> Function() onCurrentAuthState;
   int currentAuthStateCalls = 0;
 
   @override
   Future<AuthState> currentAuthState() {
     currentAuthStateCalls += 1;
-    return currentAuthState();
+    return onCurrentAuthState();
   }
 
   @override
