@@ -86,6 +86,32 @@ void main() {
       expect(playerProfile.username, 'PlayerOne');
     });
 
+    test(
+      'logout clears current authentication but keeps registered users',
+      () async {
+        final repository = MockAuthRepository();
+        await repository.register(
+          username: 'RepeatPlayer',
+          password: 'pass123',
+        );
+
+        await repository.logout();
+        final loggedOutState = await repository.currentAuthState();
+
+        expect(loggedOutState.isAuthenticated, isFalse);
+
+        final playerProfile = await repository.login(
+          username: 'RepeatPlayer',
+          password: 'pass123',
+        );
+        final loggedInState = await repository.currentAuthState();
+
+        expect(playerProfile.username, 'RepeatPlayer');
+        expect(loggedInState.isAuthenticated, isTrue);
+        expect(loggedInState.playerProfile?.username, 'RepeatPlayer');
+      },
+    );
+
     test('persists updated GP in memory', () async {
       final repository = MockAuthRepository();
       final playerProfile = await repository.register(

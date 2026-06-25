@@ -48,6 +48,9 @@ class GameScreen extends StatefulWidget {
     this.initialRunMode,
     this.initialRunLevel = 1,
     this.now,
+    this.onLogout,
+    this.isLoggingOut = false,
+    this.logoutErrorMessage,
   });
 
   final LevelGenerator? levelGenerator;
@@ -62,6 +65,9 @@ class GameScreen extends StatefulWidget {
   final RunMode? initialRunMode;
   final int initialRunLevel;
   final DateTime Function()? now;
+  final Future<void> Function()? onLogout;
+  final bool isLoggingOut;
+  final String? logoutErrorMessage;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -1112,7 +1118,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                       ),
 
-                      // daqui para baixo fica igual ao que já tinhas
+                      // The remaining gameplay controls preserve the existing layout and behavior.
                       if (_playerProfile != null &&
                           widget.purchaseRepository != null)
                         Positioned(
@@ -1141,6 +1147,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           child: FilledButton(
                             onPressed: _openKnockout,
                             child: const Text('Knockout'),
+                          ),
+                        ),
+                      if (_playerProfile != null && widget.onLogout != null)
+                        Positioned(
+                          right: 16,
+                          bottom: widget.purchaseRepository != null ? 64 : 16,
+                          child: _LogoutControl(
+                            isLoggingOut: widget.isLoggingOut,
+                            errorMessage: widget.logoutErrorMessage,
+                            onLogout: widget.onLogout!,
                           ),
                         ),
                       if (_isRewardSummaryVisible &&
@@ -1301,6 +1317,64 @@ class _RunStatusOverlay extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LogoutControl extends StatelessWidget {
+  const _LogoutControl({
+    required this.isLoggingOut,
+    required this.errorMessage,
+    required this.onLogout,
+  });
+
+  final bool isLoggingOut;
+  final String? errorMessage;
+  final Future<void> Function() onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton(
+            key: const ValueKey('game_logout_button'),
+            onPressed: isLoggingOut ? null : onLogout,
+            child: isLoggingOut
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Logout'),
+          ),
+          if (errorMessage != null) ...[
+            const SizedBox(height: 6),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xCC101418),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFF6B6B)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Text(
+                  errorMessage!,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: Color(0xFFFF6B6B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

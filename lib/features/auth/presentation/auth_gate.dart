@@ -51,10 +51,12 @@ class _AuthGateState extends State<AuthGate> {
   AuthState _authState = const AuthState.unauthenticated();
   bool _isRestoringAuthState = true;
   String? _startupErrorMessage;
-  int _restorationGeneration = 0;
+  int _authLifecycleGeneration = 0;
   bool _isRegisterMode = false;
   bool _isSubmitting = false;
+  bool _isLoggingOut = false;
   String? _errorMessage;
+  String? _logoutErrorMessage;
 
   @override
   void initState() {
@@ -72,7 +74,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _beginAuthStateRestoration({bool notifyListeners = true}) {
-    final generation = ++_restorationGeneration;
+    final generation = ++_authLifecycleGeneration;
 
     void resetStartupState() {
       _authState = const AuthState.unauthenticated();
@@ -80,7 +82,9 @@ class _AuthGateState extends State<AuthGate> {
       _startupErrorMessage = null;
       _isRegisterMode = false;
       _isSubmitting = false;
+      _isLoggingOut = false;
       _errorMessage = null;
+      _logoutErrorMessage = null;
     }
 
     if (notifyListeners) {
@@ -96,7 +100,7 @@ class _AuthGateState extends State<AuthGate> {
     try {
       final authState = await widget.authRepository.currentAuthState();
 
-      if (!mounted || generation != _restorationGeneration) {
+      if (!mounted || generation != _authLifecycleGeneration) {
         return;
       }
 
@@ -134,7 +138,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _showStartupError(int generation, String message) {
-    if (!mounted || generation != _restorationGeneration) {
+    if (!mounted || generation != _authLifecycleGeneration) {
       return;
     }
 
@@ -168,15 +172,18 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _submitAuthAction(
     Future<PlayerProfile> Function() action,
   ) async {
+    final generation = ++_authLifecycleGeneration;
+
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
+      _logoutErrorMessage = null;
     });
 
     try {
       final playerProfile = await action();
 
-      if (!mounted) {
+      if (!mounted || generation != _authLifecycleGeneration) {
         return;
       }
 
@@ -185,7 +192,7 @@ class _AuthGateState extends State<AuthGate> {
         _isSubmitting = false;
       });
     } on AuthException catch (error) {
-      if (!mounted) {
+      if (!mounted || generation != _authLifecycleGeneration) {
         return;
       }
 
@@ -194,13 +201,61 @@ class _AuthGateState extends State<AuthGate> {
         _isSubmitting = false;
       });
     } catch (_) {
-      if (!mounted) {
+      if (!mounted || generation != _authLifecycleGeneration) {
         return;
       }
 
       setState(() {
         _errorMessage = 'Authentication failed. Please try again.';
         _isSubmitting = false;
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    if (_isLoggingOut) {
+      return;
+    }
+
+    final generation = ++_authLifecycleGeneration;
+
+    setState(() {
+      _isLoggingOut = true;
+      _logoutErrorMessage = null;
+      _errorMessage = null;
+    });
+
+    try {
+      await widget.authRepository.logout();
+
+      if (!mounted || generation != _authLifecycleGeneration) {
+        return;
+      }
+
+      setState(() {
+        _authState = const AuthState.unauthenticated();
+        _isRegisterMode = false;
+        _isSubmitting = false;
+        _isLoggingOut = false;
+        _logoutErrorMessage = null;
+      });
+    } on AuthException catch (error) {
+      if (!mounted || generation != _authLifecycleGeneration) {
+        return;
+      }
+
+      setState(() {
+        _isLoggingOut = false;
+        _logoutErrorMessage = error.message;
+      });
+    } catch (_) {
+      if (!mounted || generation != _authLifecycleGeneration) {
+        return;
+      }
+
+      setState(() {
+        _isLoggingOut = false;
+        _logoutErrorMessage = 'Logout failed. Please try again.';
       });
     }
   }
@@ -241,6 +296,9 @@ class _AuthGateState extends State<AuthGate> {
         adRepository: widget.adRepository,
         leagueRepository: widget.leagueRepository,
         knockoutRepository: widget.knockoutRepository,
+        onLogout: _logout,
+        isLoggingOut: _isLoggingOut,
+        logoutErrorMessage: _logoutErrorMessage,
       );
     }
 

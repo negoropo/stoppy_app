@@ -6212,7 +6212,9 @@ Future session policy:
 
 ### 🎯 Objective
 
-Verify and harden the application startup authentication flow after the secure session persistence and refresh-token work completed in Session 32, while preserving the existing authentication repository contracts, mock-driven default runtime, backend architecture, gameplay systems, League runtime, Knockout runtime, and server-authoritative competitive model.
+Verify and harden the application startup authentication flow after the secure session persistence and refresh-token work completed in Session 32.
+
+Ensure authentication restoration runs through the existing repository boundary, startup failures remain distinguishable from a normal unauthenticated state, stale asynchronous results cannot replace newer state, mock runtime remains isolated from secure storage, and application-level repository instances remain stable across normal widget rebuilds and hot reload.
 
 ---
 
@@ -6220,9 +6222,10 @@ Verify and harden the application startup authentication flow after the secure s
 
 * [x] Application startup authentication flow reviewed
 * [x] `AuthGate` startup restoration flow hardened
-* [x] `AuthRepository.currentAuthState()` confirmed as the startup authentication boundary
-* [x] Startup restoration executed once per `AuthGate` lifecycle
-* [x] Normal widget rebuilds prevented from triggering duplicate restoration calls
+* [x] `AuthRepository.currentAuthState()` preserved as the startup authentication boundary
+* [x] Startup restoration initiated from `AuthGate.initState()`
+* [x] Startup restoration removed from the widget build path
+* [x] Normal `AuthGate` rebuilds prevented from triggering duplicate restoration calls
 * [x] Dedicated authentication startup loading state implemented
 * [x] Login screen hidden while startup restoration is unresolved
 * [x] Game screen hidden while startup restoration is unresolved
@@ -6235,15 +6238,20 @@ Verify and harden the application startup authentication flow after the secure s
 * [x] Safe startup error messaging implemented
 * [x] Startup retry action implemented
 * [x] Retry triggers a new `currentAuthState()` call
-* [x] Successful retry leaves the startup error state
-* [x] Repository-replacement restoration implemented
+* [x] Successful retry exits the startup error state
+* [x] Repository replacement restoration implemented
 * [x] Stale authentication results ignored after repository replacement
-* [x] Authentication restoration generation guard implemented
+* [x] Restoration generation guard implemented
+* [x] Returned `AuthState.error` handled explicitly
 * [x] Unexpected returned `AuthState.loading()` handled safely
-* [x] Returned authentication error states represented through recoverable startup UI
 * [x] Mock runtime remains independent from secure-storage initialization
 * [x] Mock unauthenticated startup verified
 * [x] Mock authenticated startup verified
+* [x] Application repositories stabilized across rebuilds
+* [x] Repository creation removed from `StoppyApp.build()`
+* [x] Hot reload no longer replaces the mock authentication repository
+* [x] Mock authenticated state preserved during hot reload
+* [x] Hot restart behavior kept distinct from hot reload
 * [x] No direct secure-storage dependency introduced into `AuthGate`
 * [x] No new state-management dependency introduced
 * [x] No backend logout endpoint introduced
@@ -6259,33 +6267,43 @@ Verify and harden the application startup authentication flow after the secure s
 
 ### 🛠️ Work Done
 
-* Replaced the previous startup `FutureBuilder` authentication flow with explicit startup restoration state
-* Added `_isRestoringAuthState` to represent unresolved startup restoration
-* Added `_startupErrorMessage` to represent recoverable startup failures
-* Added `_restorationGeneration` to identify the active restoration attempt
+* Replaced the previous startup `FutureBuilder` flow with explicit authentication startup state
+* Added `_isRestoringAuthState`
+* Added `_startupErrorMessage`
+* Added `_restorationGeneration`
 * Added `_beginAuthStateRestoration()`
 * Added `_restoreAuthState()`
 * Added `_showStartupError()`
 * Started authentication restoration from `initState()`
 * Prevented `currentAuthState()` from being called during `build()`
-* Preserved one authentication restoration call across normal widget rebuilds
-* Added repository identity detection through `didUpdateWidget()`
+* Preserved one startup restoration operation across normal rebuilds
+* Added authentication repository identity detection through `didUpdateWidget()`
 * Restarted restoration when the injected `AuthRepository` changes
-* Invalidated unresolved results from previous repositories
-* Prevented stale authenticated state from replacing a newer repository result
-* Added explicit handling for authenticated startup state
-* Added explicit handling for unauthenticated startup state
-* Added explicit handling for returned authentication error state
-* Added explicit handling for unexpected returned loading state
+* Invalidated unresolved results from previous restoration generations
+* Prevented stale authenticated results from replacing newer repository state
+* Added explicit handling for `AuthStatus.authenticated`
+* Added explicit handling for `AuthStatus.unauthenticated`
+* Added explicit handling for `AuthStatus.error`
+* Added safe handling for an unexpected returned `AuthStatus.loading`
 * Added `_AuthStartupLoadingScreen`
 * Added `_AuthStartupErrorScreen`
 * Added a retry action to the startup error screen
-* Preserved login and registration behavior after startup restoration
+* Preserved existing login behavior
+* Preserved existing registration behavior
 * Preserved the existing `GameScreen` dependency wiring
+* Converted `StoppyApp` from `StatelessWidget` to `StatefulWidget`
+* Moved default repository creation out of `StoppyApp.build()`
+* Added persistent `_resolvedRepositories` state
+* Created the default repository bundle once during `initState()`
+* Added controlled repository recreation through `didUpdateWidget()`
+* Recreated repositories only when the injected bundle or environment changes
+* Preserved individual repository injection for tests and controlled runtimes
+* Prevented hot reload from creating a new `MockAuthRepository`
+* Prevented mock authentication state from being lost during hot reload
 * Added focused `AuthGate` startup widget tests
 * Added unresolved startup-state coverage using `Completer<AuthState>`
-* Added authenticated startup coverage
 * Added unauthenticated startup coverage
+* Added authenticated startup coverage
 * Added normal rebuild coverage
 * Added recoverable startup exception coverage
 * Added retry coverage
@@ -6294,8 +6312,8 @@ Verify and harden the application startup authentication flow after the secure s
 * Added stale-result rejection coverage
 * Added unexpected loading-state coverage
 * Added mock runtime startup coverage
-* Restored unrelated formatter changes from Sessions 29–32
-* Limited the final Session 33 working tree to the two intended files
+* Restored unrelated repository-wide formatting changes
+* Limited the final session scope to the intended authentication startup files
 
 ---
 
@@ -6303,6 +6321,7 @@ Verify and harden the application startup authentication flow after the secure s
 
 Production:
 
+* `lib/main.dart`
 * `lib/features/auth/presentation/auth_gate.dart`
 
 Tests:
@@ -6313,34 +6332,41 @@ Tests:
 
 ### ⚠️ Notes / Decisions
 
-* `AuthGate` remains responsible for the player-facing startup transition
+* `AuthGate` remains responsible for the player-facing startup authentication transition
 * `AuthRepository.currentAuthState()` remains the authentication restoration boundary
 * Backend session restoration remains owned by the backend authentication repository
 * Secure storage remains hidden behind the authentication repository and session-store abstractions
 * `AuthGate` does not access secure storage directly
-* Authentication restoration does not occur in `main.dart`
-* Authentication restoration does not occur in `build()`
-* A normal rebuild does not create a new restoration operation
+* Authentication restoration is not performed directly in `main.dart`
+* Authentication restoration is not performed during `build()`
+* A normal `AuthGate` rebuild does not create a new restoration operation
 * Repository replacement intentionally starts a new restoration generation
 * Results from previous restoration generations are ignored
 * Startup failures are not interpreted as normal logout
 * Startup failures do not automatically clear stored credentials from the presentation layer
-* Domain-facing authentication exception messages are reused where available
-* Unexpected exceptions use a stable safe user-facing message
-* An unexpected returned `AuthState.loading()` is treated as a recoverable restoration failure rather than unauthenticated state
-* The loading screen prevents stale login or game UI from being displayed during restoration
+* Domain-facing `AuthException` messages are reused where available
+* Unexpected exceptions use a stable and safe user-facing message
+* A returned `AuthState.error` produces recoverable startup UI
+* An unexpected returned `AuthState.loading()` is treated as a recoverable restoration failure
+* The loading screen prevents stale login or game UI from appearing during restoration
 * Retry immediately returns the UI to the loading state
-* Mock runtime continues to use the injected mock authentication repository
+* Mock runtime continues to use in-memory authentication
 * Mock startup does not initialize platform secure storage
 * The existing login and registration flows remain unchanged
 * Existing gameplay, Purchase, Ads, League, and Knockout repository wiring remains unchanged
+* Repository bundles must not be created inside `StoppyApp.build()`
+* Default repositories are now retained by `_StoppyAppState`
+* Hot reload preserves the current widget state and repository instances
+* Hot restart recreates the complete application and therefore resets mock in-memory authentication
+* Returning to login after hot restart remains expected in mock runtime
+* Persistent authentication across a full application restart remains a backend-runtime responsibility
 * No provider credentials are stored or restored
 * No social-provider authentication was introduced
 * No backend logout invalidation was introduced
 * No automatic HTTP retry behavior was introduced
 * Competitive state remains server-authoritative
 * No gameplay, League, or Knockout calculations changed
-* Repository-wide formatting changes outside Session 33 were restored before final validation
+* Unrelated formatter changes from Sessions 29–32 were restored before final validation
 
 ---
 
@@ -6349,7 +6375,7 @@ Tests:
 * [x] Startup authentication call path reviewed
 * [x] `AuthRepository.currentAuthState()` invocation reviewed
 * [x] Single lifecycle restoration reviewed
-* [x] Normal rebuild behavior reviewed
+* [x] Normal `AuthGate` rebuild behavior reviewed
 * [x] Startup loading state reviewed
 * [x] Authenticated startup transition reviewed
 * [x] Restored player-profile propagation reviewed
@@ -6365,6 +6391,11 @@ Tests:
 * [x] Mock unauthenticated startup reviewed
 * [x] Mock authenticated startup reviewed
 * [x] Mock secure-storage isolation reviewed
+* [x] Application-level repository lifecycle reviewed
+* [x] Repository creation outside `build()` reviewed
+* [x] Hot reload repository preservation reviewed
+* [x] Hot reload authenticated-state preservation manually verified
+* [x] Hot restart mock-runtime behavior reviewed
 * [x] Existing repository dependency wiring reviewed
 * [x] Unrelated formatter changes removed
 * [x] Working-tree session scope reviewed
@@ -6379,6 +6410,7 @@ Final validation commands:
 
 ```bash
 dart format \
+  lib/main.dart \
   lib/features/auth/presentation/auth_gate.dart \
   test/features/auth/presentation/auth_gate_startup_test.dart
 
@@ -6388,13 +6420,22 @@ flutter test
 git diff --check
 ```
 
-Final validation results:
+Recorded automated validation results:
 
 * `flutter analyze` — no issues found
 * Focused startup-authentication tests — 9 tests passed
 * Complete Flutter test suite — 429 tests passed
 * `git diff --check` — no whitespace errors
-* Final working tree limited to the two Session 33 files
+
+Manual iOS Simulator validation:
+
+* Application launched successfully
+* Unauthenticated mock startup reached `LoginScreen`
+* Registration/login reached `GameScreen`
+* Hot reload preserved the authenticated game state
+* Hot reload did not replace the mock authentication repository
+* Hot restart behavior remained consistent with memory-only mock authentication
+* No startup crash or authentication loop was observed
 
 ---
 
@@ -6405,13 +6446,15 @@ Session 34 — Authentication Logout + Session Lifecycle Hardening
 Planned focus:
 
 * [ ] Review the current logout call path
+* [ ] Trace logout from `GameScreen` through `AuthRepository`
 * [ ] Verify local session cleanup during logout
-* [ ] Define backend logout and token-invalidation requirements
-* [ ] Preserve local logout behavior when the backend endpoint is unavailable
-* [ ] Prevent stale asynchronous authentication operations after logout
 * [ ] Verify authenticated-to-unauthenticated UI transitions
-* [ ] Add focused logout lifecycle tests
+* [ ] Prevent stale asynchronous authentication operations after logout
 * [ ] Add repeated login/logout lifecycle coverage
+* [ ] Add focused logout widget tests
+* [ ] Add focused backend logout-session cleanup tests
+* [ ] Define future backend token-invalidation requirements
+* [ ] Preserve local logout behavior when backend invalidation is unavailable
 * [ ] Confirm secure-session cleanup behavior
 * [ ] Preserve mock runtime isolation
 * [ ] Preserve gameplay and competitive behavior
@@ -6423,7 +6466,8 @@ Session boundary:
 * Do not begin social authentication
 * Do not begin League or Knockout backend integration
 * Do not introduce automatic HTTP retries
-* Do not redesign the authentication repository contracts
+* Do not redesign authentication repository contracts
+* Do not expand refresh-token policy unless required by a confirmed logout defect
 * Move unfinished secondary improvements into Session 35
 
 ---
@@ -6481,6 +6525,398 @@ Future session policy:
 * Prefer more sessions with fewer files per session
 * Avoid combining unrelated architecture improvements
 * Validate production files immediately alongside their tests
-* Restore unrelated formatter changes before validation
+* Validate application-level dependency lifecycles when repositories are injected
+* Restore unrelated formatter changes before final validation
+* Include manual Simulator validation for lifecycle-sensitive authentication changes
+* Defer non-critical improvements instead of expanding the active session
+* Target a shorter development and validation cycle for each session
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 34 — Authentication Logout + Session Lifecycle Hardening
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Harden the complete authentication logout and repeated login/logout lifecycle while preserving repository boundaries, secure-session behavior, mock runtime isolation, application-level repository stability, gameplay systems, League runtime, Knockout runtime, Purchase behavior, and Ads behavior.
+
+Ensure logout is coordinated through `AuthGate`, stale asynchronous authentication operations cannot overwrite newer user intent, failed logout attempts preserve the authenticated UI, and repeated authentication cycles work without recreating the application repository bundle.
+
+---
+
+### 📦 Deliverables
+
+* [x] Existing logout call path reviewed
+* [x] Logout traced from `GameScreen` through `AuthGate` and `AuthRepository`
+* [x] `AuthGate` established as the logout state owner
+* [x] `GameScreen` kept independent from direct repository logout calls
+* [x] Logout callback integration added to `GameScreen`
+* [x] Logout loading state implemented
+* [x] Duplicate logout protection implemented
+* [x] Rapid repeated logout taps prevented
+* [x] Logout progress indicator implemented
+* [x] Logout error presentation implemented
+* [x] Failed logout preserves the authenticated `GameScreen`
+* [x] Failed logout preserves the active `PlayerProfile`
+* [x] Successful logout clears authenticated presentation state
+* [x] Successful logout removes `GameScreen`
+* [x] Successful logout routes to `LoginScreen`
+* [x] Successful logout does not restart startup restoration
+* [x] Startup-only generation guard expanded into an authentication lifecycle guard
+* [x] Stale startup restoration results rejected
+* [x] Stale login results rejected
+* [x] Stale registration results rejected
+* [x] Stale logout results rejected
+* [x] Repository replacement stale-result protection implemented
+* [x] Latest authentication lifecycle intent takes priority
+* [x] Repeated login → logout → login → logout lifecycle implemented
+* [x] Repeated lifecycle works without recreating `AuthGate`
+* [x] Backend local session cleanup behavior reviewed
+* [x] Backend logout idempotency preserved
+* [x] Backend logout confirmed to avoid HTTP logout requests
+* [x] Mock logout behavior reviewed
+* [x] Mock logout clears only current authentication
+* [x] Registered mock users remain available after logout
+* [x] Mock user can log in again after logout
+* [x] Focused logout lifecycle widget tests implemented
+* [x] Mock authentication logout tests implemented
+* [x] Manual iOS Simulator validation completed
+* [x] No social authentication introduced
+* [x] No backend logout endpoint introduced
+* [x] No refresh-token policy expansion introduced
+* [x] No League backend integration introduced
+* [x] No Knockout backend integration introduced
+* [x] No gameplay behavior changed
+* [x] No League runtime behavior changed
+* [x] No Knockout runtime behavior changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+
+---
+
+### 🛠️ Work Done
+
+* Replaced the startup-only authentication generation guard with `_authLifecycleGeneration`
+
+* Applied authentication lifecycle generation protection to:
+
+  * startup session restoration
+  * login
+  * registration
+  * logout
+  * authentication repository replacement
+
+* Added `AuthGate`-owned logout execution
+
+* Added `_isLoggingOut`
+
+* Added `_logoutErrorMessage`
+
+* Added `_logout()`
+
+* Added duplicate logout protection
+
+* Invalidated older asynchronous authentication operations whenever a newer lifecycle action starts
+
+* Prevented stale login results from restoring authenticated state after repository replacement
+
+* Prevented stale logout results from replacing the state of a newly injected repository
+
+* Preserved generation checks after asynchronous operations
+
+* Preserved `mounted` checks before updating widget state
+
+* Added successful logout transition to `AuthState.unauthenticated()`
+
+* Cleared register mode and active submission state after successful logout
+
+* Preserved authenticated state when logout fails
+
+* Reused domain-safe `AuthException` messages for logout errors
+
+* Added a safe generic logout error for unexpected failures
+
+* Passed logout state from `AuthGate` into `GameScreen`
+
+* Added the following `GameScreen` properties:
+
+  * `onLogout`
+  * `isLoggingOut`
+  * `logoutErrorMessage`
+
+* Added `_LogoutControl`
+
+* Added a stable `game_logout_button` key for widget testing
+
+* Disabled the Logout button while logout is running
+
+* Added a progress indicator while logout is running
+
+* Added logout failure feedback without modifying gameplay state
+
+* Kept `GameScreen` free from direct `AuthRepository.logout()` calls
+
+* Preserved existing Store, League, Knockout, gameplay, score, GP, and ad flows
+
+* Replaced the remaining Portuguese gameplay comment with an English comment
+
+* Added focused widget tests for:
+
+  * authenticated logout
+  * authenticated profile removal
+  * repeated login/logout cycles
+  * rapid duplicate logout taps
+  * failed logout
+  * stale login completion
+  * authentication repository replacement
+  * stale logout completion
+
+* Added mock repository coverage confirming:
+
+  * logout clears current authentication
+  * registered users remain stored
+  * users can log in again after logout
+
+---
+
+### 📁 Files Changed
+
+Production:
+
+* `lib/features/auth/presentation/auth_gate.dart`
+* `lib/features/game/game_screen.dart`
+
+Tests:
+
+* `test/features/auth/data/mock_auth_repository_test.dart`
+* `test/features/auth/presentation/auth_gate_logout_test.dart`
+
+Documentation:
+
+* `docs/App_Dev_Status.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* `AuthGate` remains the owner of authentication presentation state
+* `GameScreen` only reports logout intent through a callback
+* `GameScreen` does not call `AuthRepository.logout()` directly
+* Authentication repositories remain responsible for their own session cleanup
+* Backend logout clears the local `AuthSessionStore`
+* Backend logout remains idempotent
+* Server-side access-token and refresh-token invalidation remains deferred
+* No backend logout HTTP request is made
+* Mock logout clears the current authenticated player only
+* Mock logout does not delete registered users
+* A mock user can log in again during the same application process
+* Successful logout transitions directly to `LoginScreen`
+* Successful logout does not trigger `currentAuthState()` again
+* Failed logout keeps `GameScreen` visible
+* Failed logout does not falsely present an unauthenticated state
+* Failed logout does not clear the presentation-layer `PlayerProfile`
+* Rapid repeated taps cannot create duplicate logout calls
+* Stale asynchronous operations cannot replace a newer authentication lifecycle state
+* Repository replacement creates a new authentication lifecycle generation
+* Results from the previous repository are ignored
+* The latest authentication lifecycle intent wins
+* Existing startup authentication behavior from Session 33 remains preserved
+* Hot reload continues to preserve application repository instances
+* Hot restart continues to reset mock in-memory authentication
+* Persistent authentication across application restarts remains a backend-runtime responsibility
+* No social authentication was introduced
+* No refresh-token behavior was modified
+* No automatic HTTP retry behavior was introduced
+* No new state-management dependency was introduced
+* Competitive state remains server-authoritative
+* No gameplay, League, Knockout, Purchase, or Ads calculations changed
+
+---
+
+### 🧪 Validation
+
+* [x] Logout callback architecture reviewed
+* [x] Direct repository access from `GameScreen` excluded
+* [x] `AuthGate` logout ownership reviewed
+* [x] Successful logout transition reviewed
+* [x] Failed logout transition reviewed
+* [x] Authenticated profile removal reviewed
+* [x] Login screen transition reviewed
+* [x] Startup restoration exclusion after logout reviewed
+* [x] Duplicate logout protection reviewed
+* [x] Logout progress state reviewed
+* [x] Logout error presentation reviewed
+* [x] Authentication lifecycle generation guard reviewed
+* [x] Stale login-result rejection reviewed
+* [x] Stale logout-result rejection reviewed
+* [x] Authentication repository replacement reviewed
+* [x] Repeated login/logout lifecycle reviewed
+* [x] Backend local session cleanup reviewed
+* [x] Backend logout idempotency reviewed
+* [x] Backend HTTP logout exclusion reviewed
+* [x] Mock logout behavior reviewed
+* [x] Mock user preservation reviewed
+* [x] Mock re-login behavior reviewed
+* [x] Code formatting passed
+* [x] Static analysis passed
+* [x] Focused logout widget tests passed
+* [x] Mock authentication repository tests passed
+* [x] Full Flutter test suite passed
+* [x] Manual iOS Simulator validation passed
+* [x] No gameplay behavior changed
+* [x] No League calculations changed
+* [x] No Knockout calculations changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+
+Final automated validation commands:
+
+```bash
+dart format lib/features/game/game_screen.dart
+flutter analyze
+flutter test test/features/auth/presentation/auth_gate_logout_test.dart
+flutter test test/features/auth/data/mock_auth_repository_test.dart
+flutter test
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `dart format` — 1 file formatted, 0 changes required
+* `flutter analyze` — no issues found
+* Focused logout lifecycle tests — 7 tests passed
+* Mock authentication repository tests — 8 tests passed
+* Complete Flutter test suite — 437 tests passed
+* Session 34 changed files — no whitespace errors
+* `docs/App_Dev_Status.md` EOF whitespace must be normalized while appending this update
+* Run `git diff --check` again after saving the documentation update
+
+Manual iOS Simulator validation:
+
+* Application launched successfully
+* Registration reached `GameScreen`
+* Logout reached `LoginScreen`
+* The authenticated `GameScreen` was removed after logout
+* The registered mock user remained available
+* Login after logout succeeded
+* Repeated login/logout cycles succeeded
+* Rapid logout interaction did not create duplicate transitions
+* Logout progress state behaved correctly
+* Hot reload preserved authenticated state
+* Hot restart returned to the login flow in mock runtime
+* No authentication loop was observed
+* No startup crash was observed
+* No logout crash was observed
+* No unexpected terminal exception was observed
+
+---
+
+### 📌 Next Session
+
+Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+
+Planned focus:
+
+* [ ] Review the complete authentication lifecycle implemented during Sessions 31–34
+* [ ] Review authentication repository responsibilities
+* [ ] Review startup restoration ownership
+* [ ] Review secure-session persistence ownership
+* [ ] Review refresh-token coordination ownership
+* [ ] Review logout lifecycle ownership
+* [ ] Identify duplicated or obsolete authentication code
+* [ ] Verify backend runtime repository composition
+* [ ] Verify mock runtime isolation
+* [ ] Verify authentication tokens cannot reach logs or presentation errors
+* [ ] Verify storage exceptions cannot expose sensitive session values
+* [ ] Confirm public authentication endpoint handling
+* [ ] Confirm protected endpoint Bearer-token handling
+* [ ] Identify exact prerequisites for League backend integration
+* [ ] Fix confirmed authentication defects only
+* [ ] Update authentication architecture documentation where required
+* [ ] Do not begin League backend repository implementation
+* [ ] Do not begin Knockout backend repository implementation
+* [ ] Do not introduce social authentication
+* [ ] Do not introduce backend logout invalidation
+* [ ] Preserve all gameplay and competitive behavior
+
+Session boundary:
+
+* Maximum target: 3–5 production files
+* Maximum target: 2–3 test files
+* Keep the session narrowly scoped
+* Prefer documentation, review, and confirmed defect fixes
+* Do not redesign authentication repository contracts without a confirmed defect
+* Do not expand refresh-token behavior without a confirmed defect
+* Do not introduce automatic HTTP retries
+* Do not begin competitive backend endpoint implementation
+* Move non-critical improvements into later sessions
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup
+* ✅ Session 2 — Base structure and documentation
+* ✅ Session 3 — Game base rendering
+* ✅ Session 4 — Collision and validation
+* ✅ Session 5 — Level system
+* ✅ Session 6 — Run Points (superseded)
+* ✅ Session 7 — Lives system (superseded)
+* ✅ Session 8 — Precision Points
+* ✅ Session 9 — Registration/Login
+* ✅ Session 10 — GP System
+* ✅ Session 11 — Purchases
+* ✅ Session 12 — Ads
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow
+* ✅ Session 13 — League Structure
+* ✅ Session 14 — Weekly League Entry + Runtime Integration
+* ✅ Session 15 — Weekly League Scoring + Ranking UI
+* ✅ Session 16 — Weekly League History + Personal Records
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow
+* ✅ Session 19 — League Polish + Edge Case Hardening
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status
+* ✅ Session 23 — Knockout Tournament History + Records
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning
+* ✅ Session 27 — Backend Repository Contracts Preparation
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening
+* ✅ Session 30 — Backend Networking Client Preparation
+* ✅ Session 31 — Backend Authentication Integration
+* ✅ Session 32 — Secure Session Persistence + Refresh Token Policy
+* ✅ Session 33 — Authentication Session Startup Flow Verification
+* ✅ Session 34 — Authentication Logout + Session Lifecycle Hardening
+* ⏳ Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+
+---
+
+### 🧭 Current State
+
+Current session: Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+
+Status: Ready ⏳
+
+Future session policy:
+
+* Sessions should remain narrowly scoped
+* Prefer more sessions with fewer files per session
+* Avoid combining unrelated architecture improvements
+* Validate production files immediately alongside their tests
+* Validate application-level dependency lifecycles when repositories are injected
+* Preserve authentication secrets outside logs and presentation errors
+* Restore unrelated formatter changes before final validation
+* Include manual Simulator validation for lifecycle-sensitive authentication changes
 * Defer non-critical improvements instead of expanding the active session
 * Target a shorter development and validation cycle for each session

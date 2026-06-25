@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'core/config/app_environment.dart';
 import 'core/repositories/app_repositories.dart';
 import 'core/repositories/repository_factory.dart';
@@ -13,7 +14,7 @@ void main() {
   runApp(const StoppyApp());
 }
 
-class StoppyApp extends StatelessWidget {
+class StoppyApp extends StatefulWidget {
   const StoppyApp({
     super.key,
     this.authRepository,
@@ -42,26 +43,53 @@ class StoppyApp extends StatelessWidget {
   final AppRepositories? repositories;
 
   @override
-  Widget build(BuildContext context) {
-    final resolvedRepositories =
-        repositories ??
-        RepositoryFactory(
-          environment: environment ?? AppEnvironment.fromDartDefines(),
-        ).createRepositories();
+  State<StoppyApp> createState() => _StoppyAppState();
+}
 
+class _StoppyAppState extends State<StoppyApp> {
+  late AppRepositories _resolvedRepositories;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvedRepositories = _createRepositories();
+  }
+
+  @override
+  void didUpdateWidget(covariant StoppyApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!identical(oldWidget.repositories, widget.repositories) ||
+        oldWidget.environment != widget.environment) {
+      _resolvedRepositories = _createRepositories();
+    }
+  }
+
+  AppRepositories _createRepositories() {
+    return widget.repositories ??
+        RepositoryFactory(
+          environment: widget.environment ?? AppEnvironment.fromDartDefines(),
+        ).createRepositories();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Stoppy',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
       home: AuthGate(
-        authRepository: authRepository ?? resolvedRepositories.authRepository,
+        authRepository:
+            widget.authRepository ?? _resolvedRepositories.authRepository,
         purchaseRepository:
-            purchaseRepository ?? resolvedRepositories.purchaseRepository,
-        adRepository: adRepository ?? resolvedRepositories.adRepository,
+            widget.purchaseRepository ??
+            _resolvedRepositories.purchaseRepository,
+        adRepository: widget.adRepository ?? _resolvedRepositories.adRepository,
         leagueRepository:
-            leagueRepository ?? resolvedRepositories.leagueRepository,
+            widget.leagueRepository ?? _resolvedRepositories.leagueRepository,
         knockoutRepository:
-            knockoutRepository ?? resolvedRepositories.knockoutRepository,
+            widget.knockoutRepository ??
+            _resolvedRepositories.knockoutRepository,
       ),
     );
   }
