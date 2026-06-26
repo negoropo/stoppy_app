@@ -123,6 +123,56 @@ replacements, clears invalid/unauthorized credentials, and preserves sessions
 for temporary failures. HTTP never injects expired tokens and has no generic
 automatic retry policy, protecting competitive and economy mutations.
 
+### 4.5 Authentication integration readiness
+
+Authentication is ready to act as the boundary for future backend-backed
+features, but competitive feature integration must still wait for a reachable
+server environment and finalized authorization rules.
+
+Ownership rules:
+
+* `AuthGate` owns presentation transitions for startup restoration, login,
+  registration, logout, recoverable startup failures, and stale async result
+  rejection.
+* `GameScreen` only reports logout intent through a callback. It must not read
+  secure storage or mutate authentication state directly.
+* `AuthRepository` remains the domain-facing authentication boundary for
+  presentation code.
+* `BackendAuthRepository` owns backend registration/login, profile restoration,
+  local logout cleanup, and domain-safe auth errors.
+* `AuthSessionStore` owns session persistence. `SecureAuthSessionStore` is used
+  only by backend runtime; mock runtime remains in memory and does not construct
+  secure storage.
+* `AuthSessionRefreshCoordinator` owns refresh coordination so concurrent
+  restoration calls cannot rotate the same refresh credential more than once.
+* `HttpBackendApiClient` owns Authorization header construction. Public auth
+  endpoints never receive a Bearer token, protected endpoints receive only a
+  current non-expired access token, and caller-provided Authorization headers
+  are removed before session authorization is applied.
+
+Current logout behavior is local-only: backend runtime clears the local
+`AuthSessionStore`, and server-side token invalidation is intentionally
+deferred until the backend exposes a logout/invalidation endpoint. Local logout
+must remain idempotent so repeated logout attempts cannot break the UI
+lifecycle.
+
+Prerequisites before League backend integration:
+
+* Reachable backend environment for development and CI.
+* Finalized registration, login, refresh, and authenticated profile response
+  contracts.
+* Server-issued access and refresh tokens with documented expiration behavior.
+* Stable API error envelope with authentication, authorization, validation, and
+  idempotency failures.
+* PostgreSQL-backed player identity linked to authenticated profiles.
+* Authorization rules for every League endpoint.
+* Idempotency strategy for competitive mutations such as league entry and run
+  submission.
+* Backend integration tests or a deterministic test server for authenticated
+  League flows.
+* Server-side validation rules for GP balance, League entry cost, League run
+  submission, rankings, and settlement.
+
 ---
 
 ## 5. Game Engine
@@ -141,8 +191,8 @@ automatic retry policy, protecting competitive and economy mutations.
 * Movimento da Safe Zone
 * Movimento do Target
 * Deteção de colisões
-* Cálculo de RP
-* Cálculo de PP
+* Cálculo de PP baseado no tier ativo
+* Progressão do PP tier após acertos no Target
 * Progressão de dificuldade
 
 ---
@@ -186,16 +236,17 @@ Serviços:
 
 ### 6.3 API
 
-Endpoints típicos:
+Versioned REST contract families:
 
-* /auth/register
-* /player/profile
-* /game/start
-* /game/submit-run
-* /league/ranking
-* /league/join
-* /tournament/join
-* /tournament/status
+* `/api/v1/auth/*`
+* `/api/v1/player/*`
+* `/api/v1/league/*`
+* `/api/v1/knockout/*`
+* `/api/v1/runs/*`
+
+Exact request paths are centralized in `ApiContract` so repositories and tests
+share one source of truth for public authentication paths, protected gameplay
+submission paths, League paths, and Knockout paths.
 
 ---
 
@@ -411,13 +462,19 @@ The app should continue to depend on domain-facing repository contracts. Product
 
 `RepositoryFactory` is the composition root for repositories. Widgets receive repository contracts and must not decide whether the implementation is mock or backend.
 
-### Auth Session Preparation
+### Auth Session Architecture
 
-`AuthSession` and `AuthSessionStore` prepare the future token/session layer.
+`AuthSession` and `AuthSessionStore` are the current token/session boundary.
 
-* Backend authentication uses the session token only when backend runtime is explicitly selected.
-* `InMemoryAuthSessionStore` is temporary and testable.
-* A secure device/session store can replace it later without changing repository contracts.
+* Backend runtime uses `SecureAuthSessionStore`.
+* Mock runtime uses memory-only authentication and test/runtime fakes can use
+  `InMemoryAuthSessionStore`.
+* `BackendAuthRepository` and `HttpBackendApiClient` share one
+  `AuthSessionStore` instance in backend runtime.
+* The secure session payload persists only the server-issued access token,
+  optional refresh token, and expiration timestamp.
+* Player profiles, GP, League state, Knockout state, and other competitive
+  state are deliberately not stored in the secure session payload.
 
 ### DTO and Serialization Boundary
 
@@ -453,7 +510,8 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Malformed response payloads become typed API errors.
 * Auth responses keep profile and JWT/session transport data in data-layer DTOs.
 * Competitive run validation claims are transport contracts only; they do not alter local gameplay or scoring.
-* No League/Knockout repository-to-backend feature call, token refresh, or PostgreSQL access is implemented yet.
+* Token refresh is now implemented by the authentication data layer.
+* No League/Knockout repository-to-backend feature call or PostgreSQL access is implemented yet.
 
 ### Session 30 Networking Client Preparation
 
@@ -464,17 +522,25 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Mock repositories remain the default runtime.
 * Auth headers are derived from `AuthSessionStore` and omitted for expired sessions and public auth endpoints.
 * HTTP failures are converted to typed `ApiError` values before reaching a repository.
-* No retry, refresh-token flow, League/Knockout backend endpoint call, or server persistence is activated in this session.
+* No automatic retry, League/Knockout backend endpoint call, or server persistence is activated in this session.
 
-### Session 31 Backend Authentication Integration
+### Sessions 31–32 Backend Authentication Integration
 
 `BackendAuthRepository` connects the existing auth contract to the prepared HTTP client only when backend runtime is explicitly selected.
 
-* Registration and login map `AuthRequestDto` to a shared `AuthResponseDto` completion pipeline.
-* The same `AuthSessionStore` instance is provided to both the repository and `HttpBackendApiClient`.
-* Sessions are currently in-memory only; secure persistence and refresh-token execution remain deferred.
-* Expired sessions and 401/403 profile restoration failures clear the local session. Temporary network, server, and malformed payload failures preserve it and surface a domain-facing auth error.
-* Mock auth remains the default runtime. League and Knockout backend repositories remain disconnected.
+* Backend registration and login map `AuthRequestDto` to a shared
+  `AuthResponseDto` completion pipeline.
+* Backend runtime persists sessions securely through `SecureAuthSessionStore`.
+* Mock runtime remains memory-only and does not initialize secure storage.
+* `AuthSessionRefreshCoordinator` owns refresh-token execution.
+* Concurrent refresh attempts are coalesced so the same refresh credential is
+  not rotated more than once.
+* Invalid refresh credentials clear the local session when cleanup succeeds.
+* Temporary refresh failures preserve refreshable credentials for a later retry.
+* `HttpBackendApiClient` excludes Bearer tokens from login, registration, and
+  refresh requests.
+* Expired access tokens are never sent as Bearer tokens.
+* League and Knockout backend repositories remain disconnected skeletons.
 
 ### Domain Logic
 

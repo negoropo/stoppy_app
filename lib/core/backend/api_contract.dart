@@ -29,10 +29,8 @@ abstract final class ApiContract {
   static const knockoutActiveDuel = '$apiPrefix/knockout/active-duel';
   static const knockoutHistory = '$apiPrefix/knockout/history';
   static const knockoutRecords = '$apiPrefix/knockout/records';
-  static const knockoutHallOfFame =
-      '$apiPrefix/knockout/hall-of-fame';
-  static const knockoutRunSubmission =
-      '$apiPrefix/runs/knockout';
+  static const knockoutHallOfFame = '$apiPrefix/knockout/hall-of-fame';
+  static const knockoutRunSubmission = '$apiPrefix/runs/knockout';
 
   static const Set<String> _publicAuthPaths = {
     authRegister,
@@ -40,35 +38,43 @@ abstract final class ApiContract {
     authRefresh,
   };
 
+  /// Returns whether [path] identifies one of the public authentication
+  /// endpoints that must not receive an Authorization header.
+  ///
+  /// Only relative API paths are accepted. Absolute URLs, paths containing
+  /// query parameters or fragments, and auth-like sibling paths are rejected.
+  /// A trailing slash is ignored.
   static bool isPublicAuthPath(String path) {
-    return _publicAuthPaths.contains(
-      _normalizePath(path),
-    );
+    final normalizedPath = _normalizeRelativePath(path);
+
+    return normalizedPath != null && _publicAuthPaths.contains(normalizedPath);
   }
 
-  static String _normalizePath(String value) {
+  static String? _normalizeRelativePath(String value) {
     final trimmed = value.trim();
 
     if (trimmed.isEmpty) {
-      return trimmed;
+      return null;
     }
 
     final parsed = Uri.tryParse(trimmed);
 
     if (parsed == null ||
         parsed.hasScheme ||
-        parsed.hasAuthority) {
-      return trimmed;
+        parsed.hasAuthority ||
+        parsed.hasQuery ||
+        parsed.hasFragment) {
+      return null;
     }
 
     var normalizedPath = parsed.path;
 
-    while (normalizedPath.length > 1 &&
-        normalizedPath.endsWith('/')) {
-      normalizedPath = normalizedPath.substring(
-        0,
-        normalizedPath.length - 1,
-      );
+    if (normalizedPath.isEmpty || !normalizedPath.startsWith('/')) {
+      return null;
+    }
+
+    while (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
+      normalizedPath = normalizedPath.substring(0, normalizedPath.length - 1);
     }
 
     return normalizedPath;

@@ -6920,3 +6920,488 @@ Future session policy:
 * Include manual Simulator validation for lifecycle-sensitive authentication changes
 * Defer non-critical improvements instead of expanding the active session
 * Target a shorter development and validation cycle for each session
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Perform a final review of the authentication lifecycle implemented during Sessions 31–34 and confirm that the authentication architecture is ready to support future backend-backed competitive features.
+
+Review repository responsibilities, startup restoration, secure-session persistence, refresh coordination, logout ownership, HTTP authorization behavior, runtime composition, mock-runtime isolation, secret safety, and the exact prerequisites required before beginning League backend integration.
+
+Only confirmed defects were to be fixed. No speculative authentication redesign or competitive backend implementation was introduced.
+
+---
+
+### 📦 Deliverables
+
+* [x] Complete authentication lifecycle reviewed
+* [x] Authentication repository responsibilities reviewed
+* [x] `AuthGate` presentation ownership confirmed
+* [x] `GameScreen` logout callback boundary confirmed
+* [x] Backend authentication repository ownership confirmed
+* [x] Secure-session persistence ownership confirmed
+* [x] Refresh-token coordination ownership confirmed
+* [x] HTTP Authorization header ownership confirmed
+* [x] Startup restoration flow reviewed
+* [x] Registration flow reviewed
+* [x] Login flow reviewed
+* [x] Authenticated profile restoration reviewed
+* [x] Near-expiration session flow reviewed
+* [x] Expired refreshable session flow reviewed
+* [x] Expired non-refreshable session flow reviewed
+* [x] Refresh success behavior reviewed
+* [x] Invalid refresh credential behavior reviewed
+* [x] Temporary refresh failure behavior reviewed
+* [x] Logout lifecycle reviewed
+* [x] Repeated login/logout lifecycle reviewed
+* [x] Repository replacement stale-result protection reviewed
+* [x] Authentication lifecycle generation guards reviewed
+* [x] Authentication secret and diagnostic safety reviewed
+* [x] Access-token exposure protections reviewed
+* [x] Refresh-token exposure protections reviewed
+* [x] Password exposure protections reviewed
+* [x] Secure-storage error safety reviewed
+* [x] Public authentication endpoint classification reviewed
+* [x] Protected endpoint Bearer-token behavior reviewed
+* [x] Exact public authentication path matching hardened
+* [x] Query-string authentication path rejection implemented
+* [x] Fragment authentication path rejection implemented
+* [x] Absolute authentication URL rejection preserved
+* [x] Authority-containing path rejection preserved
+* [x] Auth-like sibling path rejection validated
+* [x] Relative path without leading slash rejection implemented
+* [x] Exact case-sensitive endpoint matching validated
+* [x] Registration endpoint remains public
+* [x] Login endpoint remains public
+* [x] Refresh endpoint remains public
+* [x] Protected endpoints remain protected
+* [x] Repository factory composition reviewed
+* [x] Shared backend `AuthSessionStore` wiring confirmed
+* [x] Shared backend API client wiring confirmed
+* [x] Mock runtime secure-storage isolation confirmed
+* [x] Application repository stability reviewed
+* [x] Duplicate refresh ownership excluded
+* [x] Obsolete authentication architecture statements identified
+* [x] Authentication architecture documentation updated
+* [x] Secure-session architecture documentation updated
+* [x] Refresh-token architecture documentation updated
+* [x] Current versioned REST API families documented
+* [x] Game Engine RP responsibility removed from documentation
+* [x] PP tier responsibilities documented
+* [x] League backend integration prerequisites documented
+* [x] Manual iOS Simulator validation completed
+* [x] No social authentication introduced
+* [x] No backend logout invalidation introduced
+* [x] No automatic HTTP retries introduced
+* [x] No League backend repository implementation introduced
+* [x] No Knockout backend repository implementation introduced
+* [x] No gameplay behavior changed
+* [x] No League runtime behavior changed
+* [x] No Knockout runtime behavior changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+
+---
+
+### 🛠️ Work Done
+
+* Reviewed the complete authentication architecture across:
+
+  * `AuthGate`
+  * `AuthRepository`
+  * `BackendAuthRepository`
+  * `MockAuthRepository`
+  * `AuthSessionStore`
+  * `SecureAuthSessionStore`
+  * `InMemoryAuthSessionStore`
+  * `AuthSessionRefreshCoordinator`
+  * `HttpBackendApiClient`
+  * `RepositoryFactory`
+  * application repository composition
+
+* Confirmed that presentation code does not access secure storage directly
+
+* Confirmed that `GameScreen` does not access `AuthRepository` directly
+
+* Confirmed that authentication repositories own session persistence and cleanup
+
+* Confirmed that `AuthGate` owns authentication presentation transitions
+
+* Confirmed that `HttpBackendApiClient` owns Authorization header construction
+
+* Confirmed that refresh coordination remains centralized in `AuthSessionRefreshCoordinator`
+
+* Confirmed that backend runtime shares one `AuthSessionStore` between:
+
+  * `BackendAuthRepository`
+  * `HttpBackendApiClient`
+
+* Confirmed that Auth, League, and Knockout backend repositories share one backend API client
+
+* Confirmed that mock runtime remains isolated from:
+
+  * secure storage
+  * backend HTTP networking
+  * backend session persistence
+
+* Reviewed authentication lifecycle flows for:
+
+  * startup without a session
+  * startup with a valid session
+  * startup with a near-expiration session
+  * startup with an expired refreshable session
+  * startup with an expired non-refreshable session
+  * registration
+  * login
+  * authenticated profile restoration
+  * refresh success
+  * invalid refresh credentials
+  * temporary refresh network failure
+  * logout
+  * repeated login/logout
+  * repository replacement during asynchronous authentication
+
+* Confirmed that stale asynchronous authentication results cannot replace newer lifecycle intent
+
+* Reviewed authentication diagnostics and confirmed that presentation and storage errors do not expose:
+
+  * access tokens
+  * refresh tokens
+  * passwords
+  * Authorization header values
+  * secure-session payload contents
+
+* Identified one confirmed defect in `ApiContract.isPublicAuthPath`
+
+* The previous normalization behavior could extract `Uri.path` from a path containing a query string or fragment and classify it as a public authentication endpoint
+
+* Hardened public authentication path normalization
+
+* Public authentication path matching now rejects:
+
+  * query parameters
+  * fragments
+  * absolute URLs
+  * URI authorities
+  * relative paths without a leading slash
+  * auth-like sibling paths
+  * case variants
+
+* Preserved trailing-slash normalization
+
+* Preserved surrounding-whitespace normalization
+
+* Preserved exact matching for:
+
+  * `/api/v1/auth/register`
+  * `/api/v1/auth/login`
+  * `/api/v1/auth/refresh`
+
+* Added focused API contract tests for:
+
+  * all public authentication endpoints
+  * protected endpoints
+  * surrounding whitespace
+  * trailing slashes
+  * absolute URLs
+  * authority-containing paths
+  * query parameters
+  * fragments
+  * query plus fragment combinations
+  * auth-like sibling paths
+  * paths without a leading slash
+  * case-sensitive matching
+  * blank paths
+
+* Updated `docs/Architecture.md`
+
+* Added Authentication Integration Readiness documentation
+
+* Documented authentication ownership rules
+
+* Documented local-only logout behavior
+
+* Documented deferred server-side token invalidation
+
+* Documented prerequisites before League backend integration
+
+* Replaced obsolete in-memory-only session documentation with the current secure-session architecture
+
+* Documented that backend runtime uses `SecureAuthSessionStore`
+
+* Documented that mock runtime remains memory-only
+
+* Documented that refresh-token execution is implemented in the authentication data layer
+
+* Updated Sessions 31–32 authentication architecture documentation
+
+* Updated REST API documentation to use centralized `/api/v1` contract families
+
+* Removed obsolete RP responsibility from the Game Engine documentation
+
+* Documented PP calculation based on the active tier
+
+* Documented PP tier progression after Target hits
+
+---
+
+### 📁 Files Changed
+
+Production:
+
+* `lib/core/backend/api_contract.dart`
+
+Tests:
+
+* `test/core/backend/api_contract_test.dart`
+
+Documentation:
+
+* `docs/Architecture.md`
+* `docs/App_Dev_Status.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* The existing authentication lifecycle architecture was generally correct and was preserved
+* Only one confirmed production defect was found
+* `ApiContract.isPublicAuthPath` now uses strict relative-path validation
+* Only registration, login, and refresh are public authentication endpoints
+* Public authentication paths are matched exactly
+* Public authentication paths may contain surrounding whitespace and trailing slashes
+* Paths containing query parameters or fragments are not treated as public
+* Absolute authentication URLs are not treated as public paths
+* Paths containing URI authorities are not treated as public
+* Relative paths without a leading slash are not accepted
+* Auth-like sibling paths are not accepted
+* Endpoint matching remains case-sensitive
+* Request execution already rejected query strings and fragments inside request paths
+* The contract helper is now independently strict and no longer depends on later request validation
+* `AuthGate` remains the authentication presentation-state owner
+* `GameScreen` remains independent from authentication repository implementations
+* `BackendAuthRepository` remains responsible for backend authentication and local session cleanup
+* `AuthSessionStore` remains responsible for session persistence
+* `SecureAuthSessionStore` is used only in backend runtime
+* `InMemoryAuthSessionStore` remains available for mock runtime and tests
+* `AuthSessionRefreshCoordinator` remains the only refresh coordination owner
+* `HttpBackendApiClient` remains responsible for Authorization header construction
+* Caller-provided Authorization headers cannot override session authorization
+* Expired or blank access tokens are not sent
+* Login, registration, and refresh requests do not receive Bearer tokens
+* Backend logout remains local-only
+* Server-side token invalidation remains deferred until a backend endpoint exists
+* Mock runtime remains the default runtime
+* Mock runtime does not initialize secure storage
+* Backend League and Knockout repositories remain disconnected skeletons
+* No broad authentication refactoring was performed
+* No authentication repository contract was redesigned
+* No new state-management or dependency-injection package was introduced
+* No automatic HTTP retry behavior was introduced
+* Competitive and economy mutations still require an idempotency strategy before retry support
+* Competitive state remains server-authoritative
+* No gameplay, League, Knockout, Purchase, or Ads behavior changed
+
+---
+
+### 🧪 Validation
+
+* [x] Authentication repository boundaries reviewed
+* [x] Authentication presentation ownership reviewed
+* [x] Secure-session ownership reviewed
+* [x] Refresh coordination ownership reviewed
+* [x] HTTP authorization ownership reviewed
+* [x] Startup restoration lifecycle reviewed
+* [x] Registration lifecycle reviewed
+* [x] Login lifecycle reviewed
+* [x] Profile restoration lifecycle reviewed
+* [x] Refresh lifecycle reviewed
+* [x] Logout lifecycle reviewed
+* [x] Repeated authentication lifecycle reviewed
+* [x] Stale authentication result protection reviewed
+* [x] Secret and diagnostic safety reviewed
+* [x] Public authentication endpoint matching reviewed
+* [x] Protected endpoint behavior reviewed
+* [x] Repository factory wiring reviewed
+* [x] Shared backend session store reviewed
+* [x] Shared backend API client reviewed
+* [x] Mock runtime isolation reviewed
+* [x] Application repository stability reviewed
+* [x] API contract tests expanded
+* [x] Query-path rejection validated
+* [x] Fragment-path rejection validated
+* [x] Absolute URL rejection validated
+* [x] Authority rejection validated
+* [x] Auth-like sibling rejection validated
+* [x] Missing leading slash rejection validated
+* [x] Case-sensitive matching validated
+* [x] Blank path rejection validated
+* [x] Architecture documentation reviewed
+* [x] Secure-session documentation reviewed
+* [x] Refresh-token documentation reviewed
+* [x] Versioned REST API documentation reviewed
+* [x] Game Engine responsibilities reviewed
+* [x] League backend prerequisites reviewed
+* [x] Code formatting passed
+* [x] Static analysis passed
+* [x] Focused API contract tests passed
+* [x] Full Flutter test suite passed
+* [x] Whitespace validation passed
+* [x] Manual iOS Simulator validation passed
+* [x] No gameplay behavior changed
+* [x] No League calculations changed
+* [x] No Knockout calculations changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+
+Final automated validation commands:
+
+```bash
+dart format \
+  lib/core/backend/api_contract.dart \
+  test/core/backend/api_contract_test.dart
+
+flutter test test/core/backend/api_contract_test.dart
+flutter analyze
+flutter test
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `dart format` — completed successfully
+* Focused API contract tests — passed
+* `flutter analyze` — no issues found
+* Complete Flutter test suite — 442 tests passed
+* `git diff --check` — no whitespace errors
+* Session changes remained limited to the intended production, test, and documentation files
+
+Manual iOS Simulator validation:
+
+* Application launched successfully
+* Unauthenticated mock startup reached `LoginScreen`
+* Registration reached `GameScreen`
+* Logout returned to `LoginScreen`
+* Login after logout succeeded
+* Repeated login/logout cycles succeeded
+* Hot reload preserved authenticated state
+* Hot restart returned to the login flow in mock runtime
+* No authentication loop was observed
+* No startup crash was observed
+* No logout crash was observed
+* No unexpected terminal exception was observed
+* No secure-storage access occurred in mock runtime
+* No unexpected backend network request occurred in mock runtime
+
+---
+
+### 📌 Next Session
+
+Session 36 — League Backend Integration Foundation
+
+Planned focus:
+
+* [ ] Review the existing `LeagueRepository` contract for backend implementation readiness
+* [ ] Review League DTO coverage against repository operations
+* [ ] Define exact `/api/v1/league/*` request and response contracts
+* [ ] Implement authenticated League read operations first
+* [ ] Implement League snapshot retrieval
+* [ ] Implement League history retrieval
+* [ ] Implement League records retrieval
+* [ ] Implement League achievements retrieval
+* [ ] Map League DTOs into existing domain models
+* [ ] Map API errors into League domain-facing failures
+* [ ] Preserve mock League runtime as the default runtime
+* [ ] Keep League settlement server-authoritative
+* [ ] Do not implement competitive mutations before idempotency contracts are defined
+* [ ] Do not implement League entry or run submission without server-side validation rules
+* [ ] Add focused backend League repository tests
+* [ ] Preserve all existing gameplay and Knockout behavior
+
+Session boundary:
+
+* Begin with authenticated read-only League operations
+* Do not combine League reads and competitive mutations in one session
+* Do not implement automatic HTTP retries
+* Do not implement client-side settlement authority
+* Do not change League scoring, ranking, promotion, or relegation rules
+* Do not begin Knockout backend integration
+* Preserve mock repositories as the default runtime
+* Keep the session narrowly scoped
+* Move League entry and run submission into later sessions after idempotency and validation contracts are finalized
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup
+* ✅ Session 2 — Base structure and documentation
+* ✅ Session 3 — Game base rendering
+* ✅ Session 4 — Collision and validation
+* ✅ Session 5 — Level system
+* ✅ Session 6 — Run Points (superseded)
+* ✅ Session 7 — Lives system (superseded)
+* ✅ Session 8 — Precision Points
+* ✅ Session 9 — Registration/Login
+* ✅ Session 10 — GP System
+* ✅ Session 11 — Purchases
+* ✅ Session 12 — Ads
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow
+* ✅ Session 13 — League Structure
+* ✅ Session 14 — Weekly League Entry + Runtime Integration
+* ✅ Session 15 — Weekly League Scoring + Ranking UI
+* ✅ Session 16 — Weekly League History + Personal Records
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow
+* ✅ Session 19 — League Polish + Edge Case Hardening
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status
+* ✅ Session 23 — Knockout Tournament History + Records
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning
+* ✅ Session 27 — Backend Repository Contracts Preparation
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening
+* ✅ Session 30 — Backend Networking Client Preparation
+* ✅ Session 31 — Backend Authentication Integration
+* ✅ Session 32 — Secure Session Persistence + Refresh Token Policy
+* ✅ Session 33 — Authentication Session Startup Flow Verification
+* ✅ Session 34 — Authentication Logout + Session Lifecycle Hardening
+* ✅ Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+* ⏳ Session 36 — League Backend Integration Foundation
+
+---
+
+### 🧭 Current State
+
+Current session: Session 36 — League Backend Integration Foundation
+
+Status: Ready ⏳
+
+Future session policy:
+
+* Keep sessions narrowly scoped
+* Begin backend feature integration with read-only operations
+* Separate backend reads from competitive mutations
+* Define idempotency before implementing competitive writes
+* Preserve mock repositories as the default runtime
+* Keep competitive state server-authoritative
+* Validate DTO mapping and error handling alongside each endpoint
+* Avoid broad refactoring during backend feature integration
+* Preserve existing gameplay and Knockout behavior
+* Include Simulator validation when backend runtime becomes available
+

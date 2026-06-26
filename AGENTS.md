@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 34 completed.
+Session 35 completed.
 
-Current session: Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+Current session: Session 36 — League Backend Integration Foundation
 
 ---
 
