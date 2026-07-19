@@ -81,11 +81,11 @@ class LeaguePlayerEntryDto {
       ),
       entryPaid: reader.optionalBool('entryPaid', defaultValue: false),
       registeredAt: reader.requiredDateTime('registeredAt'),
-      lifetimeLeagueTournamentRuns: reader.optionalInt(
+      lifetimeLeagueTournamentRuns: reader.optionalNonNegativeInt(
         'lifetimeLeagueTournamentRuns',
         defaultValue: 0,
       ),
-      lifetimeAverageScorePerRun: reader.optionalDouble(
+      lifetimeAverageScorePerRun: reader.optionalNonNegativeDouble(
         'lifetimeAverageScorePerRun',
         defaultValue: 0,
       ),
@@ -162,13 +162,37 @@ class WeeklyLeagueScoreDto {
       isActive: reader.requiredBool('isActive'),
       runCount: reader.requiredNonNegativeInt('runCount'),
       activeDays: reader.requiredNonNegativeInt('activeDays'),
-      activityMultiplier: reader.requiredDouble('activityMultiplier'),
-      baseScore: reader.requiredDouble('baseScore'),
-      finalScore: reader.requiredDouble('finalScore'),
-      bonusPoints: reader.requiredDouble('bonusPoints'),
-      countedRunScores: reader.optionalIntList('countedRunScores'),
-      allRunScores: reader.optionalIntList('allRunScores'),
-    );
+      activityMultiplier: reader.requiredNonNegativeDouble(
+        'activityMultiplier',
+      ),
+      baseScore: reader.requiredNonNegativeDouble('baseScore'),
+      finalScore: reader.requiredNonNegativeDouble('finalScore'),
+      bonusPoints: reader.requiredNonNegativeDouble('bonusPoints'),
+      countedRunScores: _nonNegativeScoreList(
+        reader.optionalIntList('countedRunScores'),
+        'countedRunScores',
+      ),
+      allRunScores: _nonNegativeScoreList(
+        reader.optionalIntList('allRunScores'),
+        'allRunScores',
+      ),
+    )._validated();
+  }
+
+  WeeklyLeagueScoreDto _validated() {
+    if (activeDays > 7) {
+      throw const FormatException(
+        'Weekly league score activeDays cannot exceed 7.',
+      );
+    }
+
+    if (countedRunScores.length > allRunScores.length) {
+      throw const FormatException(
+        'Weekly league score counted runs cannot exceed all run scores.',
+      );
+    }
+
+    return this;
   }
 
   WeeklyLeagueScore toDomain() => WeeklyLeagueScore(
@@ -242,7 +266,7 @@ class WeeklyLeagueHistoryEntryDto {
       finalRank: reader.requiredPositiveInt('finalRank'),
       finalDivision: reader.requiredPositiveInt('finalDivision'),
       result: _seasonResultFromName(reader.requiredString('result')),
-      finalWeeklyScore: reader.requiredDouble('finalWeeklyScore'),
+      finalWeeklyScore: reader.requiredNonNegativeDouble('finalWeeklyScore'),
       seasonEndedAt: reader.optionalDateTime('seasonEndedAt'),
     );
   }
@@ -383,13 +407,23 @@ WeeklyLeagueSeasonResult _seasonResultFromName(String value) {
       return result;
     }
   }
-  throw FormatException('Unknown weekly league season result: $value');
+  throw FormatException('Unknown weekly league season result: $value.');
 }
 
 DateTime _seasonDate(String value) {
   final parsed = DateTime.tryParse(value);
   if (parsed == null) {
-    throw FormatException('Invalid league season identifier: $value');
+    throw FormatException('Invalid league season identifier: $value.');
   }
   return parsed;
+}
+
+List<int> _nonNegativeScoreList(List<int> scores, String fieldName) {
+  if (scores.any((score) => score < 0)) {
+    throw FormatException(
+      'Weekly league score list contains a negative value: $fieldName.',
+    );
+  }
+
+  return scores;
 }

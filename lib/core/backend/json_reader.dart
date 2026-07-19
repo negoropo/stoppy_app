@@ -118,6 +118,14 @@ class JsonReader {
     throw _invalidField(key, 'a number');
   }
 
+  double requiredNonNegativeDouble(String key) {
+    final value = requiredDouble(key);
+    if (value >= 0) {
+      return value;
+    }
+    throw _invalidField(key, 'a non-negative number');
+  }
+
   double optionalDouble(String key, {required double defaultValue}) {
     final value = _json[key];
     if (value == null) {

@@ -111,4 +111,107 @@ void main() {
       ),
     );
   });
+
+  test('weekly score validation errors use FormatException', () {
+    expect(
+      () => WeeklyLeagueScoreDto.fromJson({
+        ..._weeklyScorePayload(),
+        'activeDays': 8,
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (exception) => exception.message,
+          'message',
+          'Weekly league score activeDays cannot exceed 7.',
+        ),
+      ),
+    );
+
+    expect(
+      () => WeeklyLeagueScoreDto.fromJson({
+        ..._weeklyScorePayload(),
+        'countedRunScores': [1000, 900],
+        'allRunScores': [1000],
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (exception) => exception.message,
+          'message',
+          'Weekly league score counted runs cannot exceed all run scores.',
+        ),
+      ),
+    );
+  });
+
+  test('invalid season fields use FormatException', () {
+    expect(
+      () => WeeklyLeagueHistoryEntryDto.fromJson({
+        ..._historyPayload(),
+        'result': 'teleported',
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (exception) => exception.message,
+          'message',
+          'Unknown weekly league season result: teleported.',
+        ),
+      ),
+    );
+
+    expect(
+      () => WeeklyLeagueHistoryEntryDto.fromJson({
+        ..._historyPayload(),
+        'seasonId': 'not-a-date',
+      }).toDomain(),
+      throwsA(
+        isA<FormatException>().having(
+          (exception) => exception.message,
+          'message',
+          'Invalid league season identifier: not-a-date.',
+        ),
+      ),
+    );
+  });
+
+  test('negative score lists use FormatException', () {
+    expect(
+      () => WeeklyLeagueScoreDto.fromJson({
+        ..._weeklyScorePayload(),
+        'countedRunScores': [1000, -1],
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (exception) => exception.message,
+          'message',
+          'Weekly league score list contains a negative value: countedRunScores.',
+        ),
+      ),
+    );
+  });
+}
+
+Map<String, Object?> _weeklyScorePayload() {
+  return {
+    'playerId': 'player-1',
+    'isActive': true,
+    'runCount': 3,
+    'activeDays': 2,
+    'activityMultiplier': 1.1,
+    'baseScore': 1000,
+    'finalScore': 1100,
+    'bonusPoints': 100,
+    'countedRunScores': [1000],
+    'allRunScores': [1000, 900, 800],
+  };
+}
+
+Map<String, Object?> _historyPayload() {
+  return {
+    'playerId': 'player-1',
+    'seasonId': '2026-06-15',
+    'finalRank': 3,
+    'finalDivision': 2,
+    'result': 'stayed',
+    'finalWeeklyScore': 1045,
+  };
 }

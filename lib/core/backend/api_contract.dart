@@ -15,7 +15,9 @@ abstract final class ApiContract {
 
   static const playerProfile = '$apiPrefix/player/profile';
 
-  static const leagueEntry = '$apiPrefix/league/enter';
+  static const leagueCurrentEntry = '$apiPrefix/league/entry';
+  static const leagueRanking = '$apiPrefix/league/ranking';
+  static const leagueEnter = '$apiPrefix/league/enter';
   static const leagueSnapshot = '$apiPrefix/league/snapshot';
   static const leagueHistory = '$apiPrefix/league/history';
   static const leagueRecords = '$apiPrefix/league/records';

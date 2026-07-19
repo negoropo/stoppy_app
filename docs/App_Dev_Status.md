@@ -7405,3 +7405,464 @@ Future session policy:
 * Preserve existing gameplay and Knockout behavior
 * Include Simulator validation when backend runtime becomes available
 
+---
+
+## 🔄 Session Update
+
+### Session: Session 36 — League Backend Integration Foundation
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the first backend-backed League integration layer through authenticated read-only League operations while preserving the mock-driven default runtime, existing League domain rules, gameplay behavior, Knockout behavior, and server-authoritative competitive model.
+
+The session focused only on safe League reads. Competitive mutations such as weekly entry, run submission, GP deduction, re-entry, and settlement remain intentionally disconnected until idempotency, validation, and backend authority contracts are finalized.
+
+---
+
+### 📦 Deliverables
+
+* [x] Existing `LeagueRepository` contract reviewed for backend readiness
+* [x] League backend read-only operation scope defined
+* [x] `BackendLeagueRepository` read-only operations implemented
+* [x] Authenticated current League entry retrieval implemented
+* [x] Authenticated division ranking retrieval implemented
+* [x] Authenticated player snapshot retrieval implemented
+* [x] Authenticated player League history retrieval implemented
+* [x] Authenticated player League records retrieval implemented
+* [x] Authenticated player League achievements retrieval implemented
+* [x] Authenticated player weekly runs retrieval implemented
+* [x] Backend League mutation methods kept explicitly disconnected
+* [x] `enterWeeklyLeague` remains disconnected
+* [x] `submitLeagueRun` remains disconnected
+* [x] `settleCurrentSeason` remains disconnected
+* [x] League API endpoint paths centralized in `ApiContract`
+* [x] `leagueCurrentEntry` endpoint added
+* [x] `leagueRanking` endpoint added
+* [x] League mutation endpoint naming clarified with `leagueEnter`
+* [x] League read DTOs implemented
+* [x] League ranking entry DTO implemented
+* [x] League ranking response DTO implemented
+* [x] League ranking snapshot DTO implemented
+* [x] League current entry response DTO implemented
+* [x] League history response DTO implemented
+* [x] League weekly runs response DTO implemented
+* [x] League persisted DTO validation hardened
+* [x] League DTO malformed payload errors standardized
+* [x] DTO-owned malformed payload errors changed to `FormatException`
+* [x] `JsonReader` structural malformed payload behavior reviewed
+* [x] Defensive League snapshot validation implemented
+* [x] Duplicate snapshot rank rejection implemented
+* [x] Current player duplicate snapshot rejection implemented
+* [x] League ranking entry player/score consistency validation implemented
+* [x] Negative competitive value validation preserved
+* [x] Invalid enum validation preserved
+* [x] Invalid season identifier validation preserved
+* [x] Local backend repository input validation implemented
+* [x] Empty/whitespace player IDs rejected before HTTP calls
+* [x] Invalid division numbers rejected before HTTP calls
+* [x] Malformed DTO payloads mapped into repository domain errors
+* [x] API failures mapped into repository domain errors
+* [x] Network/server/auth failures mapped safely
+* [x] Backend read operations use `BackendApiClient`
+* [x] Backend League repository does not access `AuthSessionStore` directly
+* [x] Repository factory backend League wiring verified
+* [x] Shared backend API client wiring preserved
+* [x] Mock League repository remains default runtime
+* [x] Backend runtime remains opt-in only
+* [x] Purchase repository remains mock-driven
+* [x] Ads repository remains mock-driven
+* [x] Knockout backend integration not started
+* [x] No League entry backend implementation introduced
+* [x] No League run submission backend implementation introduced
+* [x] No League settlement backend implementation introduced
+* [x] No GP deduction backend implementation introduced
+* [x] No idempotency implementation introduced
+* [x] No automatic HTTP retry behavior introduced
+* [x] No gameplay behavior changed
+* [x] No League scoring rules changed
+* [x] No League ranking rules changed
+* [x] No League promotion/relegation rules changed
+* [x] No Knockout behavior changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+* [x] Backend League repository tests added
+* [x] League read DTO tests added
+* [x] League persistence DTO tests updated
+* [x] Repository factory tests updated
+* [x] API documentation updated
+* [x] Manual review completed
+* [x] Static analysis passed
+* [x] Full Flutter test suite passed
+* [x] Whitespace validation passed
+
+---
+
+### 🛠️ Work Done
+
+* Implemented read-only backend operations in `BackendLeagueRepository` for:
+
+  * current player League entry
+  * division ranking
+  * player ranking snapshot
+  * player League history
+  * player League records
+  * player League achievements
+  * current weekly League runs
+
+* Preserved explicit disconnected behavior for competitive mutations:
+
+  * `enterWeeklyLeague`
+  * `submitLeagueRun`
+  * `settleCurrentSeason`
+
+* Added centralized League API contract paths:
+
+  * `GET /api/v1/league/entry`
+  * `GET /api/v1/league/ranking`
+  * `GET /api/v1/league/snapshot`
+  * `GET /api/v1/league/history`
+  * `GET /api/v1/league/records`
+  * `GET /api/v1/league/runs`
+  * `GET /api/v1/league/achievements`
+
+* Clarified the future League entry mutation path naming:
+
+  * renamed `leagueEntry` to `leagueEnter`
+  * preserved the path `/api/v1/league/enter`
+
+* Added League read DTO coverage for backend response payloads
+
+* Added mapping from League backend DTOs into existing domain models
+
+* Hardened League DTO payload validation for:
+
+  * missing required fields
+  * malformed collection wrappers
+  * invalid enum values
+  * negative competitive values
+  * inconsistent player IDs between ranking entry and weekly score
+  * inconsistent snapshot rank relationships
+  * duplicate snapshot ranks
+  * current player appearing inside nearby ranking lists
+
+* Standardized DTO-owned malformed payload failures to `FormatException`
+
+* Preserved `JsonReader` structural parsing errors as `ApiException(ApiErrorCode.malformedPayload)`
+
+* Updated `BackendLeagueRepository` error handling so backend read operations safely map:
+
+  * API failure responses
+  * `ApiException`
+  * `FormatException`
+  * `ArgumentError`
+  * `StateError`
+
+* Added local input validation before backend requests for:
+
+  * empty or whitespace-only player IDs
+  * non-positive division numbers
+
+* Confirmed invalid local inputs do not trigger backend API calls
+
+* Confirmed backend read methods use query parameters required by the current `LeagueRepository` contract
+
+* Confirmed `BackendLeagueRepository` uses only `BackendApiClient` and does not access session storage directly
+
+* Updated repository factory coverage to confirm backend runtime wiring
+
+* Confirmed backend runtime wires:
+
+  * `BackendAuthRepository`
+  * `BackendLeagueRepository`
+  * `BackendKnockoutRepository`
+
+* Confirmed backend repositories share one backend API client
+
+* Confirmed mock runtime continues to use:
+
+  * `MockAuthRepository`
+  * `MockLeagueRepository`
+  * `MockKnockoutRepository`
+
+* Confirmed mock runtime ignores backend-only dependencies
+
+* Added focused tests for backend League repository reads
+
+* Added focused tests for League read DTO decoding and validation
+
+* Added focused tests for League persistence DTO malformed payload behavior
+
+* Added repository factory tests for backend League wiring and disconnected mutation behavior
+
+* Updated `docs/API_Plan.md` with League read-only backend contracts
+
+---
+
+### 📁 Files Changed
+
+Production:
+
+* `lib/core/backend/api_contract.dart`
+* `lib/core/backend/json_reader.dart`
+* `lib/features/league/data/backend/backend_league_repository.dart`
+* `lib/features/league/data/dto/league_persistence_dtos.dart`
+* `lib/features/league/data/dto/league_read_dtos.dart`
+
+Tests:
+
+* `test/core/repositories/repository_factory_test.dart`
+* `test/features/league/data/backend/backend_league_repository_test.dart`
+* `test/features/league/data/dto/league_persistence_dtos_test.dart`
+* `test/features/league/data/dto/league_read_dtos_test.dart`
+
+Documentation:
+
+* `docs/API_Plan.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Session 36 intentionally implemented only authenticated League read operations
+* Competitive League mutations remain disconnected
+* League entry backend implementation remains deferred
+* League run submission backend implementation remains deferred
+* League settlement backend implementation remains deferred
+* League re-entry backend implementation remains deferred
+* GP deduction backend implementation remains deferred
+* Idempotency contracts remain required before competitive writes are implemented
+* Server-side validation remains required before accepting competitive League mutations
+* Backend must remain authoritative for competitive state
+* Client-side League ranking, scoring, promotion, relegation, and settlement rules were not changed
+* UI does not calculate backend League competitive state
+* Backend DTOs remain data-layer only
+* Domain models remain backend-agnostic
+* `BackendLeagueRepository` does not access `AuthSessionStore`
+* Authentication remains owned by the existing backend authentication/session pipeline
+* Authorization headers remain owned by `HttpBackendApiClient`
+* Mock runtime remains the default runtime
+* Backend runtime must be selected explicitly
+* Purchase and Ads repositories remain mock-driven
+* Knockout backend integration was not started
+* No automatic HTTP retry behavior was introduced
+* Competitive and economy mutations still require idempotency protection before retry support
+* `JsonReader` continues to represent structural malformed JSON errors as `ApiException`
+* DTO-specific consistency validations now use `FormatException`
+* `BackendLeagueRepository` maps both structural and DTO-specific malformed payloads into repository-domain failures
+* Empty or whitespace-only player IDs are rejected before HTTP calls
+* Non-positive division numbers are rejected before HTTP calls
+* The backend real API still needs to enforce authentication, authorization, player ownership, snapshot consistency, and server-authoritative validation
+* Simulator validation should continue using mock runtime until a real backend API is available
+
+---
+
+### 🧪 Validation
+
+* [x] Backend League repository read paths reviewed
+* [x] Backend League query parameters reviewed
+* [x] Backend League read mapping reviewed
+* [x] Current entry response mapping reviewed
+* [x] Division ranking response mapping reviewed
+* [x] Player snapshot response mapping reviewed
+* [x] League history response mapping reviewed
+* [x] League records response mapping reviewed
+* [x] League achievements response mapping reviewed
+* [x] Weekly runs response mapping reviewed
+* [x] Backend mutation disconnection reviewed
+* [x] API contract path centralization reviewed
+* [x] League current entry endpoint reviewed
+* [x] League ranking endpoint reviewed
+* [x] League enter mutation naming reviewed
+* [x] League DTO parsing reviewed
+* [x] League DTO malformed payload behavior reviewed
+* [x] League snapshot consistency validation reviewed
+* [x] Duplicate rank rejection reviewed
+* [x] Current player duplicate rejection reviewed
+* [x] Negative competitive value rejection reviewed
+* [x] Invalid enum rejection reviewed
+* [x] Invalid season identifier rejection reviewed
+* [x] Backend repository error mapping reviewed
+* [x] API failure mapping reviewed
+* [x] Network/server/auth failure mapping reviewed
+* [x] Local input validation reviewed
+* [x] Invalid input no-request behavior reviewed
+* [x] Repository factory backend wiring reviewed
+* [x] Shared backend API client reviewed
+* [x] Mock runtime preservation reviewed
+* [x] Backend runtime opt-in behavior reviewed
+* [x] DTO tests passed
+* [x] Backend League repository tests passed
+* [x] Repository factory tests passed
+* [x] Static analysis passed
+* [x] Full Flutter test suite passed
+* [x] Whitespace validation passed
+* [x] No gameplay behavior changed
+* [x] No League scoring rules changed
+* [x] No League ranking rules changed
+* [x] No League promotion/relegation rules changed
+* [x] No Knockout behavior changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+
+Final automated validation commands:
+
+```bash
+dart format \
+  lib/core/backend/api_contract.dart \
+  lib/core/backend/json_reader.dart \
+  lib/features/league/data/backend/backend_league_repository.dart \
+  lib/features/league/data/dto/league_persistence_dtos.dart \
+  lib/features/league/data/dto/league_read_dtos.dart \
+  test/core/repositories/repository_factory_test.dart \
+  test/features/league/data/backend/backend_league_repository_test.dart \
+  test/features/league/data/dto/league_persistence_dtos_test.dart \
+  test/features/league/data/dto/league_read_dtos_test.dart
+
+flutter analyze
+flutter test test/features/league/data/dto
+flutter test test/features/league/data/backend/backend_league_repository_test.dart
+flutter test test/core/repositories/repository_factory_test.dart
+flutter test
+git diff --check
+````
+
+Recorded automated validation results:
+
+* `dart format` — completed successfully
+* League DTO tests — passed
+* Backend League repository tests — passed
+* Repository factory tests — passed
+* `flutter analyze` — no issues found
+* Complete Flutter test suite — passed
+* `git diff --check` — no whitespace errors
+* Session changes remained limited to backend League read integration, League DTO validation, repository wiring tests, and API documentation
+
+Manual iOS Simulator validation:
+
+* Application launched successfully in mock runtime
+* Unauthenticated mock startup reached `LoginScreen`
+* Registration reached `GameScreen`
+* League screen opened successfully
+* Mock League state loaded successfully
+* League ranking/snapshot UI remained functional
+* League history, records, achievements, and weekly runs remained accessible
+* Existing League runtime behavior remained unchanged
+* No League screen crash was observed
+* No gameplay crash was observed
+* No unexpected backend network request occurred in mock runtime
+* No authentication regression was observed
+
+---
+
+### 📌 Next Session
+
+Session 37 — League Backend Mutation Contract Design + Idempotency Preparation
+
+Planned focus:
+
+* [ ] Review backend League read integration from Session 36
+* [ ] Define server-authoritative mutation boundaries for League
+* [ ] Define idempotency strategy for competitive League mutations
+* [ ] Define idempotency key format and ownership
+* [ ] Define League entry backend request/response contract
+* [ ] Define League run submission backend request/response contract
+* [ ] Define League settlement backend authority requirements
+* [ ] Define GP deduction ownership for League entry
+* [ ] Define duplicate League entry handling
+* [ ] Define duplicate run submission handling
+* [ ] Define invalid reserved-slot handling
+* [ ] Define stale player-profile handling
+* [ ] Define backend validation requirements for submitted League runs
+* [ ] Define anti-cheat validation payload requirements
+* [ ] Define retry-safe mutation behavior
+* [ ] Define mutation error taxonomy
+* [ ] Update backend API documentation
+* [ ] Update persistence documentation if needed
+* [ ] Do not implement League mutations yet unless all contracts are explicit
+* [ ] Preserve mock runtime as the default runtime
+* [ ] Preserve all gameplay and Knockout behavior
+
+Session boundary:
+
+* Prefer contract/design and test scaffolding before mutation implementation
+* Do not combine League entry, League run submission, and settlement implementation unless the design is already complete and narrow
+* Do not add automatic retries before idempotency support exists
+* Do not move settlement authority to the client
+* Do not change League scoring, ranking, promotion, or relegation rules
+* Do not begin Knockout backend integration
+* Preserve backend read-only League operations from Session 36
+* Preserve mock repositories as the default runtime
+* Keep the session narrowly scoped
+* Move actual mutation implementation into later sessions if design work is non-trivial
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup
+* ✅ Session 2 — Base structure and documentation
+* ✅ Session 3 — Game base rendering
+* ✅ Session 4 — Collision and validation
+* ✅ Session 5 — Level system
+* ✅ Session 6 — Run Points (superseded)
+* ✅ Session 7 — Lives system (superseded)
+* ✅ Session 8 — Precision Points
+* ✅ Session 9 — Registration/Login
+* ✅ Session 10 — GP System
+* ✅ Session 11 — Purchases
+* ✅ Session 12 — Ads
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow
+* ✅ Session 13 — League Structure
+* ✅ Session 14 — Weekly League Entry + Runtime Integration
+* ✅ Session 15 — Weekly League Scoring + Ranking UI
+* ✅ Session 16 — Weekly League History + Personal Records
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow
+* ✅ Session 19 — League Polish + Edge Case Hardening
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status
+* ✅ Session 23 — Knockout Tournament History + Records
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning
+* ✅ Session 27 — Backend Repository Contracts Preparation
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening
+* ✅ Session 30 — Backend Networking Client Preparation
+* ✅ Session 31 — Backend Authentication Integration
+* ✅ Session 32 — Secure Session Persistence + Refresh Token Policy
+* ✅ Session 33 — Authentication Session Startup Flow Verification
+* ✅ Session 34 — Authentication Logout + Session Lifecycle Hardening
+* ✅ Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+* ✅ Session 36 — League Backend Integration Foundation
+* ⏳ Session 37 — League Backend Mutation Contract Design + Idempotency Preparation
+
+---
+
+### 🧭 Current State
+
+Current session: Session 37 — League Backend Mutation Contract Design + Idempotency Preparation
+
+Status: Ready ⏳
+
+Future session policy:
+
+* Keep sessions narrowly scoped
+* Separate backend reads from competitive mutations
+* Define idempotency before implementing competitive writes
+* Keep settlement server-authoritative
+* Preserve mock repositories as the default runtime
+* Keep competitive state server-authoritative
+* Validate DTO mapping and error handling alongside each endpoint
+* Avoid broad refactoring during backend feature integration
+* Preserve existing gameplay and Knockout behavior
+* Include Simulator validation when backend runtime becomes available
+

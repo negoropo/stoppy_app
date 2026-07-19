@@ -209,7 +209,46 @@ Server responsibilities:
 
 ## League
 
-### POST /league/enter
+### GET /api/v1/league/entry
+
+Returns the authenticated player's current weekly league participation state.
+
+Request query:
+
+- `playerId`
+
+Success data:
+
+```json
+{
+  "entry": null
+}
+```
+
+When the player has a reserved or active league slot, `entry` is a
+`LeaguePlayerEntry` DTO. The server remains authoritative for whether the
+authenticated user may inspect the requested player id.
+
+### GET /api/v1/league/ranking
+
+Returns a division ranking preview.
+
+Request query:
+
+- `divisionNumber`
+
+Success data:
+
+```json
+{
+  "entries": []
+}
+```
+
+Each item contains `rank`, `playerEntry`, and `weeklyScore`. Inactive players
+must be represented by an inactive weekly score rather than a zero score.
+
+### POST /api/v1/league/enter
 
 Registers or re-enters the authenticated player into the weekly league.
 
@@ -220,9 +259,17 @@ Server responsibilities:
 - apply reserved slot/re-entry rules
 - place player in the correct division
 
-### GET /league/snapshot
+This mutation remains disconnected in the Flutter backend repository until
+idempotency, GP deduction, and server-side validation contracts are finalized.
+
+### GET /api/v1/league/snapshot
 
 Returns the player's current division ranking snapshot.
+
+Request query:
+
+- `playerId`
+- `divisionNumber`
 
 Server responsibilities:
 
@@ -230,30 +277,52 @@ Server responsibilities:
 - include promotion/stay targets
 - mark inactive players correctly
 
-### GET /league/history
+### GET /api/v1/league/history
 
 Returns player weekly league history.
+
+Request query:
+
+- `playerId`
 
 Server responsibilities:
 
 - return trusted settlement history
 - preserve immutable historical results
 
-### GET /league/records
+### GET /api/v1/league/records
 
-Returns player league records and achievements.
+Returns player league records.
+
+Request query:
+
+- `playerId`
 
 Server responsibilities:
 
 - return all-time/current records
-- return best division, promotions, and relegations
-- derive achievement values from trusted history
 
-### GET /league/runs
+### GET /api/v1/league/runs
+
 Returns current weekly runs for the authenticated player.
 
-### GET /league/achievements
+Request query:
+
+- `playerId`
+- `seasonId`
+
+### GET /api/v1/league/achievements
+
 Returns derived league achievements.
+
+Request query:
+
+- `playerId`
+
+Server responsibilities:
+
+- return best division, promotions, and relegations
+- derive achievement values from trusted history
 
 ## Knockout
 
