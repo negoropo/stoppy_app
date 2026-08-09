@@ -361,9 +361,8 @@ void main() {
     );
 
     test('mutation methods remain explicitly disconnected', () async {
-      final repository = BackendLeagueRepository(
-        apiClient: _FakeBackendApiClient(),
-      );
+      final apiClient = _FakeBackendApiClient();
+      final repository = BackendLeagueRepository(apiClient: apiClient);
       final profile = PlayerProfile(
         id: 'player-1',
         username: 'Tester',
@@ -389,6 +388,8 @@ void main() {
         ),
         throwsA(isA<ApiException>()),
       );
+      expect(apiClient.getRequests, isEmpty);
+      expect(apiClient.postRequests, isEmpty);
     });
   });
 }

@@ -28,6 +28,8 @@ final class BackendLeagueRepository implements LeagueRepository {
 
   static const currentEntryPath = ApiContract.leagueCurrentEntry;
   static const rankingPath = ApiContract.leagueRanking;
+  static const enterPath = ApiContract.leagueEnter;
+  static const runSubmissionPath = ApiContract.leagueRunSubmission;
   static const snapshotPath = ApiContract.leagueSnapshot;
   static const historyPath = ApiContract.leagueHistory;
   static const recordsPath = ApiContract.leagueRecords;
@@ -58,11 +60,17 @@ final class BackendLeagueRepository implements LeagueRepository {
 
   @override
   Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) {
+    // League entry is an economy mutation. The backend must atomically validate
+    // GP, reserved-slot state, division placement, and idempotency before this
+    // method can be connected to HTTP.
     return backendNotConnected('BackendLeagueRepository', 'enterWeeklyLeague');
   }
 
   @override
   Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) {
+    // League runs are competitive mutations. The backend must validate the run
+    // claim, anti-cheat evidence, duplicate run ID, and idempotency key before
+    // accepting a submitted score.
     return backendNotConnected('BackendLeagueRepository', 'submitLeagueRun');
   }
 

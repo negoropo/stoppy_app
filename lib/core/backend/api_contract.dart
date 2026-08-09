@@ -5,6 +5,7 @@ abstract final class ApiContract {
   static const contentTypeHeader = 'Content-Type';
   static const acceptHeader = 'Accept';
   static const authorizationHeader = 'Authorization';
+  static const idempotencyKeyHeader = 'Idempotency-Key';
 
   static const jsonContentType = 'application/json';
   static const bearerScheme = 'Bearer';

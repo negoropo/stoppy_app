@@ -248,19 +248,81 @@ Success data:
 Each item contains `rank`, `playerEntry`, and `weeklyScore`. Inactive players
 must be represented by an inactive weekly score rather than a zero score.
 
+### League mutation idempotency
+
+League mutations use the `Idempotency-Key` HTTP header. The client owns the key
+and must reuse the same key only when retrying the same logical mutation with
+the same payload. A different League entry attempt or run submission requires a
+new key.
+
+Client key rules:
+
+- trim leading and trailing whitespace before use
+- reject blank keys
+- reject keys longer than 128 characters
+- allow only letters, numbers, `.`, `_`, `:`, and `-`
+
+Server behavior:
+
+- same key + same payload returns the original stable result
+- same key + different payload fails with an idempotency conflict
+- idempotency result and request fingerprint are persisted atomically with the
+  mutation result
+- sensitive validation evidence must not be exposed in user-facing errors
+
 ### POST /api/v1/league/enter
 
 Registers or re-enters the authenticated player into the weekly league.
 
+Request headers:
+
+- `Idempotency-Key`
+
+Request body:
+
+```json
+{}
+```
+
 Server responsibilities:
 
+- derive player identity from authentication
+- resolve the current season
+- validate entry window, duplicate entry, reserved slot, and re-entry state
 - validate GP availability
-- deduct entry cost
-- apply reserved slot/re-entry rules
-- place player in the correct division
+- atomically deduct 10 GP and create/activate the entry
+- apply last-division expansion and division placement
+- return authoritative entry state and remaining GP/profile projection
+
+Success data:
+
+```json
+{
+  "status": "accepted",
+  "seasonId": "2026-06-15",
+  "entry": {},
+  "currentDivision": 2,
+  "remainingGamePoints": 15,
+  "playerProfile": {}
+}
+```
+
+Rejected data:
+
+```json
+{
+  "status": "rejected",
+  "seasonId": "2026-06-15",
+  "rejectionCode": "insufficientGp"
+}
+```
+
+An idempotent replay of a previously accepted entry uses
+`"status": "idempotentReplay"` and returns the same authoritative accepted
+entry projection.
 
 This mutation remains disconnected in the Flutter backend repository until
-idempotency, GP deduction, and server-side validation contracts are finalized.
+server-side persistence and validation are implemented.
 
 ### GET /api/v1/league/snapshot
 
@@ -310,6 +372,101 @@ Request query:
 
 - `playerId`
 - `seasonId`
+
+### POST /api/v1/runs/league
+
+Submits a completed League run claim for server validation.
+
+Request headers:
+
+- `Idempotency-Key`
+
+Request body:
+
+```json
+{
+  "runId": "run-1",
+  "seasonId": "2026-06-15",
+  "runStartedAt": "2026-06-21T10:00:00.000Z",
+  "runCompletedAt": "2026-06-21T10:30:00.000Z",
+  "claimedFinalPrecisionPoints": 25000,
+  "runMode": "league",
+  "validationClaim": {}
+}
+```
+
+The client does not submit weekly score, rank, records, achievements, GP
+balance, or player identity as authoritative data.
+
+Server responsibilities:
+
+- derive player identity from authentication
+- validate active weekly entry, reserved-slot state, season, and run mode
+- validate timestamp ordering and maximum run duration
+- reject duplicate run IDs unless the idempotent replay matches the original
+- validate PP and tier progression against server-issued run configuration
+- run anti-cheat validation
+- recalculate weekly score, ranking, records, achievements, and GP decisions
+- persist the accepted run and resulting projections atomically
+
+Accepted data:
+
+```json
+{
+  "status": "accepted",
+  "newlyPersisted": true,
+  "acceptedRun": {},
+  "playerRecords": {},
+  "validationResult": {
+    "accepted": true,
+    "serverFinalPrecisionPoints": 25000
+  }
+}
+```
+
+Rejected data:
+
+```json
+{
+  "status": "rejected",
+  "newlyPersisted": false,
+  "rejectionCode": "validationFailed",
+  "validationResult": {
+    "accepted": false,
+    "rejectionCode": "invalid_precision_progression"
+  }
+}
+```
+
+An idempotent replay of a previously accepted submission uses
+`"status": "idempotentReplay"`, `"newlyPersisted": false`, and returns the
+stable original accepted run result.
+
+### League mutation error taxonomy
+
+Stable League mutation rejection/error reasons include:
+
+- `alreadyActive`
+- `entryWindowClosed`
+- `insufficientGp`
+- `noReservedSlot`
+- `outsideLeague`
+- `seasonMismatch`
+- `alreadySubmitted`
+- `idempotencyConflict`
+- `invalidRun`
+- `validationFailed`
+- `timestampInvalid`
+- `durationInvalid`
+- `settlementInProgress`
+- `stalePlayerState`
+- `unauthenticated`
+- `forbidden`
+- `rateLimited`
+- `serverUnavailable`
+
+Backend error envelopes should map transport and authorization failures through
+typed `ApiError` codes. Detailed anti-cheat evidence should stay internal.
 
 ### GET /api/v1/league/achievements
 

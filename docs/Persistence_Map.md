@@ -82,6 +82,28 @@ DTOs mirror the REST representation of these records, not direct PostgreSQL rows
 - Backend runtime selection remains explicit through `RepositoryRuntime.backend`; mock repositories remain the normal local/test runtime.
 - Future server adapters must preserve API error envelopes and idempotency validation so transport retries cannot duplicate runs or economy mutations.
 
+## Session 37 League Mutation Persistence Preparation
+
+League entry and League run submission mutations must be persisted atomically
+with idempotency records. Suggested PostgreSQL constraints:
+
+- `league_player_entries`: unique active entry per `(season_id, player_id)`.
+- `weekly_league_runs`: unique `run_id`, scoped to the authenticated player or
+  generated server identity.
+- `mutation_idempotency_keys`: unique key within the mutation scope, stored with
+  a request fingerprint and stable response projection.
+- League entry mutation transaction: validate GP, deduct exactly 10 GP, create
+  or activate entry, and persist idempotency result in one transaction.
+- League run submission transaction: validate run claim, persist accepted run,
+  recalculate weekly score/records/achievements, and persist idempotency result
+  in one transaction.
+- Idempotency conflict occurs when an existing key is reused with a different
+  request fingerprint.
+- No partial GP deduction without successful entry creation.
+- No accepted run without validation result and updated League projection.
+- Settlement writes remain trusted backend jobs and must not be triggered by
+  client-submitted mutation payloads.
+
 ## Session 31 Authentication Session Boundary
 
 - `AuthSession` is currently held by `InMemoryAuthSessionStore` only and is not persisted to PostgreSQL or device storage by the Flutter client.

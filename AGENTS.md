@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 36 completed.
+Session 37 completed.
 
-Current session: Session 37 — League Backend Mutation Contract Design + Idempotency Preparation
+Current session: Session 38 — League Backend Entry Mutation Integration
 
 ---
 

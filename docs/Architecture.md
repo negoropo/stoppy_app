@@ -542,6 +542,21 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Expired access tokens are never sent as Bearer tokens.
 * League and Knockout backend repositories remain disconnected skeletons.
 
+### Session 37 League Mutation Contract Preparation
+
+League backend mutation contracts are prepared but not activated.
+
+* `Idempotency-Key` is centralized in `ApiContract`.
+* `IdempotencyKey` normalizes and validates caller-owned retry keys.
+* League entry DTOs describe the future server-authoritative GP deduction and
+  weekly entry result.
+* League run submission DTOs describe the future server-authoritative run claim,
+  validation result, and accepted/rejected/idempotent replay states.
+* `BackendLeagueRepository` keeps entry and run submission disconnected until
+  backend persistence, idempotency storage, and anti-cheat validation exist.
+* Mock runtime remains the default runtime.
+* League reads, gameplay, Knockout, Purchase, and Ads behavior are unchanged.
+
 ### Domain Logic
 
 * Domain logic should stay reusable where possible.

@@ -2,6 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stoppy_app/core/backend/api_contract.dart';
 
 void main() {
+  test('centralizes League mutation paths and idempotency header', () {
+    expect(ApiContract.idempotencyKeyHeader, 'Idempotency-Key');
+    expect(ApiContract.leagueEnter, '/api/v1/league/enter');
+    expect(ApiContract.leagueRunSubmission, '/api/v1/runs/league');
+  });
+
   group('ApiContract.isPublicAuthPath', () {
     test('recognizes every public authentication path', () {
       expect(ApiContract.isPublicAuthPath(ApiContract.authRegister), isTrue);

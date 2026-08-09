@@ -79,3 +79,31 @@ Examples:
 - ad rewards
 
 Clients must never directly modify GP balances.
+
+## League Mutation Validation Boundary
+
+League entry and League run submission are competitive mutations and must be
+server-authoritative.
+
+League entry validation must:
+
+- derive player identity from authentication
+- validate the current season and entry window
+- validate duplicate entry and reserved-slot state
+- atomically deduct the 10 GP entry cost only when entry creation succeeds
+- persist the idempotency result with the mutation transaction
+
+League run submission validation must:
+
+- derive player identity from authentication, not the request body
+- validate active weekly entry and season membership
+- validate run start and completion timestamps
+- reject runs longer than the allowed maximum duration
+- validate PP, level, and tier progression from server-issued configuration
+- reject duplicate run IDs unless a matching idempotent replay is returned
+- recalculate weekly score, records, achievements, and ranking projections on
+  the backend
+
+If the same idempotency key is reused with a different payload, the backend must
+return a conflict without exposing sensitive anti-cheat diagnostics. Detailed
+replay evidence and anomaly data should remain in server-side audit logs.
