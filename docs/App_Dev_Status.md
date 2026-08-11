@@ -8512,4 +8512,586 @@ Future session policy:
 * Preserve existing gameplay and Knockout behavior
 * Add Simulator/backend-runtime validation only when a real backend endpoint becomes available
 
+---
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 38 — League Backend Entry Mutation Integration
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the first real backend League mutation by connecting `BackendLeagueRepository.enterWeeklyLeague` to the prepared `POST /api/v1/league/enter` contract while preserving the mock-driven default runtime, existing League reads, server-authoritative economy/competitive ownership, explicit idempotency semantics, gameplay behavior, Knockout behavior, and disconnected League run submission/settlement paths.
+
+The session focused on activating League entry only, consuming authoritative backend mutation results safely in the client, preventing stale local GP state from overriding backend authority, preserving retry-safe logical mutation identity, and keeping post-mutation refresh failures separate from mutation success.
+
+No backend League run submission, settlement implementation, PostgreSQL implementation, or backend application server implementation was introduced.
+
+---
+
+### 📦 Deliverables
+
+* [x] First real backend League mutation activated
+* [x] `BackendLeagueRepository.enterWeeklyLeague` connected
+* [x] `POST /api/v1/league/enter` HTTP mutation activated
+* [x] League entry request body remains exactly `{}`
+* [x] Explicit `IdempotencyKey` required for backend League entry
+* [x] Caller-side idempotency ownership preserved
+* [x] `Idempotency-Key` sent through `BackendApiClient`
+* [x] No idempotency-key generation moved into `HttpBackendApiClient`
+* [x] Same unresolved logical entry attempt reuses the same idempotency key
+* [x] Successful entry clears the pending idempotency key
+* [x] Definitive backend rejection clears the completed logical attempt key
+* [x] Ambiguous mutation failure preserves the existing idempotency key
+* [x] No automatic retry behavior introduced
+* [x] Bearer authentication remains owned by `HttpBackendApiClient`
+* [x] Client player identity excluded from League entry request body
+* [x] Client GP balance excluded from League entry request body
+* [x] Client division excluded from League entry request body
+* [x] Client reserved-slot state excluded from League entry request body
+* [x] Client League season excluded from League entry request body
+* [x] `LeagueEntryResponseDto` decoded by `BackendLeagueRepository`
+* [x] `accepted` response mapped into authoritative League state
+* [x] `idempotentReplay` response mapped through the same success path
+* [x] Rejected League entry responses mapped through existing domain error infrastructure
+* [x] `alreadyActive` rejection mapped
+* [x] `insufficientGp` rejection mapped
+* [x] `entryWindowClosed` rejection mapped
+* [x] `noReservedSlot` rejection mapped
+* [x] `outsideLeague` rejection mapped
+* [x] `settlementInProgress` rejection mapped
+* [x] `stalePlayerState` rejection mapped
+* [x] Malformed League mutation responses mapped safely
+* [x] `LeagueEntryResult` introduced as an authoritative entry result projection
+* [x] Authoritative season projection supported
+* [x] Authoritative remaining GP projection supported
+* [x] Optional authoritative `PlayerProfile` projection supported
+* [x] Existing `LeaguePlayerEntry` compatibility preserved
+* [x] `ServerAuthoritativeLeagueEntryRepository` capability introduced
+* [x] `BackendLeagueRepository` implements server-authoritative League entry capability
+* [x] Presentation layer depends on semantic capability instead of concrete backend repository type
+* [x] Stale local GP no longer blocks backend-authoritative League entry
+* [x] Local 10 GP precheck preserved for mock/local runtime
+* [x] Backend entry never calculates `local GP - 10`
+* [x] Backend entry uses authoritative `playerProfile` when returned
+* [x] Backend entry uses authoritative `remainingGamePoints` when full player profile is absent
+* [x] Backend entry never writes the completed mutation back through `AuthRepository.updatePlayerProfile`
+* [x] Mock/local entry behavior continues to persist the locally updated profile
+* [x] Existing mock 10 GP deduction behavior preserved
+* [x] Existing mock League entry rules preserved
+* [x] Server-authoritative League state propagated through `onPlayerProfileUpdated`
+* [x] Accepted backend entry updates current division from authoritative entry state
+* [x] Accepted backend entry updates weekly entry state from authoritative entry state
+* [x] Accepted backend entry updates reserved-slot state from authoritative entry state
+* [x] Rejected backend entry does not deduct local GP
+* [x] Rejected backend entry does not modify local authoritative League state
+* [x] Successful mutation and post-success League refresh separated
+* [x] Post-success refresh failure no longer reports the entry mutation as failed
+* [x] Post-success refresh failure preserves authoritative accepted entry state
+* [x] Post-success refresh failure preserves authoritative player-profile projection
+* [x] Post-success refresh failure preserves completed idempotency state
+* [x] Refresh-specific warning message implemented
+* [x] Existing League read operations preserved
+* [x] Existing League ranking reads preserved
+* [x] Existing League snapshot reads preserved
+* [x] Existing League history reads preserved
+* [x] Existing League records reads preserved
+* [x] Existing League achievements reads preserved
+* [x] Existing League weekly-runs reads preserved
+* [x] `submitLeagueRun` remains disconnected in backend runtime
+* [x] `settleCurrentSeason` remains disconnected in backend runtime
+* [x] Mock runtime remains the default runtime
+* [x] Backend runtime remains opt-in only
+* [x] No PostgreSQL implementation introduced
+* [x] No backend application server implementation introduced
+* [x] No automatic HTTP retry policy introduced
+* [x] No gameplay behavior changed
+* [x] No League scoring rules changed
+* [x] No League ranking rules changed
+* [x] No League promotion/relegation rules changed
+* [x] No Knockout behavior changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+* [x] Manual code review completed
+* [x] Simulator mock-runtime validation completed
+* [x] Static analysis passed
+* [x] Focused backend League repository tests passed
+* [x] Focused League presentation tests passed
+* [x] Full Flutter test suite passed
+* [x] Whitespace validation passed
+
+---
+
+### 🛠️ Work Done
+
+* Activated `BackendLeagueRepository.enterWeeklyLeague`
+
+* Added real League entry HTTP behavior:
+
+  * `POST /api/v1/league/enter`
+  * request body exactly `{}`
+  * explicit `Idempotency-Key` header
+  * authenticated Bearer header remains transport-managed
+  * no client-owned player or economy authority sent in the payload
+
+* Required an explicit `IdempotencyKey` for backend League entry
+
+* Rejected backend entry calls without an idempotency key before performing HTTP
+
+* Preserved caller-side mutation identity instead of generating keys inside the HTTP client
+
+* Added authoritative League entry decoding through `LeagueEntryResponseDto`
+
+* Treated both mutation statuses as successful authoritative outcomes:
+
+  * `accepted`
+  * `idempotentReplay`
+
+* Preserved `rejected` as the only rejected mutation status
+
+* Added backend League entry rejection mapping for:
+
+  * already-active entry
+  * insufficient GP
+  * closed entry window
+  * missing reserved slot
+  * player outside League
+  * settlement in progress
+  * stale player state
+
+* Routed League entry rejection errors through:
+
+  * `ApiError`
+  * `DomainErrorMapper`
+  * `RepositoryDomainException`
+
+* Added `LeagueEntryResult` as the compatibility result returned by backend League entry
+
+* Preserved the existing `LeaguePlayerEntry` interface shape while exposing additional authoritative mutation projections:
+
+  * League season
+  * remaining GP
+  * optional authoritative player profile
+
+* Added `ServerAuthoritativeLeagueEntryRepository` as a small semantic capability marker
+
+* Implemented the capability in `BackendLeagueRepository`
+
+* Updated `LeagueHomeScreen` to distinguish backend-authoritative entry behavior from mock/local entry behavior without importing or type-checking the concrete backend repository
+
+* Preserved local 10 GP precheck for mock/local runtime
+
+* Disabled local GP eligibility precheck for server-authoritative League entry runtime
+
+* Prevented stale local GP values from blocking a valid backend mutation
+
+* Updated accepted backend entry projection logic:
+
+  * use authoritative `PlayerProfile` when returned
+  * otherwise use authoritative `remainingGamePoints`
+  * use authoritative entry division
+  * use authoritative entry active state
+  * use authoritative reserved-slot state
+
+* Removed local GP arithmetic from backend-authoritative entry flow
+
+* Confirmed backend entry never uses:
+
+  * `local gamePoints - weeklyEntryCost`
+  * client-derived remaining GP
+  * client-derived division authority
+
+* Prevented backend League entry success from calling `AuthRepository.updatePlayerProfile`
+
+* Preserved mock/local profile persistence through `AuthRepository.updatePlayerProfile`
+
+* Preserved existing mock 10 GP deduction behavior
+
+* Added logical entry-attempt idempotency lifecycle:
+
+  * key created once per unresolved attempt
+  * same key reused on ambiguous retry
+  * key cleared after accepted/replayed mutation is safely consumed
+  * key cleared after definitive server rejection
+  * no automatic retry introduced
+
+* Separated mutation success from post-success League state refresh
+
+* Prevented read failures after accepted entry from showing:
+
+  * `Could not enter weekly league. Please try again.`
+
+* Added refresh-specific post-success message:
+
+  * `Weekly league entry confirmed, but league data could not be refreshed.`
+
+* Preserved accepted entry/profile state when post-success League reads fail
+
+* Prevented post-success refresh failures from reopening or reusing a completed mutation idempotency key
+
+* Preserved all existing backend League read integration
+
+* Preserved `submitLeagueRun` as an explicit disconnected backend mutation placeholder
+
+* Preserved League settlement as an explicit disconnected backend mutation placeholder
+
+* Added focused backend repository coverage for:
+
+  * League entry POST path
+  * empty request body
+  * idempotency header
+  * accepted response
+  * idempotent replay response
+  * rejected responses
+  * malformed mutation responses
+  * missing idempotency key
+  * disconnected League run submission
+  * disconnected settlement
+
+* Added focused League presentation coverage for:
+
+  * stale local GP with backend-authoritative entry
+  * authoritative `remainingGamePoints`
+  * authoritative `PlayerProfile`
+  * absence of backend `updatePlayerProfile`
+  * preserved mock GP deduction
+  * preserved mock profile persistence
+  * failed backend mutation without local GP deduction
+  * definitive rejection idempotency completion
+  * ambiguous failure idempotency reuse
+  * successful mutation idempotency completion
+  * post-success refresh failure
+  * preservation of authoritative state after refresh failure
+  * mock success followed by refresh failure
+
+* Updated backend architecture documentation
+
+* Updated API integration documentation
+
+* Updated persistence ownership documentation
+
+* Updated anti-cheat/server-authority documentation
+
+---
+
+### 📁 Files Changed
+
+Production:
+
+* `lib/features/league/domain/repositories/league_repository.dart`
+* `lib/features/league/data/backend/backend_league_repository.dart`
+* `lib/features/league/data/mock_league_repository.dart`
+* `lib/features/league/presentation/screens/league_home_screen.dart`
+
+Tests:
+
+* `test/features/league/data/backend/backend_league_repository_test.dart`
+* `test/core/repositories/repository_factory_test.dart`
+* `test/features/league/presentation/screens/league_home_screen_test.dart`
+* `test/features/knockout/presentation/screens/knockout_home_screen_test.dart`
+* `test/widget_test.dart`
+
+Documentation:
+
+* `docs/API_Plan.md`
+* `docs/Architecture.md`
+* `docs/Persistence_Map.md`
+* `docs/Anti_Cheat_Plan.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Session 38 activates only the League entry backend mutation
+* League run submission remains disconnected in backend runtime
+* League settlement remains disconnected from normal client control
+* League settlement remains server-authoritative
+* Mock runtime remains the default application runtime
+* Backend runtime remains opt-in only
+* `LeagueRepository.enterWeeklyLeague` keeps the existing `PlayerProfile` argument for mock/runtime compatibility
+* Backend League entry deliberately does not serialize the supplied `PlayerProfile`
+* Authenticated backend session remains the authoritative player-identity source
+* Backend remains authoritative for GP eligibility and GP deduction
+* Backend remains authoritative for current League season
+* Backend remains authoritative for reserved-slot validation
+* Backend remains authoritative for division placement
+* Backend remains authoritative for last-division expansion
+* League entry request body remains intentionally empty
+* Client-side local GP is not trusted for backend entry eligibility
+* Stale local GP cannot block a server-authoritative entry mutation
+* Backend League entry results must not be followed by client-owned full-profile writes
+* `AuthRepository.updatePlayerProfile` remains part of the mock/local entry path only
+* `remainingGamePoints` is the authoritative GP fallback when the backend response does not include a complete `PlayerProfile`
+* `LeagueEntryResult` is currently a transitional compatibility projection built on `LeaguePlayerEntry`
+* `ServerAuthoritativeLeagueEntryRepository` is intentionally a marker/capability interface
+* Presentation depends on server-authoritative semantics rather than the concrete `BackendLeagueRepository`
+* Accepted and idempotent-replay entry responses share the same success mapping
+* Backend rejection codes are preserved in `RepositoryDomainException.details`
+* Definitive League entry rejection completes the logical mutation attempt
+* Ambiguous mutation failure preserves the logical idempotency key for explicit retry
+* No automatic retry behavior was added
+* Post-success League refresh is a separate read concern
+* A failed post-success refresh cannot convert a completed mutation into a failed mutation
+* Accepted mutation state is preserved if League ranking/history/records/snapshot refresh fails
+* A post-success refresh failure does not reopen the mutation idempotency key
+* Existing League read integration remains unchanged
+* Existing mock League runtime remains fully functional
+* Existing mock entry GP deduction remains local by design
+* League run submission remains prepared at DTO/contract level but disconnected at repository runtime
+* Server-side anti-cheat validation remains mandatory before future competitive run submission is activated
+* No PostgreSQL implementation was introduced
+* No backend application server implementation was introduced
+* No gameplay, League scoring, League ranking, promotion/relegation, Knockout, Purchase, or Ads behavior changed
+* `currentDivision` and `entry.divisionNumber` consistency validation remains a possible future contract-hardening improvement and was not treated as a Session 38 blocker
+* Authoritative mutation-profile projection may be generalized in a future session if additional mutations return similar economy/competitive projections
+
+---
+
+### 🧪 Validation
+
+* [x] Backend League entry capability reviewed
+* [x] `ServerAuthoritativeLeagueEntryRepository` reviewed
+* [x] Backend League repository capability implementation reviewed
+* [x] League entry POST request reviewed
+* [x] Empty request body reviewed
+* [x] Idempotency-key requirement reviewed
+* [x] Caller-owned mutation identity reviewed
+* [x] Missing-idempotency-key handling reviewed
+* [x] Authorization ownership boundary reviewed
+* [x] No client player identity in request reviewed
+* [x] No client GP authority in request reviewed
+* [x] No client division authority in request reviewed
+* [x] Accepted response mapping reviewed
+* [x] Idempotent replay mapping reviewed
+* [x] Rejection mapping reviewed
+* [x] Malformed-response handling reviewed
+* [x] `LeagueEntryResult` projection reviewed
+* [x] Authoritative season projection reviewed
+* [x] Authoritative remaining-GP projection reviewed
+* [x] Optional authoritative player-profile projection reviewed
+* [x] Stale local GP handling reviewed
+* [x] Mock local GP precheck preservation reviewed
+* [x] Backend local GP deduction prevention reviewed
+* [x] Backend full-profile write prevention reviewed
+* [x] Mock profile persistence preservation reviewed
+* [x] Mock 10 GP deduction preservation reviewed
+* [x] Successful mutation idempotency completion reviewed
+* [x] Definitive rejection key clearing reviewed
+* [x] Ambiguous failure key reuse reviewed
+* [x] No automatic retry behavior reviewed
+* [x] Post-success refresh separation reviewed
+* [x] Refresh-specific warning state reviewed
+* [x] Authoritative state preservation after refresh failure reviewed
+* [x] Completed idempotency state preservation after refresh failure reviewed
+* [x] Existing League read operations reviewed
+* [x] League run submission disconnection reviewed
+* [x] League settlement disconnection reviewed
+* [x] Mock runtime preservation reviewed
+* [x] Backend runtime remains opt-in reviewed
+* [x] Manual Simulator mock-runtime validation completed
+* [x] Static analysis passed
+* [x] Focused League presentation tests passed
+* [x] Backend League repository tests passed
+* [x] Repository factory tests passed
+* [x] Full Flutter test suite passed
+* [x] Whitespace validation passed
+* [x] No gameplay behavior changed
+* [x] No League scoring rules changed
+* [x] No League ranking rules changed
+* [x] No League promotion/relegation rules changed
+* [x] No Knockout behavior changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+
+Final automated validation commands included:
+
+```bash
+dart format \
+  lib/features/league/presentation/screens/league_home_screen.dart \
+  test/features/league/presentation/screens/league_home_screen_test.dart
+
+flutter analyze
+flutter test test/features/league/presentation/screens/league_home_screen_test.dart
+flutter test test/features/league/data/backend/backend_league_repository_test.dart
+flutter test
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `dart format` — completed successfully
+* Focused League presentation tests — passed
+* Backend League repository tests — 28 tests passed
+* `flutter analyze` — no issues found
+* Complete Flutter test suite — 520 tests passed
+* `git diff --check` — no whitespace errors
+* Session changes remained limited to League entry mutation integration, authoritative profile/economy projection, idempotency lifecycle, presentation integration, focused tests, and backend documentation
+
+Manual validation:
+
+* Critical Session 38 production files manually reviewed
+* `league_repository.dart` reviewed and approved
+* `league_mutation_dtos.dart` reviewed and approved
+* `mock_league_repository.dart` reviewed and approved
+* `backend_league_repository.dart` reviewed and approved
+* `league_home_screen.dart` reviewed, corrected, retested, and approved
+* Server-authoritative capability marker reviewed and approved
+* Stale local GP flow reviewed and approved
+* Backend authoritative GP projection reviewed and approved
+* Idempotency lifecycle reviewed and approved
+* Post-success refresh behavior reviewed and approved
+* Simulator validation performed using the mock runtime
+* Real backend end-to-end Simulator validation remains deferred until an actual backend application server implements `POST /api/v1/league/enter`
+
+---
+
+### 📌 Next Session
+
+Session 39 — League Backend Run Submission Integration
+
+Planned focus:
+
+* [ ] Activate the second League backend mutation
+* [ ] Connect `BackendLeagueRepository.submitLeagueRun`
+* [ ] Preserve League entry integration from Session 38
+* [ ] Require explicit idempotency for League run submission
+* [ ] Define caller-side logical run-submission idempotency lifecycle
+* [ ] Reuse the same idempotency key for retries of the same logical run submission
+* [ ] Use a new idempotency key for a different run submission
+* [ ] Send `POST /api/v1/runs/league`
+* [ ] Serialize `LeagueRunSubmissionRequestDto`
+* [ ] Preserve authenticated backend identity as player authority
+* [ ] Do not send client player identity as authoritative ownership
+* [ ] Treat submitted final PP as a claim only
+* [ ] Preserve server authority over run acceptance
+* [ ] Preserve server authority over duplicate-run detection
+* [ ] Preserve server authority over League participation validation
+* [ ] Preserve server authority over League season validation
+* [ ] Preserve server authority over timestamps/duration validation
+* [ ] Preserve server authority over anti-cheat validation
+* [ ] Decode `LeagueRunSubmissionResponseDto`
+* [ ] Handle `accepted`
+* [ ] Handle `idempotentReplay`
+* [ ] Handle `rejected`
+* [ ] Respect `newlyPersisted` semantics
+* [ ] Map authoritative accepted run state
+* [ ] Map authoritative player-record projections
+* [ ] Consume optional authoritative player-profile/economy projection safely
+* [ ] Avoid client-side authoritative weekly-score mutation
+* [ ] Avoid client-side authoritative ranking mutation
+* [ ] Avoid client-side authoritative records mutation
+* [ ] Avoid client-side authoritative GP reward mutation
+* [ ] Keep retry behavior explicit and non-automatic
+* [ ] Add focused request/header/idempotency tests
+* [ ] Add accepted run tests
+* [ ] Add idempotent replay tests
+* [ ] Add duplicate-submission rejection tests
+* [ ] Add invalid-run rejection tests
+* [ ] Add validation-failure rejection tests
+* [ ] Add season-mismatch rejection tests
+* [ ] Add settlement-in-progress rejection tests
+* [ ] Add stale-state rejection tests
+* [ ] Add malformed-response tests
+* [ ] Review whether authoritative mutation profile projection should be generalized beyond `LeagueEntryResult`
+* [ ] Review consistency requirements for redundant authoritative response fields
+* [ ] Preserve League settlement as disconnected
+* [ ] Preserve all existing League reads
+* [ ] Preserve mock runtime as default
+* [ ] Preserve gameplay and Knockout behavior
+
+Session boundary:
+
+* Implement League run submission only
+* Do not implement League settlement
+* Do not implement PostgreSQL or backend application server code
+* Do not introduce automatic HTTP retries
+* Do not redesign League scoring or ranking rules
+* Do not move server-authoritative calculations back to the client
+* Do not trust client-provided player identity
+* Do not treat claimed final PP as authoritative without backend validation
+* Do not modify Knockout backend integration
+* Preserve League entry behavior from Session 38
+* Keep the session narrowly scoped
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup
+* ✅ Session 2 — Base structure and documentation
+* ✅ Session 3 — Game base rendering
+* ✅ Session 4 — Collision and validation
+* ✅ Session 5 — Level system
+* ✅ Session 6 — Run Points (superseded)
+* ✅ Session 7 — Lives system (superseded)
+* ✅ Session 8 — Precision Points
+* ✅ Session 9 — Registration/Login
+* ✅ Session 10 — GP System
+* ✅ Session 11 — Purchases
+* ✅ Session 12 — Ads
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow
+* ✅ Session 13 — League Structure
+* ✅ Session 14 — Weekly League Entry + Runtime Integration
+* ✅ Session 15 — Weekly League Scoring + Ranking UI
+* ✅ Session 16 — Weekly League History + Personal Records
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow
+* ✅ Session 19 — League Polish + Edge Case Hardening
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status
+* ✅ Session 23 — Knockout Tournament History + Records
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning
+* ✅ Session 27 — Backend Repository Contracts Preparation
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening
+* ✅ Session 30 — Backend Networking Client Preparation
+* ✅ Session 31 — Backend Authentication Integration
+* ✅ Session 32 — Secure Session Persistence + Refresh Token Policy
+* ✅ Session 33 — Authentication Session Startup Flow Verification
+* ✅ Session 34 — Authentication Logout + Session Lifecycle Hardening
+* ✅ Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+* ✅ Session 36 — League Backend Integration Foundation
+* ✅ Session 37 — League Backend Mutation Contract Design + Idempotency Preparation
+* ✅ Session 38 — League Backend Entry Mutation Integration
+* ⏳ Session 39 — League Backend Run Submission Integration
+
+---
+
+### 🧭 Current State
+
+Current session: Session 39 — League Backend Run Submission Integration
+
+Status: Ready ⏳
+
+Future session policy:
+
+* Keep sessions narrowly scoped
+* Integrate one competitive mutation at a time
+* Preserve Session 38 League entry behavior
+* Require explicit idempotency for competitive/economy mutations
+* Keep logical mutation identity owned above the HTTP transport layer
+* Keep settlement server-authoritative and disconnected from normal client control
+* Preserve mock repositories as the default runtime
+* Preserve backend League read integration
+* Keep player identity authentication-derived
+* Keep economy and competitive state server-authoritative
+* Treat competitive run values as claims until backend validation completes
+* Consume authoritative mutation projections without client-side recalculation
+* Avoid automatic retries until server-side idempotency persistence exists
+* Avoid broad refactoring during backend feature integration
+* Preserve existing gameplay and Knockout behavior
+* Add backend-runtime Simulator validation only when a real backend application server endpoint is available
+
+---
 

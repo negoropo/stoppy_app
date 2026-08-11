@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/auth_state.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
@@ -611,7 +612,10 @@ class _AchievementLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) {
+  Future<LeaguePlayerEntry> enterWeeklyLeague(
+    PlayerProfile profile, {
+    IdempotencyKey? idempotencyKey,
+  }) {
     throw UnimplementedError();
   }
 

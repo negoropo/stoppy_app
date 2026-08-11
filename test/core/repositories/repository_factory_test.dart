@@ -10,7 +10,6 @@ import 'package:stoppy_app/core/repositories/repository_factory.dart';
 import 'package:stoppy_app/features/ads/data/mock_ad_repository.dart';
 import 'package:stoppy_app/features/auth/data/backend/backend_auth_repository.dart';
 import 'package:stoppy_app/features/auth/data/mock_auth_repository.dart';
-import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/knockout/data/backend/backend_knockout_repository.dart';
 import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
 import 'package:stoppy_app/features/league/data/backend/backend_league_repository.dart';
@@ -87,26 +86,12 @@ expect(
 same(sessionStore),
 );
 
-final leagueRepository =
-repositories.leagueRepository as BackendLeagueRepository;
 final knockoutRepository =
 repositories.knockoutRepository as BackendKnockoutRepository;
 
 expect(
-() => leagueRepository.enterWeeklyLeague(
-PlayerProfile(
-id: 'player-1',
-username: 'Tester',
-createdAt: DateTime.utc(2026, 1, 1),
-),
-),
-throwsA(
-isA<ApiException>().having(
-(exception) => exception.error.code,
-'code',
-ApiErrorCode.notImplemented,
-),
-),
+repositories.leagueRepository,
+isA<BackendLeagueRepository>(),
 );
 
 expect(

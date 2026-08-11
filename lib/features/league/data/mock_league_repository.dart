@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/league/domain/models/league_division.dart';
 import 'package:stoppy_app/features/league/domain/models/league_division_settlement.dart';
@@ -75,7 +76,10 @@ class MockLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) async {
+  Future<LeaguePlayerEntry> enterWeeklyLeague(
+    PlayerProfile profile, {
+    IdempotencyKey? idempotencyKey,
+  }) async {
     final existingEntry = _entriesByPlayerId[profile.id];
 
     if (existingEntry != null) {

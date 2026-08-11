@@ -107,3 +107,9 @@ League run submission validation must:
 If the same idempotency key is reused with a different payload, the backend must
 return a conflict without exposing sensitive anti-cheat diagnostics. Detailed
 replay evidence and anomaly data should remain in server-side audit logs.
+
+The Flutter backend League repository now sends the weekly entry mutation as an
+authenticated empty-object request with a caller-owned `Idempotency-Key`. The
+client still does not submit player identity, GP balance, division placement, or
+reserved-slot decisions as authoritative data. League run submission and League
+settlement remain server-authoritative future integrations.

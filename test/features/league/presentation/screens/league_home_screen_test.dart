@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
+import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/data/mock_auth_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/models/auth_state.dart';
@@ -427,6 +430,469 @@ void main() {
     expect(updatedProfile?.currentLeagueDivision, 3);
     expect(updatedProfile?.hasWeeklyLeagueEntry, isTrue);
     expect(updatedProfile?.reservedLeagueSlot, isTrue);
+    expect(
+      (tester
+                  .widget<LeagueHomeScreen>(find.byType(LeagueHomeScreen))
+                  .authRepository
+              as _UpdatingAuthRepository)
+          .updateCallCount,
+      1,
+    );
+  });
+
+  testWidgets('backend entry allows stale low local GP and uses remaining GP', (
+    WidgetTester tester,
+  ) async {
+    PlayerProfile? updatedProfile;
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 7,
+      hasWeeklyLeagueEntry: false,
+      reservedLeagueSlot: false,
+    );
+    final entryResult = _entryResult(remainingGamePoints: 15);
+    final authRepository = _UpdatingAuthRepository(playerProfile);
+    final repository = _ServerAuthoritativeLeagueScreenRepository(
+      outcomes: [entryResult],
+      storedEntry: null,
+      ranking: const [],
+      snapshot: _snapshotFor(entryResult),
+      records: PlayerLeagueRecords.empty('current'),
+      history: const [],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: authRepository,
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (profile) {
+            updatedProfile = profile;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pumpAndSettle();
+
+    expect(repository.enterCallCount, 1);
+    expect(updatedProfile?.gamePoints, 15);
+    expect(find.text('GP: 15'), findsOneWidget);
+    expect(find.text('Weekly league entry confirmed.'), findsOneWidget);
+    expect(authRepository.updateCallCount, 0);
+  });
+
+  testWidgets(
+    'backend entry success with refresh failure keeps authoritative state',
+    (WidgetTester tester) async {
+      PlayerProfile? updatedProfile;
+      final playerProfile = PlayerProfile(
+        id: 'current',
+        username: 'Current Player',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 7,
+      );
+      final entryResult = _entryResult(remainingGamePoints: 15);
+      final repository = _ServerAuthoritativeLeagueScreenRepository(
+        outcomes: [entryResult],
+        storedEntry: null,
+        ranking: const [],
+        snapshot: _snapshotFor(entryResult),
+        records: PlayerLeagueRecords.empty('current'),
+        history: const [],
+        weeklyRuns: const [],
+        failRefreshAfterEnter: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: _UpdatingAuthRepository(playerProfile),
+            leagueRepository: repository,
+            onPlayerProfileUpdated: (profile) {
+              updatedProfile = profile;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-enter Weekly League'));
+      await tester.pumpAndSettle();
+
+      expect(updatedProfile?.gamePoints, 15);
+      expect(find.text('GP: 15'), findsOneWidget);
+      expect(find.text('Entry status: active'), findsOneWidget);
+      expect(
+        find.text('Could not enter weekly league. Please try again.'),
+        findsNothing,
+      );
+      expect(
+        find.text(
+          'Weekly league entry confirmed, but league data could not be refreshed.',
+        ),
+        findsOneWidget,
+      );
+      expect(repository.idempotencyKeys, hasLength(1));
+    },
+  );
+
+  testWidgets(
+    'backend entry uses authoritative remaining GP instead of local deduction',
+    (WidgetTester tester) async {
+      PlayerProfile? updatedProfile;
+      final playerProfile = PlayerProfile(
+        id: 'current',
+        username: 'Current Player',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 100,
+        hasWeeklyLeagueEntry: false,
+        reservedLeagueSlot: false,
+      );
+      final entryResult = _entryResult(remainingGamePoints: 27);
+      final repository = _ServerAuthoritativeLeagueScreenRepository(
+        outcomes: [entryResult],
+        storedEntry: null,
+        ranking: const [],
+        snapshot: _snapshotFor(entryResult),
+        records: PlayerLeagueRecords.empty('current'),
+        history: const [],
+        weeklyRuns: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: _UpdatingAuthRepository(playerProfile),
+            leagueRepository: repository,
+            onPlayerProfileUpdated: (profile) {
+              updatedProfile = profile;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-enter Weekly League'));
+      await tester.pumpAndSettle();
+
+      expect(updatedProfile?.gamePoints, 27);
+      expect(updatedProfile?.gamePoints, isNot(90));
+    },
+  );
+
+  testWidgets(
+    'backend entry without profile projection does not write through auth repository',
+    (WidgetTester tester) async {
+      PlayerProfile? updatedProfile;
+      final playerProfile = PlayerProfile(
+        id: 'current',
+        username: 'Current Player',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 40,
+      );
+      final entryResult = _entryResult(
+        remainingGamePoints: 22,
+        divisionNumber: 4,
+        hasReservedSlot: true,
+      );
+      final authRepository = _UpdatingAuthRepository(playerProfile);
+      final repository = _ServerAuthoritativeLeagueScreenRepository(
+        outcomes: [entryResult],
+        storedEntry: null,
+        ranking: const [],
+        snapshot: _snapshotFor(entryResult),
+        records: PlayerLeagueRecords.empty('current'),
+        history: const [],
+        weeklyRuns: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: authRepository,
+            leagueRepository: repository,
+            onPlayerProfileUpdated: (profile) {
+              updatedProfile = profile;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-enter Weekly League'));
+      await tester.pumpAndSettle();
+
+      expect(authRepository.updateCallCount, 0);
+      expect(updatedProfile?.gamePoints, 22);
+      expect(updatedProfile?.currentLeagueDivision, 4);
+      expect(updatedProfile?.hasWeeklyLeagueEntry, isTrue);
+      expect(updatedProfile?.reservedLeagueSlot, isTrue);
+    },
+  );
+
+  testWidgets('backend entry uses returned authoritative profile', (
+    WidgetTester tester,
+  ) async {
+    PlayerProfile? updatedProfile;
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 40,
+    );
+    final authoritativeProfile = playerProfile.copyWith(
+      gamePoints: 33,
+      currentLeagueDivision: 5,
+      hasWeeklyLeagueEntry: true,
+      reservedLeagueSlot: true,
+    );
+    final entryResult = _entryResult(
+      remainingGamePoints: 22,
+      divisionNumber: 4,
+      playerProfile: authoritativeProfile,
+    );
+    final repository = _ServerAuthoritativeLeagueScreenRepository(
+      outcomes: [entryResult],
+      storedEntry: null,
+      ranking: const [],
+      snapshot: _snapshotFor(entryResult),
+      records: PlayerLeagueRecords.empty('current'),
+      history: const [],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (profile) {
+            updatedProfile = profile;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pumpAndSettle();
+
+    expect(updatedProfile?.gamePoints, 33);
+    expect(updatedProfile?.currentLeagueDivision, 5);
+  });
+
+  testWidgets('failed backend entry does not mutate player profile', (
+    WidgetTester tester,
+  ) async {
+    PlayerProfile? updatedProfile;
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 100,
+    );
+    final authRepository = _UpdatingAuthRepository(playerProfile);
+    final repository = _ServerAuthoritativeLeagueScreenRepository(
+      outcomes: [
+        const RepositoryDomainException(
+          'Network unavailable. Please try again.',
+          code: ApiErrorCode.networkUnavailable,
+        ),
+      ],
+      storedEntry: null,
+      ranking: const [],
+      snapshot: null,
+      records: PlayerLeagueRecords.empty('current'),
+      history: const [],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: authRepository,
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (profile) {
+            updatedProfile = profile;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pumpAndSettle();
+
+    expect(updatedProfile, isNull);
+    expect(authRepository.updateCallCount, 0);
+    expect(find.text('GP: 100'), findsOneWidget);
+    expect(
+      find.text('Could not enter weekly league. Please try again.'),
+      findsOneWidget,
+    );
+    expect(find.text('Weekly league entry confirmed.'), findsNothing);
+  });
+
+  testWidgets(
+    'mock entry success with refresh failure preserves local persistence',
+    (WidgetTester tester) async {
+      PlayerProfile? updatedProfile;
+      final playerProfile = PlayerProfile(
+        id: 'current',
+        username: 'Current Player',
+        createdAt: DateTime(2026, 5, 1),
+        gamePoints: 15,
+      );
+      final authRepository = _UpdatingAuthRepository(playerProfile);
+      final repository = _LeagueScreenRepository(
+        storedEntry: null,
+        entryOnEnter: _entry('current', 'Current Player', divisionNumber: 3),
+        ranking: const [],
+        snapshot: null,
+        records: PlayerLeagueRecords.empty('current'),
+        history: const [],
+        weeklyRuns: const [],
+        failRefreshAfterEnter: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeagueHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: authRepository,
+            leagueRepository: repository,
+            onPlayerProfileUpdated: (profile) {
+              updatedProfile = profile;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-enter Weekly League'));
+      await tester.pumpAndSettle();
+
+      expect(authRepository.updateCallCount, 1);
+      expect(updatedProfile?.gamePoints, 5);
+      expect(find.text('GP: 5'), findsOneWidget);
+      expect(
+        find.text(
+          'Weekly league entry confirmed, but league data could not be refreshed.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Could not enter weekly league. Please try again.'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('definitive backend rejection can use a new key later', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 100,
+    );
+    final entryResult = _entryResult(remainingGamePoints: 80);
+    final repository = _ServerAuthoritativeLeagueScreenRepository(
+      outcomes: [
+        const RepositoryDomainException(
+          'You do not have enough GP to enter the weekly league.',
+          code: ApiErrorCode.validationFailed,
+          details: {'rejectionCode': 'insufficientGp'},
+        ),
+        entryResult,
+      ],
+      storedEntry: null,
+      ranking: const [],
+      snapshot: _snapshotFor(entryResult),
+      records: PlayerLeagueRecords.empty('current'),
+      history: const [],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pumpAndSettle();
+
+    expect(repository.idempotencyKeys, hasLength(2));
+    expect(repository.idempotencyKeys[1], isNot(repository.idempotencyKeys[0]));
+  });
+
+  testWidgets('ambiguous backend failure reuses the pending idempotency key', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'current',
+      username: 'Current Player',
+      createdAt: DateTime(2026, 5, 1),
+      gamePoints: 100,
+    );
+    final entryResult = _entryResult(remainingGamePoints: 80);
+    final repository = _ServerAuthoritativeLeagueScreenRepository(
+      outcomes: [
+        const RepositoryDomainException(
+          'Network unavailable. Please try again.',
+          code: ApiErrorCode.networkUnavailable,
+        ),
+        entryResult,
+      ],
+      storedEntry: null,
+      ranking: const [],
+      snapshot: _snapshotFor(entryResult),
+      records: PlayerLeagueRecords.empty('current'),
+      history: const [],
+      weeklyRuns: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeagueHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          leagueRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Re-enter Weekly League'));
+    await tester.pumpAndSettle();
+
+    expect(repository.idempotencyKeys, hasLength(2));
+    expect(repository.idempotencyKeys[1], repository.idempotencyKeys[0]);
   });
 
   testWidgets(
@@ -492,6 +958,25 @@ LeaguePlayerEntry _entry(
     registeredAt: DateTime(2026, 5, 1),
     entryPaid: entryPaid,
     hasReservedSlot: hasReservedSlot,
+  );
+}
+
+LeagueEntryResult _entryResult({
+  int remainingGamePoints = 15,
+  int divisionNumber = 3,
+  bool hasReservedSlot = true,
+  PlayerProfile? playerProfile,
+}) {
+  return LeagueEntryResult(
+    entry: _entry(
+      'current',
+      'Current Player',
+      divisionNumber: divisionNumber,
+      hasReservedSlot: hasReservedSlot,
+    ),
+    seasonId: LeagueSeasonId.fromDate(DateTime(2026, 5, 4)),
+    remainingGamePoints: remainingGamePoints,
+    playerProfile: playerProfile,
   );
 }
 
@@ -576,6 +1061,7 @@ class _LeagueScreenRepository implements LeagueRepository {
     required this.records,
     required this.history,
     required this.weeklyRuns,
+    this.failRefreshAfterEnter = false,
   });
 
   LeaguePlayerEntry? storedEntry;
@@ -585,16 +1071,28 @@ class _LeagueScreenRepository implements LeagueRepository {
   final PlayerLeagueRecords records;
   final List<WeeklyLeagueHistoryEntry> history;
   final List<WeeklyLeagueRun> weeklyRuns;
+  final bool failRefreshAfterEnter;
   int enterCallCount = 0;
   int snapshotRequestCount = 0;
+  int currentEntryCallCount = 0;
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
+    currentEntryCallCount += 1;
+    if (failRefreshAfterEnter && enterCallCount > 0) {
+      throw const RepositoryDomainException(
+        'League refresh failed.',
+        code: ApiErrorCode.networkUnavailable,
+      );
+    }
     return storedEntry;
   }
 
   @override
-  Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) async {
+  Future<LeaguePlayerEntry> enterWeeklyLeague(
+    PlayerProfile profile, {
+    IdempotencyKey? idempotencyKey,
+  }) async {
     enterCallCount += 1;
     storedEntry = entryOnEnter ?? storedEntry;
     return storedEntry!;
@@ -660,10 +1158,46 @@ class _LeagueScreenRepository implements LeagueRepository {
   }
 }
 
+class _ServerAuthoritativeLeagueScreenRepository extends _LeagueScreenRepository
+    implements ServerAuthoritativeLeagueEntryRepository {
+  _ServerAuthoritativeLeagueScreenRepository({
+    required this.outcomes,
+    required super.storedEntry,
+    required super.ranking,
+    required super.snapshot,
+    required super.records,
+    required super.history,
+    required super.weeklyRuns,
+    super.failRefreshAfterEnter,
+  });
+
+  final List<Object> outcomes;
+  final List<String?> idempotencyKeys = [];
+
+  @override
+  Future<LeaguePlayerEntry> enterWeeklyLeague(
+    PlayerProfile profile, {
+    IdempotencyKey? idempotencyKey,
+  }) async {
+    enterCallCount += 1;
+    idempotencyKeys.add(idempotencyKey?.value);
+
+    final outcome = outcomes.removeAt(0);
+    if (outcome is Exception) {
+      throw outcome;
+    }
+
+    final entry = outcome as LeaguePlayerEntry;
+    storedEntry = entry;
+    return entry;
+  }
+}
+
 class _UpdatingAuthRepository implements AuthRepository {
   _UpdatingAuthRepository(this.playerProfile);
 
   PlayerProfile playerProfile;
+  int updateCallCount = 0;
 
   @override
   Future<AuthState> currentAuthState() async {
@@ -691,6 +1225,7 @@ class _UpdatingAuthRepository implements AuthRepository {
 
   @override
   Future<PlayerProfile> updatePlayerProfile(PlayerProfile playerProfile) async {
+    updateCallCount += 1;
     this.playerProfile = playerProfile;
     return playerProfile;
   }

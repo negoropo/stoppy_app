@@ -3,7 +3,9 @@ import 'package:stoppy_app/core/backend/api_error.dart';
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
 import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
+import 'package:stoppy_app/features/league/data/dto/league_mutation_dtos.dart';
 import 'package:stoppy_app/features/league/data/dto/league_persistence_dtos.dart';
 import 'package:stoppy_app/features/league/data/dto/league_read_dtos.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
@@ -17,7 +19,8 @@ import 'package:stoppy_app/features/league/domain/models/weekly_league_history_e
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 
-final class BackendLeagueRepository implements LeagueRepository {
+final class BackendLeagueRepository
+    implements LeagueRepository, ServerAuthoritativeLeagueEntryRepository {
   const BackendLeagueRepository({
     required this.apiClient,
     DomainErrorMapper errorMapper = const DomainErrorMapper(),
@@ -59,11 +62,33 @@ final class BackendLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeaguePlayerEntry> enterWeeklyLeague(PlayerProfile profile) {
-    // League entry is an economy mutation. The backend must atomically validate
-    // GP, reserved-slot state, division placement, and idempotency before this
-    // method can be connected to HTTP.
-    return backendNotConnected('BackendLeagueRepository', 'enterWeeklyLeague');
+  Future<LeaguePlayerEntry> enterWeeklyLeague(
+    PlayerProfile profile, {
+    IdempotencyKey? idempotencyKey,
+  }) {
+    final key = idempotencyKey;
+    if (key == null) {
+      throw _malformedPayload('League entry requires an idempotency key.');
+    }
+
+    return _post(
+      enterPath,
+      body: const LeagueEntryRequestDto().toJson(),
+      headers: key.toHeader(),
+      decode: (data) {
+        final response = LeagueEntryResponseDto.fromJson(data);
+        if (!response.accepted) {
+          throw _leagueEntryRejection(response);
+        }
+
+        return LeagueEntryResult(
+          entry: response.entry!.toDomain(),
+          seasonId: response.parsedSeasonId,
+          remainingGamePoints: response.remainingGamePoints,
+          playerProfile: response.playerProfile?.toDomain(),
+        );
+      },
+    );
   }
 
   @override
@@ -183,6 +208,35 @@ final class BackendLeagueRepository implements LeagueRepository {
     }
   }
 
+  Future<T> _post<T>(
+    String path, {
+    required Map<String, Object?> body,
+    required Map<String, String> headers,
+    required T Function(Map<String, Object?> data) decode,
+  }) async {
+    try {
+      final response = await apiClient.post(path, body: body, headers: headers);
+
+      if (!response.isSuccess) {
+        throw _errorMapper.toRepositoryException(response.requireError());
+      }
+
+      return decode(response.requireData());
+    } on RepositoryDomainException {
+      rethrow;
+    } on ApiException catch (exception) {
+      throw _errorMapper.toRepositoryException(exception.error);
+    } on FormatException catch (exception) {
+      throw _malformedPayload(exception.message);
+    } on ArgumentError catch (exception) {
+      throw _malformedPayload(
+        exception.message?.toString() ?? 'Malformed League payload.',
+      );
+    } on StateError catch (exception) {
+      throw _malformedPayload(exception.message);
+    }
+  }
+
   String _requirePlayerId(String playerId) {
     final normalizedPlayerId = playerId.trim();
 
@@ -205,5 +259,52 @@ final class BackendLeagueRepository implements LeagueRepository {
     return _errorMapper.toRepositoryException(
       ApiError(code: ApiErrorCode.malformedPayload, message: message),
     );
+  }
+
+  RepositoryDomainException _leagueEntryRejection(
+    LeagueEntryResponseDto response,
+  ) {
+    final rejectionCode = response.rejectionCode;
+    if (rejectionCode == null) {
+      return _malformedPayload(
+        'Rejected League entry response is missing code.',
+      );
+    }
+
+    final apiError = switch (rejectionCode) {
+      LeagueEntryRejectionCode.alreadyActive => ApiError(
+        code: ApiErrorCode.conflict,
+        message: 'Weekly league entry is already active.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueEntryRejectionCode.insufficientGp => ApiError(
+        code: ApiErrorCode.validationFailed,
+        message: 'You do not have enough GP to enter the weekly league.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueEntryRejectionCode.entryWindowClosed => ApiError(
+        code: ApiErrorCode.validationFailed,
+        message: 'Weekly league entry is currently closed.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueEntryRejectionCode.noReservedSlot ||
+      LeagueEntryRejectionCode.outsideLeague => ApiError(
+        code: ApiErrorCode.validationFailed,
+        message: 'Weekly league entry is not available for this player state.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueEntryRejectionCode.settlementInProgress => ApiError(
+        code: ApiErrorCode.conflict,
+        message: 'Weekly league settlement is currently in progress.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueEntryRejectionCode.stalePlayerState => ApiError(
+        code: ApiErrorCode.conflict,
+        message: 'Player league state is stale. Please refresh and try again.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+    };
+
+    return _errorMapper.toRepositoryException(apiError);
   }
 }

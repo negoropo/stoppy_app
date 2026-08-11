@@ -161,7 +161,9 @@ When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connec
 - Expired returned sessions and malformed authentication payloads are rejected without replacing the existing local session.
 - On app restoration, unauthenticated or forbidden profile responses clear the in-memory session; temporary failures preserve it and surface an auth-domain error.
 - Future Google, Apple, and Facebook login flows must validate provider credentials on the backend and return this same Stoppy `AuthResponseDto`; provider identity tokens are not stored as Stoppy sessions.
-- League and Knockout backend repository methods remain disconnected skeletons.
+- League entry is connected as the first backend League mutation. League run
+  submission, League settlement, and Knockout backend mutations remain
+  disconnected.
 
 ## Error Strategy
 
@@ -321,8 +323,11 @@ An idempotent replay of a previously accepted entry uses
 `"status": "idempotentReplay"` and returns the same authoritative accepted
 entry projection.
 
-This mutation remains disconnected in the Flutter backend repository until
-server-side persistence and validation are implemented.
+This mutation is connected in `BackendLeagueRepository.enterWeeklyLeague`.
+Flutter sends an authenticated empty-object request with an `Idempotency-Key`;
+the backend remains authoritative for player identity, GP deduction, division
+placement, reserved-slot state, and accepted/rejected/idempotent replay state.
+Rejected mutations do not authorize local GP or League-state changes.
 
 ### GET /api/v1/league/snapshot
 

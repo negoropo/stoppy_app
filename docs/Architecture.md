@@ -540,20 +540,29 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * `HttpBackendApiClient` excludes Bearer tokens from login, registration, and
   refresh requests.
 * Expired access tokens are never sent as Bearer tokens.
-* League and Knockout backend repositories remain disconnected skeletons.
+* League backend reads and weekly entry mutation are connected. League run
+  submission, League settlement, and Knockout backend mutations remain
+  disconnected.
 
 ### Session 37 League Mutation Contract Preparation
 
-League backend mutation contracts are prepared but not activated.
+League backend mutation contracts are prepared. Weekly League entry is the
+first connected competitive backend mutation.
 
 * `Idempotency-Key` is centralized in `ApiContract`.
 * `IdempotencyKey` normalizes and validates caller-owned retry keys.
-* League entry DTOs describe the future server-authoritative GP deduction and
-  weekly entry result.
+* League entry DTOs describe the server-authoritative GP deduction and weekly
+  entry result now consumed by `BackendLeagueRepository.enterWeeklyLeague`.
 * League run submission DTOs describe the future server-authoritative run claim,
   validation result, and accepted/rejected/idempotent replay states.
-* `BackendLeagueRepository` keeps entry and run submission disconnected until
-  backend persistence, idempotency storage, and anti-cheat validation exist.
+* `BackendLeagueRepository.enterWeeklyLeague` sends `POST /api/v1/league/enter`
+  with an empty object body and caller-owned `Idempotency-Key`.
+* Accepted and idempotent replay entry responses map to authoritative League
+  entry state, with optional profile projection carried by `LeagueEntryResult`
+  so backend runtime does not need client-side GP deduction. Rejected responses
+  map through repository-domain errors.
+* League run submission and settlement remain disconnected until backend
+  persistence, idempotency storage, and anti-cheat validation exist.
 * Mock runtime remains the default runtime.
 * League reads, gameplay, Knockout, Purchase, and Ads behavior are unchanged.
 

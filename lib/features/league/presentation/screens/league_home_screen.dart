@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 
 import '../../../auth/domain/models/player_profile.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
@@ -46,6 +48,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
   bool _isLoading = true;
   bool _isEntering = false;
   String? _message;
+  IdempotencyKey? _pendingLeagueEntryIdempotencyKey;
 
   @override
   void initState() {
@@ -123,8 +126,9 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
       return;
     }
 
-    if (_playerProfile.gamePoints <
-        LeagueDivisionPolicy.weeklyEntryCostGamePoints) {
+    if (!_usesServerAuthoritativeLeagueEntry &&
+        _playerProfile.gamePoints <
+            LeagueDivisionPolicy.weeklyEntryCostGamePoints) {
       setState(() {
         _message = 'You need 10 GP to enter the weekly league.';
       });
@@ -136,21 +140,22 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
       _message = null;
     });
 
+    LeaguePlayerEntry? acceptedEntry;
+    PlayerProfile? acceptedProfile;
+
     try {
       final entry = await widget.leagueRepository.enterWeeklyLeague(
         _playerProfile,
+        idempotencyKey: _leagueEntryIdempotencyKeyForCurrentAttempt(),
       );
-      final updatedProfile = _playerProfile.copyWith(
-        gamePoints:
-            (_playerProfile.gamePoints -
-                    LeagueDivisionPolicy.weeklyEntryCostGamePoints)
-                .clamp(0, 999999999),
-        currentLeagueDivision: entry.divisionNumber,
-        hasWeeklyLeagueEntry: true,
-        reservedLeagueSlot: entry.hasReservedSlot,
-      );
-      await widget.authRepository.updatePlayerProfile(updatedProfile);
+      final updatedProfile = _profileProjectionForAcceptedEntry(entry);
+      if (entry is! LeagueEntryResult) {
+        await widget.authRepository.updatePlayerProfile(updatedProfile);
+      }
       widget.onPlayerProfileUpdated(updatedProfile);
+      _pendingLeagueEntryIdempotencyKey = null;
+      acceptedEntry = entry;
+      acceptedProfile = updatedProfile;
 
       if (!mounted) {
         return;
@@ -161,8 +166,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
         _currentEntry = entry;
         _message = 'Weekly league entry confirmed.';
       });
-      await _loadLeagueState(clearMessage: false);
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
@@ -170,12 +174,83 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
       setState(() {
         _message = 'Could not enter weekly league. Please try again.';
       });
+      _clearCompletedRejectedEntryAttempt(error);
     } finally {
       if (mounted) {
         setState(() {
           _isEntering = false;
         });
       }
+    }
+
+    if (!mounted || acceptedEntry == null || acceptedProfile == null) {
+      return;
+    }
+
+    try {
+      await _loadLeagueState(clearMessage: false);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _playerProfile = acceptedProfile!;
+        _currentEntry = acceptedEntry;
+        _isLoading = false;
+        _message =
+            'Weekly league entry confirmed, but league data could not be refreshed.';
+      });
+    }
+  }
+
+  IdempotencyKey _leagueEntryIdempotencyKeyForCurrentAttempt() {
+    return _pendingLeagueEntryIdempotencyKey ??= IdempotencyKey(
+      'league-entry:${DateTime.now().toUtc().microsecondsSinceEpoch}',
+    );
+  }
+
+  bool get _usesServerAuthoritativeLeagueEntry {
+    return widget.leagueRepository is ServerAuthoritativeLeagueEntryRepository;
+  }
+
+  PlayerProfile _profileProjectionForAcceptedEntry(LeaguePlayerEntry entry) {
+    if (entry is LeagueEntryResult) {
+      final authoritativeProfile = entry.playerProfile;
+      if (authoritativeProfile != null) {
+        return authoritativeProfile;
+      }
+
+      final remainingGamePoints = entry.remainingGamePoints;
+      if (remainingGamePoints == null) {
+        throw const FormatException(
+          'Accepted League entry response is missing remaining GP.',
+        );
+      }
+
+      return _playerProfile.copyWith(
+        gamePoints: remainingGamePoints,
+        currentLeagueDivision: entry.divisionNumber,
+        hasWeeklyLeagueEntry: entry.isActive,
+        reservedLeagueSlot: entry.hasReservedSlot,
+      );
+    }
+
+    return _playerProfile.copyWith(
+      gamePoints:
+          (_playerProfile.gamePoints -
+                  LeagueDivisionPolicy.weeklyEntryCostGamePoints)
+              .clamp(0, 999999999),
+      currentLeagueDivision: entry.divisionNumber,
+      hasWeeklyLeagueEntry: true,
+      reservedLeagueSlot: entry.hasReservedSlot,
+    );
+  }
+
+  void _clearCompletedRejectedEntryAttempt(Object error) {
+    if (error is RepositoryDomainException &&
+        error.details['rejectionCode'] is String) {
+      _pendingLeagueEntryIdempotencyKey = null;
     }
   }
 

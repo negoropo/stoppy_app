@@ -4,11 +4,13 @@ import 'package:stoppy_app/core/backend/api_error.dart';
 import 'package:stoppy_app/core/backend/api_response.dart';
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/league/data/backend/backend_league_repository.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
+import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 
 void main() {
   group('BackendLeagueRepository read-only operations', () {
@@ -360,24 +362,214 @@ void main() {
       },
     );
 
-    test('mutation methods remain explicitly disconnected', () async {
+    test('enterWeeklyLeague sends empty POST with idempotency key', () async {
+      final apiClient = _FakeBackendApiClient()
+        ..enqueuePostSuccess(_acceptedEntryResponsePayload());
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      await repository.enterWeeklyLeague(
+        _playerProfile(gamePoints: 25),
+        idempotencyKey: IdempotencyKey('league-entry:test-1'),
+      );
+
+      final request = apiClient.postRequests.single;
+      expect(request.path, ApiContract.leagueEnter);
+      expect(request.body, isEmpty);
+      expect(request.headers, {
+        ApiContract.idempotencyKeyHeader: 'league-entry:test-1',
+      });
+      expect(request.headers, isNot(contains(ApiContract.authorizationHeader)));
+      expect(apiClient.getRequests, isEmpty);
+    });
+
+    test('enterWeeklyLeague maps accepted authoritative response', () async {
+      final apiClient = _FakeBackendApiClient()
+        ..enqueuePostSuccess(
+          _acceptedEntryResponsePayload(
+            playerId: 'server-player',
+            username: 'Server Player',
+            divisionNumber: 4,
+            remainingGamePoints: 12,
+          ),
+        );
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      final entry = await repository.enterWeeklyLeague(
+        _playerProfile(id: 'local-player', gamePoints: 25),
+        idempotencyKey: IdempotencyKey('league-entry:accepted'),
+      );
+
+      expect(entry.playerId, 'server-player');
+      expect(entry.username, 'Server Player');
+      expect(entry.divisionNumber, 4);
+      expect(entry.hasReservedSlot, isTrue);
+      expect(entry.isActive, isTrue);
+      expect(entry, isA<LeagueEntryResult>());
+      final result = entry as LeagueEntryResult;
+      expect(result.playerProfile?.gamePoints, 12);
+      expect(result.remainingGamePoints, 12);
+      expect(result.seasonId?.value, '2026-06-15');
+    });
+
+    test('enterWeeklyLeague maps idempotent replay as success', () async {
+      final acceptedClient = _FakeBackendApiClient()
+        ..enqueuePostSuccess(_acceptedEntryResponsePayload());
+      final replayClient = _FakeBackendApiClient()
+        ..enqueuePostSuccess(
+          _acceptedEntryResponsePayload(status: 'idempotentReplay'),
+        );
+      final profile = _playerProfile(gamePoints: 25);
+
+      final acceptedEntry =
+          await BackendLeagueRepository(
+            apiClient: acceptedClient,
+          ).enterWeeklyLeague(
+            profile,
+            idempotencyKey: IdempotencyKey('league-entry:same-operation'),
+          );
+      final replayEntry = await BackendLeagueRepository(apiClient: replayClient)
+          .enterWeeklyLeague(
+            profile,
+            idempotencyKey: IdempotencyKey('league-entry:same-operation'),
+          );
+
+      expect(replayEntry.playerId, acceptedEntry.playerId);
+      expect(replayEntry.divisionNumber, acceptedEntry.divisionNumber);
+      expect(replayEntry.isActive, acceptedEntry.isActive);
+    });
+
+    test('enterWeeklyLeague maps prepared rejection states', () async {
+      final cases = {
+        'insufficientGp': ApiErrorCode.validationFailed,
+        'alreadyActive': ApiErrorCode.conflict,
+        'settlementInProgress': ApiErrorCode.conflict,
+        'stalePlayerState': ApiErrorCode.conflict,
+        'noReservedSlot': ApiErrorCode.validationFailed,
+      };
+
+      for (final entry in cases.entries) {
+        final apiClient = _FakeBackendApiClient()
+          ..enqueuePostSuccess(_rejectedEntryResponsePayload(entry.key));
+        final repository = BackendLeagueRepository(apiClient: apiClient);
+
+        await expectLater(
+          repository.enterWeeklyLeague(
+            _playerProfile(gamePoints: 25),
+            idempotencyKey: IdempotencyKey('league-entry:${entry.key}'),
+          ),
+          throwsA(
+            isA<RepositoryDomainException>()
+                .having((exception) => exception.code, 'code', entry.value)
+                .having(
+                  (exception) => exception.details['rejectionCode'],
+                  'rejectionCode',
+                  entry.key,
+                ),
+          ),
+        );
+      }
+    });
+
+    test('enterWeeklyLeague rejects malformed successful payloads', () async {
+      final apiClient = _FakeBackendApiClient()
+        ..enqueuePostSuccess({
+          'status': 'accepted',
+          'seasonId': '2026-06-15',
+          'currentDivision': 2,
+          'remainingGamePoints': 15,
+        });
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      await expectLater(
+        repository.enterWeeklyLeague(
+          _playerProfile(gamePoints: 25),
+          idempotencyKey: IdempotencyKey('league-entry:malformed'),
+        ),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (exception) => exception.code,
+            'code',
+            ApiErrorCode.malformedPayload,
+          ),
+        ),
+      );
+    });
+
+    test('enterWeeklyLeague maps API failures safely', () async {
+      final apiClient = _FakeBackendApiClient()
+        ..enqueuePostFailure(
+          const ApiError(
+            code: ApiErrorCode.networkUnavailable,
+            message: 'Transport detail.',
+          ),
+        );
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      await expectLater(
+        repository.enterWeeklyLeague(
+          _playerProfile(gamePoints: 25),
+          idempotencyKey: IdempotencyKey('league-entry:network'),
+        ),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (exception) => exception.message,
+            'message',
+            'Network unavailable. Please try again.',
+          ),
+        ),
+      );
+    });
+
+    test('enterWeeklyLeague requires explicit idempotency key', () async {
       final apiClient = _FakeBackendApiClient();
       final repository = BackendLeagueRepository(apiClient: apiClient);
-      final profile = PlayerProfile(
-        id: 'player-1',
-        username: 'Tester',
-        createdAt: DateTime.utc(2026, 1, 1),
+
+      await expectLater(
+        Future<Object?>.sync(
+          () => repository.enterWeeklyLeague(_playerProfile(gamePoints: 25)),
+        ),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (exception) => exception.code,
+            'code',
+            ApiErrorCode.malformedPayload,
+          ),
+        ),
       );
+      expect(apiClient.getRequests, isEmpty);
+      expect(apiClient.postRequests, isEmpty);
+    });
+
+    test(
+      'enterWeeklyLeague does not mutate local profile on failure',
+      () async {
+        final profile = _playerProfile(gamePoints: 25);
+        final apiClient = _FakeBackendApiClient()
+          ..enqueuePostSuccess(_rejectedEntryResponsePayload('insufficientGp'));
+        final repository = BackendLeagueRepository(apiClient: apiClient);
+
+        await expectLater(
+          repository.enterWeeklyLeague(
+            profile,
+            idempotencyKey: IdempotencyKey('league-entry:no-local-mutation'),
+          ),
+          throwsA(isA<RepositoryDomainException>()),
+        );
+
+        expect(profile.gamePoints, 25);
+        expect(apiClient.postRequests.single.body, isEmpty);
+      },
+    );
+
+    test('remaining mutation methods stay explicitly disconnected', () async {
+      final apiClient = _FakeBackendApiClient();
+      final repository = BackendLeagueRepository(apiClient: apiClient);
       final run = WeeklyLeagueRun(
         playerId: 'player-1',
         score: 12000,
         completedAt: DateTime.utc(2026, 6, 16),
       );
 
-      expect(
-        () => repository.enterWeeklyLeague(profile),
-        throwsA(isA<ApiException>()),
-      );
       expect(
         () => repository.submitLeagueRun(run),
         throwsA(isA<ApiException>()),
@@ -459,11 +651,77 @@ Map<String, Object?> _entryPayload(String playerId) {
   };
 }
 
+Map<String, Object?> _acceptedEntryResponsePayload({
+  String status = 'accepted',
+  String playerId = 'player-1',
+  String username = 'Tester player-1',
+  int divisionNumber = 2,
+  int remainingGamePoints = 15,
+}) {
+  return {
+    'status': status,
+    'seasonId': '2026-06-15',
+    'entry': {
+      ..._entryPayload(playerId),
+      'username': username,
+      'divisionNumber': divisionNumber,
+    },
+    'currentDivision': divisionNumber,
+    'remainingGamePoints': remainingGamePoints,
+    'playerProfile': _playerProfilePayload(
+      id: playerId,
+      username: username,
+      gamePoints: remainingGamePoints,
+      divisionNumber: divisionNumber,
+    ),
+  };
+}
+
+Map<String, Object?> _rejectedEntryResponsePayload(String rejectionCode) {
+  return {
+    'status': 'rejected',
+    'seasonId': '2026-06-15',
+    'rejectionCode': rejectionCode,
+  };
+}
+
+PlayerProfile _playerProfile({
+  String id = 'player-1',
+  String username = 'Tester',
+  required int gamePoints,
+}) {
+  return PlayerProfile(
+    id: id,
+    username: username,
+    createdAt: DateTime.utc(2026, 1, 1),
+    gamePoints: gamePoints,
+  );
+}
+
+Map<String, Object?> _playerProfilePayload({
+  required String id,
+  required String username,
+  required int gamePoints,
+  required int divisionNumber,
+}) {
+  return {
+    'id': id,
+    'username': username,
+    'createdAt': '2026-01-01T00:00:00.000Z',
+    'gamePoints': gamePoints,
+    'adsRemoved': false,
+    'currentLeagueDivision': divisionNumber,
+    'hasWeeklyLeagueEntry': true,
+    'reservedLeagueSlot': true,
+  };
+}
+
 final class _FakeBackendApiClient implements BackendApiClient {
   final List<_GetRequest> getRequests = [];
-  final List<String> postRequests = [];
+  final List<_PostRequest> postRequests = [];
 
   final List<_QueuedApiResult> _getResults = [];
+  final List<_QueuedApiResult> _postResults = [];
 
   void enqueueGetSuccess(Map<String, Object?> data) {
     _getResults.add(_QueuedApiResult.response(ApiResponse.success(data)));
@@ -475,6 +733,18 @@ final class _FakeBackendApiClient implements BackendApiClient {
 
   void enqueueGetException(ApiException exception) {
     _getResults.add(_QueuedApiResult.exception(exception));
+  }
+
+  void enqueuePostSuccess(Map<String, Object?> data) {
+    _postResults.add(_QueuedApiResult.response(ApiResponse.success(data)));
+  }
+
+  void enqueuePostFailure(ApiError error) {
+    _postResults.add(_QueuedApiResult.response(ApiResponse.failure(error)));
+  }
+
+  void enqueuePostException(ApiException exception) {
+    _postResults.add(_QueuedApiResult.exception(exception));
   }
 
   @override
@@ -498,8 +768,19 @@ final class _FakeBackendApiClient implements BackendApiClient {
     Map<String, Object?> body = const {},
     Map<String, String> headers = const {},
   }) {
-    postRequests.add(path);
-    throw UnimplementedError();
+    postRequests.add(
+      _PostRequest(
+        path,
+        Map<String, Object?>.of(body),
+        Map<String, String>.of(headers),
+      ),
+    );
+
+    if (_postResults.isEmpty) {
+      throw StateError('No POST response or exception was enqueued for $path.');
+    }
+
+    return Future.value(_postResults.removeAt(0).resolve());
   }
 
   @override
@@ -535,6 +816,14 @@ final class _GetRequest {
 
   final String path;
   final Map<String, String> queryParameters;
+}
+
+final class _PostRequest {
+  const _PostRequest(this.path, this.body, this.headers);
+
+  final String path;
+  final Map<String, Object?> body;
+  final Map<String, String> headers;
 }
 
 final class _QueuedApiResult {

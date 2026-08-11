@@ -104,6 +104,11 @@ with idempotency records. Suggested PostgreSQL constraints:
 - Settlement writes remain trusted backend jobs and must not be triggered by
   client-submitted mutation payloads.
 
+`BackendLeagueRepository.enterWeeklyLeague` now consumes the League entry
+mutation contract, but PostgreSQL persistence and idempotency storage remain
+future backend responsibilities. League run submission and settlement remain
+disconnected from Flutter backend repositories.
+
 ## Session 31 Authentication Session Boundary
 
 - `AuthSession` is currently held by `InMemoryAuthSessionStore` only and is not persisted to PostgreSQL or device storage by the Flutter client.
