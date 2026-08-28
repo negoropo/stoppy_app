@@ -540,29 +540,33 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * `HttpBackendApiClient` excludes Bearer tokens from login, registration, and
   refresh requests.
 * Expired access tokens are never sent as Bearer tokens.
-* League backend reads and weekly entry mutation are connected. League run
-  submission, League settlement, and Knockout backend mutations remain
-  disconnected.
+* League backend reads, weekly entry mutation, and League run submission are
+  connected in backend runtime. League settlement and Knockout backend
+  mutations remain disconnected.
 
 ### Session 37 League Mutation Contract Preparation
 
-League backend mutation contracts are prepared. Weekly League entry is the
-first connected competitive backend mutation.
+League backend mutation contracts are prepared. Weekly League entry and League
+run submission are the connected competitive backend mutations.
 
 * `Idempotency-Key` is centralized in `ApiContract`.
 * `IdempotencyKey` normalizes and validates caller-owned retry keys.
 * League entry DTOs describe the server-authoritative GP deduction and weekly
   entry result now consumed by `BackendLeagueRepository.enterWeeklyLeague`.
-* League run submission DTOs describe the future server-authoritative run claim,
-  validation result, and accepted/rejected/idempotent replay states.
+* League run submission DTOs describe the server-authoritative run claim,
+  validation result, and accepted/rejected/idempotent replay states now consumed
+  by `BackendLeagueRepository.submitLeagueRun`.
 * `BackendLeagueRepository.enterWeeklyLeague` sends `POST /api/v1/league/enter`
   with an empty object body and caller-owned `Idempotency-Key`.
 * Accepted and idempotent replay entry responses map to authoritative League
   entry state, with optional profile projection carried by `LeagueEntryResult`
   so backend runtime does not need client-side GP deduction. Rejected responses
   map through repository-domain errors.
-* League run submission and settlement remain disconnected until backend
-  persistence, idempotency storage, and anti-cheat validation exist.
+* League run submission sends a finalized run claim with caller-owned
+  `Idempotency-Key`; backend validation and persistence remain authoritative.
+  Ambiguous transport/service failures keep the finalized claim retryable from
+  the final-results UI with the same key and without automatic retries.
+* League settlement remains disconnected from ordinary Flutter backend runtime.
 * Mock runtime remains the default runtime.
 * League reads, gameplay, Knockout, Purchase, and Ads behavior are unchanged.
 

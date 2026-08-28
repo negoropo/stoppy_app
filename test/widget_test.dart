@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
+import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
 import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/data/mock_auth_repository.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
@@ -749,10 +753,364 @@ void main() {
     expect(leagueRepository.submittedRuns, hasLength(1));
     expect(leagueRepository.submittedRuns.single.playerId, 'player-id');
     expect(leagueRepository.submittedRuns.single.score, 0);
+    expect(leagueRepository.submittedRuns.single.id, isNotNull);
+    expect(leagueRepository.submittedRuns.single.seasonId?.value, isNotNull);
+    expect(leagueRepository.submittedRuns.single.startedAt, isNotNull);
+    expect(leagueRepository.submittedRuns.single.levelReached, 1);
+    expect(leagueRepository.submittedRuns.single.precisionPointTier, 1);
+    expect(leagueRepository.idempotencyKeys.single, isNotNull);
 
     await tester.pump(const Duration(seconds: 2));
 
     expect(leagueRepository.submittedRuns, hasLength(1));
+  });
+
+  testWidgets(
+    'Network failure leaves League submission retryable with same key',
+    (WidgetTester tester) async {
+      final leagueRepository = _FakeLeagueRepository(
+        submissionOutcomes: [
+          const RepositoryDomainException(
+            'Network unavailable. Please try again.',
+            code: ApiErrorCode.networkUnavailable,
+          ),
+          LeagueRunSubmissionResult(
+            accepted: true,
+            playerRecords: PlayerLeagueRecords.empty('player-id'),
+            newlyPersisted: false,
+          ),
+        ],
+      );
+      var currentTime = DateTime(2026, 5, 8, 10);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameScreen(
+            playerProfile: PlayerProfile(
+              id: 'player-id',
+              username: 'Tester',
+              createdAt: DateTime(2026, 5, 1),
+              hasWeeklyLeagueEntry: true,
+              reservedLeagueSlot: true,
+              currentLeagueDivision: 2,
+            ),
+            leagueRepository: leagueRepository,
+            initialRunMode: RunMode.league,
+            initialDifficultyState: const DifficultyState.initial(),
+            initialLevelConfig: _failingLevelConfig,
+            now: () => currentTime,
+          ),
+        ),
+      );
+
+      await _failRunAndShowFinalResults(tester);
+      await tester.pump();
+
+      expect(leagueRepository.submittedRuns, hasLength(1));
+      expect(find.text('Retry League submission'), findsOneWidget);
+      final originalRun = leagueRepository.submittedRuns.single;
+      final originalKey = leagueRepository.idempotencyKeys.single;
+
+      currentTime = currentTime.add(const Duration(minutes: 20));
+      await tester.tap(find.text('Retry League submission'));
+      await tester.pump();
+
+      expect(leagueRepository.submittedRuns, hasLength(2));
+      expect(leagueRepository.idempotencyKeys.last, originalKey);
+      expect(leagueRepository.submittedRuns.last.id, originalRun.id);
+      expect(
+        leagueRepository.submittedRuns.last.seasonId?.value,
+        originalRun.seasonId?.value,
+      );
+      expect(
+        leagueRepository.submittedRuns.last.startedAt,
+        originalRun.startedAt,
+      );
+      expect(
+        leagueRepository.submittedRuns.last.completedAt,
+        originalRun.completedAt,
+      );
+      expect(leagueRepository.submittedRuns.last.score, originalRun.score);
+      expect(
+        leagueRepository.submittedRuns.last.levelReached,
+        originalRun.levelReached,
+      );
+      expect(
+        leagueRepository.submittedRuns.last.precisionPointTier,
+        originalRun.precisionPointTier,
+      );
+      expect(find.text('Retry League submission'), findsNothing);
+    },
+  );
+
+  testWidgets('Timeout failure leaves League submission retryable', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository(
+      submissionOutcomes: [
+        const RepositoryDomainException(
+          'The request timed out. Please try again.',
+          code: ApiErrorCode.requestTimeout,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    await tester.pump();
+
+    expect(leagueRepository.submittedRuns, hasLength(1));
+    await tester.pump(const Duration(seconds: 2));
+    expect(leagueRepository.submittedRuns, hasLength(1));
+    expect(find.text('Retry League submission'), findsOneWidget);
+  });
+
+  testWidgets('Repeated retry taps cannot submit League run concurrently', (
+    WidgetTester tester,
+  ) async {
+    final retryCompleter = Completer<LeagueRunSubmissionResult>();
+    final leagueRepository = _FakeLeagueRepository(
+      submissionOutcomes: [
+        const RepositoryDomainException(
+          'Network unavailable. Please try again.',
+          code: ApiErrorCode.networkUnavailable,
+        ),
+        retryCompleter.future,
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    await tester.pump();
+    await tester.tap(find.text('Retry League submission'));
+    await tester.pump();
+
+    expect(leagueRepository.submittedRuns, hasLength(2));
+    expect(leagueRepository.maxConcurrentSubmissions, 1);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Submitting League run...'),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    retryCompleter.complete(
+      LeagueRunSubmissionResult(
+        accepted: true,
+        playerRecords: PlayerLeagueRecords.empty('player-id'),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Retry League submission'), findsNothing);
+  });
+
+  testWidgets('Definitive League rejection does not expose retry', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository(
+      submissionOutcomes: [
+        const RepositoryDomainException(
+          'No active weekly league entry is available for this run.',
+          code: ApiErrorCode.validationFailed,
+          details: {'rejectionCode': 'noActiveEntry'},
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    await tester.pump();
+
+    expect(find.text('Retry League submission'), findsNothing);
+    expect(find.text('League run submission was rejected.'), findsOneWidget);
+  });
+
+  testWidgets('Synchronous definitive League submission failure is handled', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository(
+      submissionOutcomes: [
+        const _SynchronousSubmissionFailure(
+          RepositoryDomainException(
+            'Received an invalid response. Please try again later.',
+            code: ApiErrorCode.malformedPayload,
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    await tester.pump();
+
+    expect(find.text('Game Over'), findsOneWidget);
+    expect(find.text('League run submission was rejected.'), findsOneWidget);
+    expect(find.text('Retry League submission'), findsNothing);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Restart run'),
+          )
+          .onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('Malformed League submission failure does not expose retry', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository(
+      submissionOutcomes: [
+        const RepositoryDomainException(
+          'Received an invalid response. Please try again later.',
+          code: ApiErrorCode.malformedPayload,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    await tester.pump();
+
+    expect(find.text('Retry League submission'), findsNothing);
+  });
+
+  testWidgets('Restart does not discard unresolved League submission', (
+    WidgetTester tester,
+  ) async {
+    final leagueRepository = _FakeLeagueRepository(
+      submissionOutcomes: [
+        const RepositoryDomainException(
+          'Network unavailable. Please try again.',
+          code: ApiErrorCode.networkUnavailable,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          playerProfile: PlayerProfile(
+            id: 'player-id',
+            username: 'Tester',
+            createdAt: DateTime(2026, 5, 1),
+            hasWeeklyLeagueEntry: true,
+            reservedLeagueSlot: true,
+            currentLeagueDivision: 2,
+          ),
+          leagueRepository: leagueRepository,
+          initialRunMode: RunMode.league,
+          initialDifficultyState: const DifficultyState.initial(),
+          initialLevelConfig: _failingLevelConfig,
+        ),
+      ),
+    );
+
+    await _failRunAndShowFinalResults(tester);
+    await tester.pump();
+
+    expect(find.text('Retry League submission'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Restart run'),
+          )
+          .onPressed,
+      isNull,
+    );
   });
 
   testWidgets('Warmup run never submits league score', (
@@ -881,6 +1239,11 @@ void main() {
     await _exitRunAndShowFinalResults(tester);
 
     expect(leagueRepository.submittedRuns, hasLength(2));
+    expect(leagueRepository.idempotencyKeys, hasLength(2));
+    expect(
+      leagueRepository.idempotencyKeys[1],
+      isNot(leagueRepository.idempotencyKeys[0]),
+    );
   });
 }
 
@@ -917,7 +1280,14 @@ const _failingLevelConfig = GameLevelConfig(
 );
 
 class _FakeLeagueRepository implements LeagueRepository {
+  _FakeLeagueRepository({List<Object>? submissionOutcomes})
+    : _submissionOutcomes = List<Object>.of(submissionOutcomes ?? const []);
+
   final submittedRuns = <WeeklyLeagueRun>[];
+  final idempotencyKeys = <String?>[];
+  final List<Object> _submissionOutcomes;
+  int _activeSubmissions = 0;
+  int maxConcurrentSubmissions = 0;
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
@@ -986,12 +1356,53 @@ class _FakeLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
+  Future<LeagueRunSubmissionResult> submitLeagueRun(
+    WeeklyLeagueRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) {
+    _activeSubmissions += 1;
+    if (_activeSubmissions > maxConcurrentSubmissions) {
+      maxConcurrentSubmissions = _activeSubmissions;
+    }
     submittedRuns.add(run);
+    idempotencyKeys.add(idempotencyKey?.value);
 
-    return LeagueRunSubmissionResult(
-      accepted: true,
-      playerRecords: PlayerLeagueRecords.empty(run.playerId),
-    );
+    if (_submissionOutcomes.isEmpty) {
+      return Future<LeagueRunSubmissionResult>.value(
+        LeagueRunSubmissionResult(
+          accepted: true,
+          playerRecords: PlayerLeagueRecords.empty(run.playerId),
+        ),
+      ).whenComplete(() {
+        _activeSubmissions -= 1;
+      });
+    }
+
+    final outcome = _submissionOutcomes.removeAt(0);
+    if (outcome is _SynchronousSubmissionFailure) {
+      _activeSubmissions -= 1;
+      throw outcome.error;
+    }
+    if (outcome is Exception) {
+      return Future<LeagueRunSubmissionResult>.error(outcome).whenComplete(() {
+        _activeSubmissions -= 1;
+      });
+    }
+    if (outcome is Future<LeagueRunSubmissionResult>) {
+      return outcome.whenComplete(() {
+        _activeSubmissions -= 1;
+      });
+    }
+    return Future<LeagueRunSubmissionResult>.value(
+      outcome as LeagueRunSubmissionResult,
+    ).whenComplete(() {
+      _activeSubmissions -= 1;
+    });
   }
+}
+
+class _SynchronousSubmissionFailure {
+  const _SynchronousSubmissionFailure(this.error);
+
+  final Exception error;
 }

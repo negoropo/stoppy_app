@@ -3,6 +3,7 @@ import 'package:stoppy_app/core/backend/validation/run_validation_contract.dart'
 import 'package:stoppy_app/features/auth/data/dto/player_profile_dto.dart';
 
 import '../../domain/models/league_season_id.dart';
+import '../../domain/models/weekly_league_run.dart';
 import 'league_persistence_dtos.dart';
 import 'weekly_league_run_dto.dart';
 
@@ -169,6 +170,50 @@ final class LeagueRunSubmissionRequestDto {
   final int claimedFinalPrecisionPoints;
   final LeagueRunSubmissionMode runMode;
   final RunValidationClaimDto? validationClaim;
+
+  factory LeagueRunSubmissionRequestDto.fromDomain(WeeklyLeagueRun run) {
+    final runId = run.id?.trim();
+    final seasonId = run.seasonId;
+    final runStartedAt = run.startedAt;
+    final levelReached = run.levelReached;
+    final precisionPointTier = run.precisionPointTier;
+
+    if (runId == null || runId.isEmpty) {
+      throw const FormatException('League run ID must not be blank.');
+    }
+    if (seasonId == null) {
+      throw const FormatException('League season ID is required.');
+    }
+    if (runStartedAt == null) {
+      throw const FormatException('League run start time is required.');
+    }
+    if (levelReached == null || levelReached <= 0) {
+      throw const FormatException('League run level must be positive.');
+    }
+    if (precisionPointTier == null || precisionPointTier <= 0) {
+      throw const FormatException(
+        'League run Precision Point tier must be positive.',
+      );
+    }
+
+    return LeagueRunSubmissionRequestDto(
+      runId: runId,
+      seasonId: seasonId.value,
+      runStartedAt: runStartedAt,
+      runCompletedAt: run.completedAt,
+      claimedFinalPrecisionPoints: run.score,
+      runMode: LeagueRunSubmissionMode.league,
+      validationClaim: RunValidationClaimDto(
+        runId: runId,
+        runType: CompetitiveRunType.league,
+        finalPrecisionPoints: run.score,
+        levelReached: levelReached,
+        precisionPointTier: precisionPointTier,
+        runStartedAt: runStartedAt,
+        runEndedAt: run.completedAt,
+      ),
+    )._validated();
+  }
 
   factory LeagueRunSubmissionRequestDto.fromJson(Object? json) {
     final reader = JsonReader.fromObject(

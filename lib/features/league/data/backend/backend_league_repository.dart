@@ -92,11 +92,50 @@ final class BackendLeagueRepository
   }
 
   @override
-  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) {
-    // League runs are competitive mutations. The backend must validate the run
-    // claim, anti-cheat evidence, duplicate run ID, and idempotency key before
-    // accepting a submitted score.
-    return backendNotConnected('BackendLeagueRepository', 'submitLeagueRun');
+  Future<LeagueRunSubmissionResult> submitLeagueRun(
+    WeeklyLeagueRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) {
+    final key = idempotencyKey;
+    if (key == null) {
+      throw _malformedPayload(
+        'League run submission requires an idempotency key.',
+      );
+    }
+
+    final LeagueRunSubmissionRequestDto request;
+    try {
+      request = LeagueRunSubmissionRequestDto.fromDomain(run);
+    } on FormatException catch (exception) {
+      throw _malformedPayload(exception.message);
+    }
+
+    // The client submits a claim only. Player identity, run validity,
+    // duplicate detection, and accepted score remain server-authoritative.
+    return _post(
+      runSubmissionPath,
+      body: request.toJson(),
+      headers: key.toHeader(),
+      decode: (data) {
+        final response = LeagueRunSubmissionResponseDto.fromJson(data);
+        if (!response.accepted) {
+          throw _leagueRunSubmissionRejection(response);
+        }
+
+        final acceptedRun = response.acceptedRun!.toDomain();
+        final playerRecords =
+            response.playerRecords?.toDomain() ??
+            PlayerLeagueRecords.empty(acceptedRun.playerId);
+
+        return LeagueRunSubmissionResult(
+          accepted: true,
+          playerRecords: playerRecords,
+          acceptedRun: acceptedRun,
+          playerProfile: response.playerProfile?.toDomain(),
+          newlyPersisted: response.newlyPersisted,
+        );
+      },
+    );
   }
 
   @override
@@ -299,6 +338,54 @@ final class BackendLeagueRepository
         details: {'rejectionCode': rejectionCode.name},
       ),
       LeagueEntryRejectionCode.stalePlayerState => ApiError(
+        code: ApiErrorCode.conflict,
+        message: 'Player league state is stale. Please refresh and try again.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+    };
+
+    return _errorMapper.toRepositoryException(apiError);
+  }
+
+  RepositoryDomainException _leagueRunSubmissionRejection(
+    LeagueRunSubmissionResponseDto response,
+  ) {
+    final rejectionCode = response.rejectionCode;
+    if (rejectionCode == null) {
+      return _malformedPayload('Rejected League run response is missing code.');
+    }
+
+    final apiError = switch (rejectionCode) {
+      LeagueRunSubmissionRejectionCode.noActiveEntry ||
+      LeagueRunSubmissionRejectionCode.outsideLeague => ApiError(
+        code: ApiErrorCode.validationFailed,
+        message: 'No active weekly league entry is available for this run.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueRunSubmissionRejectionCode.seasonMismatch => ApiError(
+        code: ApiErrorCode.validationFailed,
+        message: 'League run belongs to a stale or invalid season.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueRunSubmissionRejectionCode.alreadySubmitted => ApiError(
+        code: ApiErrorCode.conflict,
+        message: 'League run submission was already processed.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueRunSubmissionRejectionCode.invalidRun ||
+      LeagueRunSubmissionRejectionCode.validationFailed ||
+      LeagueRunSubmissionRejectionCode.timestampInvalid ||
+      LeagueRunSubmissionRejectionCode.durationInvalid => ApiError(
+        code: ApiErrorCode.validationFailed,
+        message: 'League run claim was rejected by server validation.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueRunSubmissionRejectionCode.settlementInProgress => ApiError(
+        code: ApiErrorCode.conflict,
+        message: 'Weekly league settlement is currently in progress.',
+        details: {'rejectionCode': rejectionCode.name},
+      ),
+      LeagueRunSubmissionRejectionCode.stalePlayerState => ApiError(
         code: ApiErrorCode.conflict,
         message: 'Player league state is stale. Please refresh and try again.',
         details: {'rejectionCode': rejectionCode.name},

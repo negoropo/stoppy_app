@@ -1153,7 +1153,10 @@ class _LeagueScreenRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
+  Future<LeagueRunSubmissionResult> submitLeagueRun(
+    WeeklyLeagueRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) async {
     return LeagueRunSubmissionResult(accepted: true, playerRecords: records);
   }
 }

@@ -673,7 +673,10 @@ class _AchievementLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
+  Future<LeagueRunSubmissionResult> submitLeagueRun(
+    WeeklyLeagueRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) async {
     return LeagueRunSubmissionResult(
       accepted: false,
       playerRecords: PlayerLeagueRecords.empty(run.playerId),

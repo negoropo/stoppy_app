@@ -4,6 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'config/game_geometry_config.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
+import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/core/constants/debug_constants.dart';
 import 'package:stoppy_app/features/ads/domain/ad_controller.dart';
 import 'package:stoppy_app/features/ads/domain/repositories/ad_repository.dart';
@@ -12,6 +15,7 @@ import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dar
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
 import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
+import 'package:stoppy_app/features/league/domain/models/league_season_id.dart';
 import 'package:stoppy_app/features/league/domain/models/weekly_league_run.dart';
 import 'package:stoppy_app/features/league/domain/repositories/league_repository.dart';
 import 'package:stoppy_app/features/league/presentation/screens/league_home_screen.dart';
@@ -32,6 +36,13 @@ import 'engine/precision_point_result.dart';
 import 'engine/precision_point_tier_service.dart';
 import 'rendering/game_area_painter.dart';
 import 'widgets/reward_summary_overlay.dart';
+
+enum _LeagueRunSubmissionStatus {
+  idle,
+  submitting,
+  ambiguousFailure,
+  completed,
+}
 
 class GameScreen extends StatefulWidget {
   const GameScreen({
@@ -113,8 +124,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   GamePointRewardResult? _lastGamePointRewardResult;
   bool _isRunFinalized = false;
   bool _leagueRunSubmitted = false;
+  _LeagueRunSubmissionStatus _leagueRunSubmissionStatus =
+      _LeagueRunSubmissionStatus.idle;
+  WeeklyLeagueRun? _pendingLeagueRunSubmission;
+  String? _pendingLeagueRunSubmissionId;
+  IdempotencyKey? _pendingLeagueRunSubmissionIdempotencyKey;
+  String? _leagueRunSubmissionMessage;
   bool _knockoutRunSubmitted = false;
   late DateTime _runStartedAt;
+  int _runInstanceSequence = 0;
   int _lastBannerLoadedRunLevel = 1;
   int _remainingStopTimeSeconds = 0;
   Timer? _rewardSummaryTimer;
@@ -822,6 +840,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _restartRun({RunMode? runModeOverride}) {
+    if (_leagueRunSubmissionStatus ==
+        _LeagueRunSubmissionStatus.ambiguousFailure) {
+      setState(() {
+        _leagueRunSubmissionMessage =
+            'Retry League submission before starting a new run.';
+      });
+      return;
+    }
+
     _scoreTransitionTimer?.cancel();
     _stopStopTimeCountdown();
     _stopRunDurationTimer();
@@ -841,6 +868,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         widget.initialRunMode ??
         _defaultRunModeForPlayer(_playerProfile);
     _runStartedAt = _now();
+    _runInstanceSequence += 1;
     _geometry = _geometryForLevelConfig(initialLevelConfig);
     _ballController.duration = initialLevelConfig.ballRotationDuration;
     _resetStopTimeCountdown();
@@ -878,6 +906,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _lastGamePointRewardResult = null;
       _isRunFinalized = false;
       _leagueRunSubmitted = false;
+      _leagueRunSubmissionStatus = _LeagueRunSubmissionStatus.idle;
+      _pendingLeagueRunSubmission = null;
+      _pendingLeagueRunSubmissionId = null;
+      _pendingLeagueRunSubmissionIdempotencyKey = null;
+      _leagueRunSubmissionMessage = null;
       _knockoutRunSubmitted = false;
       _isExtraLifeOfferVisible = false;
       _hasUsedRewardedContinue = false;
@@ -940,27 +973,135 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
-    _leagueRunSubmitted = true;
+    final submissionId = _leagueRunSubmissionIdForCurrentRun();
+    final idempotencyKey = _leagueRunSubmissionIdempotencyKeyForCurrentRun(
+      submissionId,
+    );
+    _pendingLeagueRunSubmission ??= WeeklyLeagueRun(
+      playerId: playerProfile.id,
+      id: submissionId,
+      // Deferred: League season ownership for runs crossing the weekly
+      // boundary should be explicitly reviewed in a future session. The
+      // current claim keeps the existing run-ended-at season behavior.
+      seasonId: LeagueSeasonId.fromDate(runEndedAt),
+      startedAt: _runStartedAt,
+      score: finalScore,
+      completedAt: runEndedAt,
+      levelReached: _currentRunLevel,
+      precisionPointTier: _currentPrecisionPointTier,
+    );
 
+    _submitPendingLeagueRun(
+      leagueRepository: leagueRepository,
+      run: _pendingLeagueRunSubmission!,
+      idempotencyKey: idempotencyKey,
+    );
+  }
+
+  void _retryLeagueRunSubmission() {
+    final leagueRepository = widget.leagueRepository;
+    final pendingRun = _pendingLeagueRunSubmission;
+    final idempotencyKey = _pendingLeagueRunSubmissionIdempotencyKey;
+
+    if (leagueRepository == null ||
+        pendingRun == null ||
+        idempotencyKey == null ||
+        _leagueRunSubmissionStatus == _LeagueRunSubmissionStatus.submitting) {
+      return;
+    }
+
+    _submitPendingLeagueRun(
+      leagueRepository: leagueRepository,
+      run: pendingRun,
+      idempotencyKey: idempotencyKey,
+    );
+  }
+
+  void _submitPendingLeagueRun({
+    required LeagueRepository leagueRepository,
+    required WeeklyLeagueRun run,
+    required IdempotencyKey idempotencyKey,
+  }) {
+    _leagueRunSubmitted = true;
+    _leagueRunSubmissionStatus = _LeagueRunSubmissionStatus.submitting;
+    if (mounted) {
+      setState(() {
+        _leagueRunSubmissionMessage = 'Submitting League run...';
+      });
+    }
+
+    // The retry path reuses this exact finalized claim and idempotency key.
+    // That keeps mutation identity stable without recalculating from mutable
+    // gameplay state after Game Over.
     unawaited(
-      leagueRepository
-          .submitLeagueRun(
-            WeeklyLeagueRun(
-              playerId: playerProfile.id,
-              score: finalScore,
-              completedAt: runEndedAt,
+      Future<LeagueRunSubmissionResult>.sync(
+            () => leagueRepository.submitLeagueRun(
+              run,
+              idempotencyKey: idempotencyKey,
             ),
           )
           .then((submissionResult) {
             if (!submissionResult.accepted) {
-              // Future backend validation can surface rejection reasons here.
+              _completeLeagueRunSubmissionAttempt(
+                message: 'League run submission was rejected.',
+              );
               return;
             }
 
+            _completeLeagueRunSubmissionAttempt(message: null);
             // Future UI/state sync can use:
             // submissionResult.playerRecords
+          })
+          .catchError((Object error) {
+            if (_isAmbiguousLeagueRunSubmissionFailure(error)) {
+              _leagueRunSubmitted = false;
+              _leagueRunSubmissionStatus =
+                  _LeagueRunSubmissionStatus.ambiguousFailure;
+              if (mounted) {
+                setState(() {
+                  _leagueRunSubmissionMessage =
+                      'League run submission could not be confirmed. Retry before starting a new run.';
+                });
+              }
+              return;
+            }
+
+            _completeLeagueRunSubmissionAttempt(
+              message: 'League run submission was rejected.',
+            );
           }),
     );
+  }
+
+  String _leagueRunSubmissionIdForCurrentRun() {
+    return _pendingLeagueRunSubmissionId ??=
+        'league-run:$_runInstanceSequence:${_runStartedAt.toUtc().microsecondsSinceEpoch}';
+  }
+
+  IdempotencyKey _leagueRunSubmissionIdempotencyKeyForCurrentRun(String runId) {
+    return _pendingLeagueRunSubmissionIdempotencyKey ??= IdempotencyKey(runId);
+  }
+
+  void _completeLeagueRunSubmissionAttempt({required String? message}) {
+    _leagueRunSubmitted = true;
+    _leagueRunSubmissionStatus = _LeagueRunSubmissionStatus.completed;
+    _pendingLeagueRunSubmission = null;
+    _pendingLeagueRunSubmissionId = null;
+    _pendingLeagueRunSubmissionIdempotencyKey = null;
+    if (mounted) {
+      setState(() {
+        _leagueRunSubmissionMessage = message;
+      });
+    } else {
+      _leagueRunSubmissionMessage = message;
+    }
+  }
+
+  bool _isAmbiguousLeagueRunSubmissionFailure(Object error) {
+    return error is RepositoryDomainException &&
+        (error.code == ApiErrorCode.networkUnavailable ||
+            error.code == ApiErrorCode.requestTimeout ||
+            error.code == ApiErrorCode.serverError);
   }
 
   void _submitKnockoutRunIfNeeded({
@@ -1188,6 +1329,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           runMode: _runMode,
                           gpRewardResult: _lastGamePointRewardResult,
                           currentGamePoints: _currentGamePoints,
+                          leagueSubmissionMessage: _leagueRunSubmissionMessage,
+                          canRetryLeagueSubmission:
+                              _leagueRunSubmissionStatus ==
+                              _LeagueRunSubmissionStatus.ambiguousFailure,
+                          isRetryingLeagueSubmission:
+                              _leagueRunSubmissionStatus ==
+                              _LeagueRunSubmissionStatus.submitting,
+                          onRetryLeagueSubmission: _retryLeagueRunSubmission,
                           onRestart: _restartRun,
                         ),
                       if (kShowDebugOverlay)
@@ -1581,6 +1730,10 @@ class _GameOverOverlay extends StatelessWidget {
     required this.runMode,
     required this.gpRewardResult,
     required this.currentGamePoints,
+    required this.leagueSubmissionMessage,
+    required this.canRetryLeagueSubmission,
+    required this.isRetryingLeagueSubmission,
+    required this.onRetryLeagueSubmission,
     required this.onRestart,
   });
 
@@ -1590,6 +1743,10 @@ class _GameOverOverlay extends StatelessWidget {
   final RunMode runMode;
   final GamePointRewardResult? gpRewardResult;
   final int currentGamePoints;
+  final String? leagueSubmissionMessage;
+  final bool canRetryLeagueSubmission;
+  final bool isRetryingLeagueSubmission;
+  final VoidCallback onRetryLeagueSubmission;
   final VoidCallback onRestart;
 
   String _formatPoints(int value) {
@@ -1734,10 +1891,39 @@ class _GameOverOverlay extends StatelessWidget {
               ],
             ],
 
+            if (leagueSubmissionMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                leagueSubmissionMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFFFD166),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+
             const SizedBox(height: 16),
 
+            if (canRetryLeagueSubmission || isRetryingLeagueSubmission) ...[
+              FilledButton(
+                onPressed: isRetryingLeagueSubmission
+                    ? null
+                    : onRetryLeagueSubmission,
+                child: Text(
+                  isRetryingLeagueSubmission
+                      ? 'Submitting League run...'
+                      : 'Retry League submission',
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+
             FilledButton(
-              onPressed: onRestart,
+              onPressed: canRetryLeagueSubmission || isRetryingLeagueSubmission
+                  ? null
+                  : onRestart,
               child: const Text('Restart run'),
             ),
           ],

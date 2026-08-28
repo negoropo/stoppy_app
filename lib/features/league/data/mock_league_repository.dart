@@ -125,7 +125,10 @@ class MockLeagueRepository implements LeagueRepository {
   }
 
   @override
-  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run) async {
+  Future<LeagueRunSubmissionResult> submitLeagueRun(
+    WeeklyLeagueRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) async {
     final entry = _entriesByPlayerId[run.playerId];
     final previousRecords =
         _recordsByPlayerId[run.playerId] ??

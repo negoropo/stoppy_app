@@ -161,9 +161,9 @@ When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connec
 - Expired returned sessions and malformed authentication payloads are rejected without replacing the existing local session.
 - On app restoration, unauthenticated or forbidden profile responses clear the in-memory session; temporary failures preserve it and surface an auth-domain error.
 - Future Google, Apple, and Facebook login flows must validate provider credentials on the backend and return this same Stoppy `AuthResponseDto`; provider identity tokens are not stored as Stoppy sessions.
-- League entry is connected as the first backend League mutation. League run
-  submission, League settlement, and Knockout backend mutations remain
-  disconnected.
+- League entry and League run submission are connected backend League
+  mutations in Flutter backend runtime. League settlement and Knockout backend
+  mutations remain disconnected.
 
 ## Error Strategy
 
@@ -551,6 +551,8 @@ Submits a completed league run claim.
 
 Server responsibilities:
 
+- derive player identity from the authenticated session, not from the request
+  body
 - validate active weekly league entry
 - validate score and PP progression
 - prevent duplicates
@@ -585,7 +587,14 @@ Future run submission claims carry enough information for server-side verificati
 }
 ```
 
-This is a preparation contract only. The backend will later validate timing, tier progression, duplicate submission protection, authenticated player identity, and the final accepted score.
+Flutter backend runtime now serializes this claim for League run submissions.
+The client-side DTO validation only checks structural consistency; the backend
+remains authoritative for timing, tier progression, duplicate submission
+protection, authenticated player identity, and the final accepted score. No
+automatic retry is performed; retrying the same logical run must reuse the same
+`Idempotency-Key`. If a timeout, network loss, or temporary server failure
+leaves persistence status unknown, the app may surface a manual retry action
+that resubmits the preserved finalized claim with that same key.
 
 ## Store / Economy
 

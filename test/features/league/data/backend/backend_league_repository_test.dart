@@ -561,19 +561,240 @@ void main() {
       },
     );
 
-    test('remaining mutation methods stay explicitly disconnected', () async {
-      final apiClient = _FakeBackendApiClient();
+    test(
+      'submitLeagueRun sends claim without player identity authority',
+      () async {
+        final apiClient = _FakeBackendApiClient()
+          ..enqueuePostSuccess(_acceptedRunSubmissionResponsePayload());
+        final repository = BackendLeagueRepository(apiClient: apiClient);
+        final run = _leagueRun();
+
+        final result = await repository.submitLeagueRun(
+          run,
+          idempotencyKey: IdempotencyKey('league-run:test-1'),
+        );
+
+        expect(result.accepted, isTrue);
+        expect(result.acceptedRun?.score, 25000);
+        expect(result.playerRecords.currentWeeklyBestScore, 25000);
+        expect(result.newlyPersisted, isTrue);
+
+        final request = apiClient.postRequests.single;
+        expect(request.path, ApiContract.leagueRunSubmission);
+        expect(request.headers, {
+          ApiContract.idempotencyKeyHeader: 'league-run:test-1',
+        });
+        expect(
+          request.headers,
+          isNot(contains(ApiContract.authorizationHeader)),
+        );
+        expect(request.body, {
+          'runId': 'run-1',
+          'seasonId': '2026-06-15',
+          'runStartedAt': '2026-06-21T10:00:00.000Z',
+          'runCompletedAt': '2026-06-21T10:30:00.000Z',
+          'claimedFinalPrecisionPoints': 25000,
+          'runMode': 'league',
+          'validationClaim': {
+            'runId': 'run-1',
+            'runType': 'league',
+            'finalPrecisionPoints': 25000,
+            'levelReached': 12,
+            'precisionPointTier': 8,
+            'runStartedAt': '2026-06-21T10:00:00.000Z',
+            'runEndedAt': '2026-06-21T10:30:00.000Z',
+          },
+        });
+        expect(request.body, isNot(contains('playerId')));
+        expect(apiClient.getRequests, isEmpty);
+      },
+    );
+
+    test('submitLeagueRun maps idempotent replay as success', () async {
+      final apiClient = _FakeBackendApiClient()
+        ..enqueuePostSuccess(
+          _acceptedRunSubmissionResponsePayload(
+            status: 'idempotentReplay',
+            newlyPersisted: false,
+          ),
+        );
       final repository = BackendLeagueRepository(apiClient: apiClient);
-      final run = WeeklyLeagueRun(
-        playerId: 'player-1',
-        score: 12000,
-        completedAt: DateTime.utc(2026, 6, 16),
+
+      final result = await repository.submitLeagueRun(
+        _leagueRun(),
+        idempotencyKey: IdempotencyKey('league-run:same-operation'),
       );
 
-      expect(
-        () => repository.submitLeagueRun(run),
-        throwsA(isA<ApiException>()),
+      expect(result.accepted, isTrue);
+      expect(result.newlyPersisted, isFalse);
+      expect(result.acceptedRun?.score, 25000);
+    });
+
+    test('submitLeagueRun maps prepared rejection states', () async {
+      final cases = {
+        'noActiveEntry': ApiErrorCode.validationFailed,
+        'outsideLeague': ApiErrorCode.validationFailed,
+        'seasonMismatch': ApiErrorCode.validationFailed,
+        'alreadySubmitted': ApiErrorCode.conflict,
+        'invalidRun': ApiErrorCode.validationFailed,
+        'validationFailed': ApiErrorCode.validationFailed,
+        'timestampInvalid': ApiErrorCode.validationFailed,
+        'durationInvalid': ApiErrorCode.validationFailed,
+        'settlementInProgress': ApiErrorCode.conflict,
+        'stalePlayerState': ApiErrorCode.conflict,
+      };
+
+      for (final entry in cases.entries) {
+        final apiClient = _FakeBackendApiClient()
+          ..enqueuePostSuccess(
+            _rejectedRunSubmissionResponsePayload(entry.key),
+          );
+        final repository = BackendLeagueRepository(apiClient: apiClient);
+
+        await expectLater(
+          repository.submitLeagueRun(
+            _leagueRun(id: 'run-${entry.key}'),
+            idempotencyKey: IdempotencyKey('league-run:${entry.key}'),
+          ),
+          throwsA(
+            isA<RepositoryDomainException>()
+                .having((exception) => exception.code, 'code', entry.value)
+                .having(
+                  (exception) => exception.details['rejectionCode'],
+                  'rejectionCode',
+                  entry.key,
+                ),
+          ),
+        );
+      }
+    });
+
+    test('submitLeagueRun rejects malformed successful payloads', () async {
+      final apiClient = _FakeBackendApiClient()
+        ..enqueuePostSuccess({'status': 'accepted', 'newlyPersisted': true});
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      await expectLater(
+        repository.submitLeagueRun(
+          _leagueRun(),
+          idempotencyKey: IdempotencyKey('league-run:malformed'),
+        ),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (exception) => exception.code,
+            'code',
+            ApiErrorCode.malformedPayload,
+          ),
+        ),
       );
+    });
+
+    test('submitLeagueRun validates outbound claim before API calls', () async {
+      final apiClient = _FakeBackendApiClient();
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      await expectLater(
+        Future<Object?>.sync(
+          () => repository.submitLeagueRun(
+            WeeklyLeagueRun(
+              playerId: 'player-1',
+              score: 12000,
+              completedAt: DateTime.utc(2026, 6, 21, 10, 30),
+            ),
+            idempotencyKey: IdempotencyKey('league-run:missing-claim'),
+          ),
+        ),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (exception) => exception.code,
+            'code',
+            ApiErrorCode.malformedPayload,
+          ),
+        ),
+      );
+      expect(apiClient.postRequests, isEmpty);
+    });
+
+    test('submitLeagueRun requires explicit idempotency key', () async {
+      final apiClient = _FakeBackendApiClient();
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      await expectLater(
+        Future<Object?>.sync(() => repository.submitLeagueRun(_leagueRun())),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (exception) => exception.code,
+            'code',
+            ApiErrorCode.malformedPayload,
+          ),
+        ),
+      );
+      expect(apiClient.postRequests, isEmpty);
+    });
+
+    test(
+      'submitLeagueRun maps ambiguous API failures without retrying',
+      () async {
+        final apiClient = _FakeBackendApiClient()
+          ..enqueuePostFailure(
+            const ApiError(
+              code: ApiErrorCode.networkUnavailable,
+              message: 'Transport detail.',
+            ),
+          );
+        final repository = BackendLeagueRepository(apiClient: apiClient);
+
+        await expectLater(
+          repository.submitLeagueRun(
+            _leagueRun(),
+            idempotencyKey: IdempotencyKey('league-run:network'),
+          ),
+          throwsA(
+            isA<RepositoryDomainException>().having(
+              (exception) => exception.code,
+              'code',
+              ApiErrorCode.networkUnavailable,
+            ),
+          ),
+        );
+
+        expect(apiClient.postRequests, hasLength(1));
+      },
+    );
+
+    test('submitLeagueRun maps timeout without retrying', () async {
+      final apiClient = _FakeBackendApiClient()
+        ..enqueuePostException(
+          const ApiException(
+            ApiError(
+              code: ApiErrorCode.requestTimeout,
+              message: 'Request timed out.',
+            ),
+          ),
+        );
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
+      await expectLater(
+        repository.submitLeagueRun(
+          _leagueRun(),
+          idempotencyKey: IdempotencyKey('league-run:timeout'),
+        ),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (exception) => exception.code,
+            'code',
+            ApiErrorCode.requestTimeout,
+          ),
+        ),
+      );
+
+      expect(apiClient.postRequests, hasLength(1));
+    });
+
+    test('settlement stays explicitly disconnected', () async {
+      final apiClient = _FakeBackendApiClient();
+      final repository = BackendLeagueRepository(apiClient: apiClient);
+
       expect(
         () => repository.settleCurrentSeason(
           now: DateTime.utc(2026, 6, 21, 23, 59),
@@ -682,6 +903,52 @@ Map<String, Object?> _rejectedEntryResponsePayload(String rejectionCode) {
     'status': 'rejected',
     'seasonId': '2026-06-15',
     'rejectionCode': rejectionCode,
+  };
+}
+
+WeeklyLeagueRun _leagueRun({String id = 'run-1'}) {
+  return WeeklyLeagueRun(
+    id: id,
+    playerId: 'local-player-id-is-not-authority',
+    seasonId: LeagueSeasonId(weekStartDate: DateTime(2026, 6, 15)),
+    startedAt: DateTime.utc(2026, 6, 21, 10),
+    score: 25000,
+    completedAt: DateTime.utc(2026, 6, 21, 10, 30),
+    levelReached: 12,
+    precisionPointTier: 8,
+  );
+}
+
+Map<String, Object?> _acceptedRunSubmissionResponsePayload({
+  String status = 'accepted',
+  bool newlyPersisted = true,
+}) {
+  return {
+    'status': status,
+    'newlyPersisted': newlyPersisted,
+    'acceptedRun': {
+      'playerId': 'server-player',
+      'score': 25000,
+      'completedAt': '2026-06-21T10:30:00.000Z',
+    },
+    'playerRecords': {
+      'playerId': 'server-player',
+      'allTimeBestFinalScore': 25000,
+      'currentWeeklyBestScore': 25000,
+      'currentSeasonId': '2026-06-15',
+    },
+    'validationResult': {'accepted': true, 'serverFinalPrecisionPoints': 25000},
+  };
+}
+
+Map<String, Object?> _rejectedRunSubmissionResponsePayload(
+  String rejectionCode,
+) {
+  return {
+    'status': 'rejected',
+    'newlyPersisted': false,
+    'rejectionCode': rejectionCode,
+    'validationResult': {'accepted': false, 'rejectionCode': rejectionCode},
   };
 }
 

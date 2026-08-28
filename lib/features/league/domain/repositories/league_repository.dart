@@ -39,10 +39,16 @@ class LeagueRunSubmissionResult {
   const LeagueRunSubmissionResult({
     required this.accepted,
     required this.playerRecords,
+    this.acceptedRun,
+    this.playerProfile,
+    this.newlyPersisted,
   });
 
   final bool accepted;
   final PlayerLeagueRecords playerRecords;
+  final WeeklyLeagueRun? acceptedRun;
+  final PlayerProfile? playerProfile;
+  final bool? newlyPersisted;
 }
 
 abstract class LeagueRepository {
@@ -55,7 +61,10 @@ abstract class LeagueRepository {
     IdempotencyKey? idempotencyKey,
   });
 
-  Future<LeagueRunSubmissionResult> submitLeagueRun(WeeklyLeagueRun run);
+  Future<LeagueRunSubmissionResult> submitLeagueRun(
+    WeeklyLeagueRun run, {
+    IdempotencyKey? idempotencyKey,
+  });
 
   Future<PlayerLeagueRecords> fetchPlayerRecords(String playerId);
 
