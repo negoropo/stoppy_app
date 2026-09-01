@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_score.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
@@ -174,7 +175,10 @@ class MockKnockoutRepository implements KnockoutRepository {
   }
 
   @override
-  Future<bool> submitKnockoutRun(KnockoutRun run) async {
+  Future<bool> submitKnockoutRun(
+    KnockoutRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) async {
     _refreshTournamentStatus();
     final round = _currentTournament.currentRound;
     if (round == null || !round.isActive) {
@@ -354,6 +358,7 @@ class MockKnockoutRepository implements KnockoutRepository {
   Future<KnockoutRegistrationResult> registerPlayer({
     required KnockoutTournament tournament,
     required PlayerProfile playerProfile,
+    IdempotencyKey? idempotencyKey,
   }) async {
     _refreshTournamentStatus();
 

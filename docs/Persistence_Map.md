@@ -50,6 +50,9 @@ The UI should not change during this migration. If a widget needs to change when
 - DTO mappers define the future REST JSON to domain boundary.
 - `AuthSessionStore` prepares token persistence without choosing a secure storage implementation yet.
 - API errors should be mapped to domain-facing exceptions before reaching widgets.
+- Historical note: backend authentication and selected League backend
+  integrations have since been activated behind the same repository contracts,
+  while Knockout backend mutations remain disconnected.
 
 ## Session 29 PostgreSQL Entity Mapping Preparation
 
@@ -110,10 +113,42 @@ contracts, but PostgreSQL persistence and idempotency storage remain future
 backend responsibilities. League settlement remains disconnected from Flutter
 backend repositories.
 
+## Session 40 Knockout Mutation Persistence Preparation
+
+Knockout registration and Knockout run submission must eventually be persisted
+atomically with idempotency records. Suggested PostgreSQL constraints:
+
+- `knockout_player_entries`: unique registration per `(tournament_id,
+  player_id)`.
+- `knockout_runs`: unique logical run id scoped to the authenticated player and
+  tournament/match context.
+- `mutation_idempotency_keys`: unique key within the Knockout mutation scope,
+  stored with a request fingerprint and stable response projection.
+- Knockout registration transaction: validate tournament window, validate GP,
+  deduct exactly 25 GP, create the entry, and persist idempotency result in one
+  transaction.
+- Knockout run submission transaction: validate the active duel claim, persist
+  accepted run, update duel aggregate/projection, and persist idempotency result
+  in one transaction.
+- Settlement, bracket advancement, repechage, champion persistence, records,
+  and Hall of Fame writes remain trusted backend jobs and must not be triggered
+  by ordinary client mutation payloads.
+
+Session 40 prepares DTO and repository-contract boundaries only. Backend
+Knockout mutations remain disconnected from Flutter runtime and mock
+repositories remain the default local/test implementation.
+
 ## Session 31 Authentication Session Boundary
 
-- `AuthSession` is currently held by `InMemoryAuthSessionStore` only and is not persisted to PostgreSQL or device storage by the Flutter client.
+- Backend runtime uses `SecureAuthSessionStore` for the server-issued
+  `AuthSession`.
+- Mock runtime uses `InMemoryAuthSessionStore` and remains memory-only.
+- Refresh-token execution and rotation are implemented through
+  `AuthSessionRefreshCoordinator`.
+- The secure session payload persists only access token, optional refresh token,
+  and expiration; `PlayerProfile` and competitive state are not stored there.
 - The backend remains the issuer and validator of Stoppy access/refresh tokens.
-- Registration, login, and profile restoration use the same server-issued `AuthResponseDto` session contract.
-- Secure device persistence, refresh-token rotation, social-provider credential exchange, and backend logout invalidation are deferred to future sessions.
-- PlayerProfile remains independent of external provider identities; provider credentials must never become Stoppy access tokens.
+- Backend logout invalidation and social-provider credential exchange remain
+  deferred.
+- PlayerProfile remains independent of external provider identities; provider
+  credentials must never become Stoppy access tokens.

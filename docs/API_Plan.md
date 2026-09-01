@@ -488,18 +488,54 @@ Server responsibilities:
 
 ## Knockout
 
-### POST /knockout/register
+### Knockout mutation idempotency
+
+Future client-callable Knockout mutations use the `Idempotency-Key` HTTP
+header. Tournament registration and Knockout run submission both require
+caller-owned keys because registration changes GP/tournament participation and
+run submission changes competitive duel state. Retrying an unresolved logical
+mutation must reuse the same key and payload. A new registration attempt or a
+different completed run must use a different key. `HttpBackendApiClient` must
+never generate mutation identity and no automatic retry policy is active.
+
+Session 40 selects Knockout tournament registration as the first backend
+Knockout mutation to activate in a future session. It is safer than run
+submission because the request can remain an authenticated empty body while the
+backend owns player identity, GP deduction, registration-window validation,
+duplicate detection, and resulting tournament entry state.
+
+### POST /api/v1/knockout/register
 
 Registers the authenticated player for the current monthly knockout.
 
+Request headers:
+
+- `Idempotency-Key`
+
+Request body:
+
+```json
+{}
+```
+
 Server responsibilities:
 
+- derive player identity from authentication
+- resolve the current monthly tournament
 - validate registration window
 - validate GP availability
 - deduct 25 GP entry cost
 - prevent duplicate registration
+- return authoritative tournament/entry state and optional player profile
+  projection
 
-### GET /knockout/status
+Client responsibilities:
+
+- provide only the idempotency key and empty request body
+- never submit player id, GP balance, registration eligibility, tournament
+  state, or registration cost as authority
+
+### GET /api/v1/knockout/status
 
 Returns tournament status for the authenticated player.
 
@@ -509,7 +545,7 @@ Server responsibilities:
 - return active duel or bye state
 - return eliminated/champion/completed state
 
-### GET /knockout/history
+### GET /api/v1/knockout/history
 
 Returns player knockout tournament history.
 
@@ -520,7 +556,7 @@ Server responsibilities:
 - preserve final round/result history
 
 
-### GET /knockout/records
+### GET /api/v1/knockout/records
 
 Returns player knockout records and achievements.
 
@@ -532,7 +568,7 @@ Server responsibilities:
 - return duel win percentage
 - derive statistics from trusted tournament history
 
-### GET /knockout/hall-of-fame
+### GET /api/v1/knockout/hall-of-fame
 
 Returns champion-only Hall of Fame data.
 
@@ -545,7 +581,7 @@ Server responsibilities:
 
 ## Gameplay
 
-### POST /runs/league
+### POST /api/v1/runs/league
 
 Submits a completed league run claim.
 
@@ -559,17 +595,30 @@ Server responsibilities:
 - persist accepted run
 - update league records where appropriate
 
-### POST /runs/knockout
+### POST /api/v1/runs/knockout
 
 Submits a completed knockout duel run claim.
 
+Request headers:
+
+- `Idempotency-Key`
+
 Server responsibilities:
 
+- derive player identity from the authenticated session, not from the request
+  body
+- validate current tournament, active round, active duel, and match association
 - validate active duel
 - validate score and PP progression
 - prevent duplicates
 - persist accepted run
 - update current duel score where appropriate
+
+Client submission remains a claim. It may include tournament, round, match,
+timestamp, final PP, level, and tier evidence required by the validation
+contract, but it must not authoritatively select winners, bracket advancement,
+repechage, tournament completion, champion state, records, Hall of Fame entries,
+or GP/economy state.
 
 ## Competitive Validation Contract
 
@@ -577,7 +626,7 @@ Future run submission claims carry enough information for server-side verificati
 
 ```json
 {
-  "runId": "client-generated-idempotency-key",
+  "runId": "client-generated-run-id",
   "runType": "league",
   "finalPrecisionPoints": 12000,
   "levelReached": 15,
@@ -588,13 +637,15 @@ Future run submission claims carry enough information for server-side verificati
 ```
 
 Flutter backend runtime now serializes this claim for League run submissions.
-The client-side DTO validation only checks structural consistency; the backend
-remains authoritative for timing, tier progression, duplicate submission
-protection, authenticated player identity, and the final accepted score. No
-automatic retry is performed; retrying the same logical run must reuse the same
-`Idempotency-Key`. If a timeout, network loss, or temporary server failure
-leaves persistence status unknown, the app may surface a manual retry action
-that resubmits the preserved finalized claim with that same key.
+Session 40 prepares the same claim semantics for future Knockout run
+submission. The client-side DTO validation only checks structural consistency;
+the backend remains authoritative for timing, tier progression, duplicate
+submission protection, authenticated player identity, active duel eligibility,
+and the final accepted score. No automatic retry is performed; retrying the
+same logical run must reuse the same `Idempotency-Key`. If a timeout, network
+loss, or temporary server failure leaves persistence status unknown, the app may
+surface a manual retry action that resubmits the preserved finalized claim with
+that same key.
 
 ## Store / Economy
 

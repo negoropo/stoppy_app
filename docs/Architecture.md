@@ -511,7 +511,7 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Auth responses keep profile and JWT/session transport data in data-layer DTOs.
 * Competitive run validation claims are transport contracts only; they do not alter local gameplay or scoring.
 * Token refresh is now implemented by the authentication data layer.
-* No League/Knockout repository-to-backend feature call or PostgreSQL access is implemented yet.
+* Backend authentication and selected League backend integrations are connected; Knockout backend mutations remain disconnected, and Flutter contains no PostgreSQL implementation.
 
 ### Session 30 Networking Client Preparation
 
@@ -569,6 +569,34 @@ run submission are the connected competitive backend mutations.
 * League settlement remains disconnected from ordinary Flutter backend runtime.
 * Mock runtime remains the default runtime.
 * League reads, gameplay, Knockout, Purchase, and Ads behavior are unchanged.
+
+### Session 40 Knockout Mutation Boundary Preparation
+
+Knockout backend mutations remain disconnected in Flutter backend runtime, but
+their next integration boundary is now explicit.
+
+* Knockout repository mutations are classified as:
+  * player-initiated: monthly tournament registration;
+  * competitive run: Knockout duel run submission;
+  * server/internal only: registration close, tournament start, round
+    settlement, bracket advancement, repechage, tournament completion, champion
+    persistence, records, and Hall of Fame updates.
+* Tournament registration is selected as the safest first Knockout backend
+  mutation to activate because it can use an authenticated empty request body
+  while the backend owns player identity, 25 GP deduction, duplicate detection,
+  registration-window validation, and authoritative entry state.
+* Knockout registration and run submission require caller-owned
+  `Idempotency-Key` values once connected. Replaying an unresolved logical
+  mutation must reuse the same key; new logical mutations require new keys.
+* Knockout run submissions are validation claims only. The client may provide
+  structural run evidence, but active duel eligibility, accepted score,
+  duplicate detection, duel aggregation, and advancement remain
+  server-authoritative.
+* `BackendKnockoutRepository` must not silently fall back to mock behavior.
+  Disconnected mutations continue to fail explicitly until each endpoint is
+  activated in its own session.
+* No automatic retry, settlement endpoint, PostgreSQL persistence, or gameplay
+  behavior change is introduced by this preparation session.
 
 ### Domain Logic
 

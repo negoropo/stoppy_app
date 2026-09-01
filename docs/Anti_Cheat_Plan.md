@@ -116,3 +116,32 @@ identity as authority. The client still does not submit GP balance, division
 placement, reserved-slot decisions, accepted scores, or validation outcomes as
 authoritative data. League settlement remains a server-authoritative future
 integration and must not be triggered by normal mobile client runtime.
+
+## Knockout Mutation Validation Boundary
+
+Session 40 prepares the Knockout mutation boundary without activating backend
+Knockout mutations.
+
+Knockout tournament registration validation must:
+
+- derive player identity from authentication
+- resolve the current monthly tournament on the backend
+- validate the registration window and tournament lifecycle
+- prevent duplicate registration with idempotent replay support
+- atomically deduct the 25 GP entry cost only when registration succeeds
+- return authoritative tournament entry state
+
+Knockout run submission validation must:
+
+- derive player identity from authentication, not the request body
+- validate active tournament, active round, active duel, and match association
+- validate run timestamps, PP, level, and tier progression
+- reject duplicate logical runs unless the idempotent replay matches the
+  original claim
+- update duel score projections only from accepted validated runs
+
+Knockout registration and run submission require caller-owned
+`Idempotency-Key` values when connected. Round settlement, bracket advancement,
+repechage, tournament completion, champion persistence, records, and Hall of
+Fame updates remain trusted backend/internal responsibilities and must never be
+driven by ordinary client mutation payloads.

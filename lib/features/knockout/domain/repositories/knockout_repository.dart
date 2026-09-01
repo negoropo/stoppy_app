@@ -1,4 +1,5 @@
 import '../../../auth/domain/models/player_profile.dart';
+import '../../../../core/backend/idempotency_key.dart';
 import '../models/knockout_player_entry.dart';
 import '../models/knockout_hall_of_fame_entry.dart';
 import '../models/knockout_player_records.dart';
@@ -20,6 +21,7 @@ abstract class KnockoutRepository {
   Future<KnockoutRegistrationResult> registerPlayer({
     required KnockoutTournament tournament,
     required PlayerProfile playerProfile,
+    IdempotencyKey? idempotencyKey,
   });
 
   Future<KnockoutTournament> closeRegistration({required String tournamentId});
@@ -36,7 +38,10 @@ abstract class KnockoutRepository {
     required String playerId,
   });
 
-  Future<bool> submitKnockoutRun(KnockoutRun run);
+  Future<bool> submitKnockoutRun(
+    KnockoutRun run, {
+    IdempotencyKey? idempotencyKey,
+  });
 
   Future<KnockoutTournament> settleCurrentRound({required String tournamentId});
 

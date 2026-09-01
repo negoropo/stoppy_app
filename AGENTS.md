@@ -17,9 +17,9 @@ The project is currently in early development.
 
 ## 2. Current Phase
 
-Session 39 completed.
+Session 40 completed.
 
-Current session: Session 40 — Knockout Backend Mutation Integration Preparation
+Current session: Session 41 — Knockout Backend Registration Mutation Integration
 
 ---
 

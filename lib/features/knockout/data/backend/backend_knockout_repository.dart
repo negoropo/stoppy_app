@@ -1,6 +1,7 @@
 import 'package:stoppy_app/core/backend/api_contract.dart';
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
+import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_hall_of_fame_entry.dart';
@@ -47,7 +48,11 @@ final class BackendKnockoutRepository implements KnockoutRepository {
   Future<KnockoutRegistrationResult> registerPlayer({
     required KnockoutTournament tournament,
     required PlayerProfile playerProfile,
+    IdempotencyKey? idempotencyKey,
   }) {
+    // Prepared only: the future backend registration mutation must require a
+    // caller-owned idempotency key because it deducts GP and creates tournament
+    // participation state atomically on the server.
     return backendNotConnected('BackendKnockoutRepository', 'registerPlayer');
   }
 
@@ -84,7 +89,13 @@ final class BackendKnockoutRepository implements KnockoutRepository {
   }
 
   @override
-  Future<bool> submitKnockoutRun(KnockoutRun run) {
+  Future<bool> submitKnockoutRun(
+    KnockoutRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) {
+    // Prepared only: knockout runs will be submitted as validation claims, not
+    // trusted results. The backend must own active-duel eligibility, duplicate
+    // detection, accepted scoring, and duel aggregate updates.
     return backendNotConnected(
       'BackendKnockoutRepository',
       'submitKnockoutRun',
