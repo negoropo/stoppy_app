@@ -140,8 +140,10 @@ Knockout run submission validation must:
   original claim
 - update duel score projections only from accepted validated runs
 
-Knockout registration and run submission require caller-owned
-`Idempotency-Key` values when connected. Round settlement, bracket advancement,
-repechage, tournament completion, champion persistence, records, and Hall of
-Fame updates remain trusted backend/internal responsibilities and must never be
-driven by ordinary client mutation payloads.
+Knockout registration is now connected from Flutter backend runtime using an
+authenticated empty request body and caller-owned `Idempotency-Key`. Knockout
+run submission remains disconnected, but will also require caller-owned
+idempotency when activated. Round settlement, bracket advancement, repechage,
+tournament completion, champion persistence, records, and Hall of Fame updates
+remain trusted backend/internal responsibilities and must never be driven by
+ordinary client mutation payloads.

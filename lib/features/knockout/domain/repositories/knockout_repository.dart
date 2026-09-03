@@ -53,3 +53,5 @@ abstract class KnockoutRepository {
 
   Future<List<KnockoutHallOfFameEntry>> fetchHallOfFame();
 }
+
+abstract interface class ServerAuthoritativeKnockoutRegistrationRepository {}

@@ -162,8 +162,9 @@ When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connec
 - On app restoration, unauthenticated or forbidden profile responses clear the in-memory session; temporary failures preserve it and surface an auth-domain error.
 - Future Google, Apple, and Facebook login flows must validate provider credentials on the backend and return this same Stoppy `AuthResponseDto`; provider identity tokens are not stored as Stoppy sessions.
 - League entry and League run submission are connected backend League
-  mutations in Flutter backend runtime. League settlement and Knockout backend
-  mutations remain disconnected.
+  mutations in Flutter backend runtime. Knockout registration is connected as
+  the first backend Knockout mutation. League settlement, Knockout run
+  submission, and Knockout settlement remain disconnected.
 
 ## Error Strategy
 

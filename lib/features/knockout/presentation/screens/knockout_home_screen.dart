@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/backend/api_error.dart';
+import '../../../../core/backend/domain_error_mapper.dart';
+import '../../../../core/backend/idempotency_key.dart';
 import '../../../auth/domain/models/player_profile.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../league/domain/models/player_league_achievements.dart';
@@ -8,6 +11,7 @@ import '../../domain/models/knockout_hall_of_fame_entry.dart';
 import '../../domain/models/knockout_player_entry.dart';
 import '../../domain/models/knockout_player_records.dart';
 import '../../domain/models/knockout_player_status.dart';
+import '../../domain/models/knockout_registration_result.dart';
 import '../../domain/models/knockout_tournament.dart';
 import '../../domain/models/knockout_tournament_history_entry.dart';
 import '../../domain/repositories/knockout_repository.dart';
@@ -36,6 +40,8 @@ class KnockoutHomeScreen extends StatefulWidget {
 }
 
 class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
+  static int _registrationKeyCounter = 0;
+
   late PlayerProfile _playerProfile;
   KnockoutTournament? _tournament;
   KnockoutPlayerEntry? _playerEntry;
@@ -46,6 +52,7 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
   List<KnockoutHallOfFameEntry> _hallOfFame = const [];
   bool _isLoading = true;
   bool _isRegistering = false;
+  IdempotencyKey? _pendingRegistrationIdempotencyKey;
   String? _message;
 
   @override
@@ -125,58 +132,155 @@ class _KnockoutHomeScreenState extends State<KnockoutHomeScreen> {
       return;
     }
 
+    if (!_usesServerAuthoritativeRegistration &&
+        _playerProfile.gamePoints < tournament.entryCostGamePoints) {
+      setState(() {
+        _message = 'You need ${tournament.entryCostGamePoints} GP to register.';
+      });
+      return;
+    }
+
     setState(() {
       _isRegistering = true;
       _message = null;
     });
 
-    final result = await widget.knockoutRepository.registerPlayer(
-      tournament: tournament,
-      playerProfile: _playerProfile,
-    );
+    KnockoutRegistrationResult? acceptedResult;
+    PlayerProfile? acceptedProfile;
 
-    if (!mounted) {
-      return;
-    }
-
-    if (!result.isSuccess || result.playerEntry == null) {
-      setState(() {
-        _message = result.message ?? 'Could not register for Knockout.';
-        _isRegistering = false;
-      });
-      return;
-    }
-
-    final updatedProfile = _playerProfile.copyWith(
-      gamePoints:
-          _playerProfile.gamePoints - result.playerEntry!.entryCostGamePoints,
-    );
     try {
-      await widget.authRepository.updatePlayerProfile(updatedProfile);
+      final result = await Future<KnockoutRegistrationResult>.sync(
+        () => widget.knockoutRepository.registerPlayer(
+          tournament: tournament,
+          playerProfile: _playerProfile,
+          idempotencyKey: _registrationIdempotencyKeyForCurrentAttempt(),
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!result.isSuccess || result.playerEntry == null) {
+        _pendingRegistrationIdempotencyKey = null;
+        setState(() {
+          _message = result.message ?? 'Could not register for Knockout.';
+        });
+        return;
+      }
+
+      final updatedProfile = _profileProjectionForAcceptedRegistration(result);
+      if (!_usesServerAuthoritativeRegistration) {
+        await widget.authRepository.updatePlayerProfile(updatedProfile);
+      }
+      widget.onPlayerProfileUpdated(updatedProfile);
+      _pendingRegistrationIdempotencyKey = null;
+      acceptedResult = result;
+      acceptedProfile = updatedProfile;
+
+      setState(() {
+        _playerProfile = updatedProfile;
+        _playerEntry = result.playerEntry;
+        _tournament = result.tournament;
+        _message = result.message;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _message = _registrationErrorMessage(error);
+      });
+      _clearCompletedRejectedRegistrationAttempt(error);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRegistering = false;
+        });
+      }
+    }
+
+    if (!mounted || acceptedResult == null || acceptedProfile == null) {
+      return;
+    }
+
+    try {
+      await _loadTournamentState(clearMessage: false);
     } catch (_) {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _message = 'Could not update player profile.';
-        _isRegistering = false;
+        _playerProfile = acceptedProfile!;
+        _playerEntry = acceptedResult!.playerEntry;
+        _tournament = acceptedResult.tournament;
+        _isLoading = false;
+        _message =
+            'Knockout registration confirmed, but tournament data could not be refreshed.';
       });
-
-      return;
     }
-    widget.onPlayerProfileUpdated(updatedProfile);
+  }
 
-    if (!mounted) {
-      return;
+  IdempotencyKey _registrationIdempotencyKeyForCurrentAttempt() {
+    return _pendingRegistrationIdempotencyKey ??= IdempotencyKey(
+      'knockout-registration-${DateTime.now().toUtc().microsecondsSinceEpoch}-${_registrationKeyCounter++}',
+    );
+  }
+
+  bool get _usesServerAuthoritativeRegistration {
+    return widget.knockoutRepository
+        is ServerAuthoritativeKnockoutRegistrationRepository;
+  }
+
+  PlayerProfile _profileProjectionForAcceptedRegistration(
+    KnockoutRegistrationResult result,
+  ) {
+    final authoritativeProfile = result.playerProfile;
+    if (authoritativeProfile != null) {
+      return authoritativeProfile;
     }
 
-    setState(() {
-      _playerProfile = updatedProfile;
-      _message = result.message;
-      _isRegistering = false;
-    });
-    await _loadTournamentState(clearMessage: false);
+    final entry = result.playerEntry!;
+    final remainingGamePoints = result.remainingGamePoints;
+    if (_usesServerAuthoritativeRegistration) {
+      if (remainingGamePoints == null) {
+        throw const FormatException(
+          'Accepted Knockout registration response is missing remaining GP.',
+        );
+      }
+      return _playerProfile.copyWith(gamePoints: remainingGamePoints);
+    }
+
+    return _playerProfile.copyWith(
+      gamePoints: (_playerProfile.gamePoints - entry.entryCostGamePoints)
+          .clamp(0, 999999999)
+          .toInt(),
+    );
+  }
+
+  void _clearCompletedRejectedRegistrationAttempt(Object error) {
+    if (!_isAmbiguousRegistrationFailure(error)) {
+      _pendingRegistrationIdempotencyKey = null;
+    }
+  }
+
+  bool _isAmbiguousRegistrationFailure(Object error) {
+    return error is RepositoryDomainException &&
+        (error.code == ApiErrorCode.networkUnavailable ||
+            error.code == ApiErrorCode.requestTimeout ||
+            error.code == ApiErrorCode.serverError ||
+            error.code == ApiErrorCode.malformedPayload ||
+            error.code == ApiErrorCode.unexpectedResponse);
+  }
+
+  String _registrationErrorMessage(Object error) {
+    if (error is RepositoryDomainException) {
+      return error.message;
+    }
+
+    return 'Could not register for Knockout. Please try again.';
   }
 
   String _usernameForPlayerId(String? playerId) {

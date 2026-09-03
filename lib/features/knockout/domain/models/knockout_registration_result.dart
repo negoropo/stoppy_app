@@ -1,5 +1,6 @@
 import 'knockout_player_entry.dart';
 import 'knockout_tournament.dart';
+import '../../../auth/domain/models/player_profile.dart';
 
 enum KnockoutRegistrationFailureReason {
   duplicateRegistration,
@@ -13,6 +14,8 @@ class KnockoutRegistrationResult {
     required this.isSuccess,
     required this.tournament,
     this.playerEntry,
+    this.remainingGamePoints,
+    this.playerProfile,
     this.failureReason,
     this.message,
   }) : assert(isSuccess ? playerEntry != null : failureReason != null);
@@ -20,11 +23,15 @@ class KnockoutRegistrationResult {
   factory KnockoutRegistrationResult.success({
     required KnockoutTournament tournament,
     required KnockoutPlayerEntry playerEntry,
+    int? remainingGamePoints,
+    PlayerProfile? playerProfile,
   }) {
     return KnockoutRegistrationResult._(
       isSuccess: true,
       tournament: tournament,
       playerEntry: playerEntry,
+      remainingGamePoints: remainingGamePoints,
+      playerProfile: playerProfile,
       message: 'Knockout registration confirmed.',
     );
   }
@@ -47,6 +54,10 @@ class KnockoutRegistrationResult {
   final KnockoutTournament tournament;
 
   final KnockoutPlayerEntry? playerEntry;
+
+  final int? remainingGamePoints;
+
+  final PlayerProfile? playerProfile;
 
   final KnockoutRegistrationFailureReason? failureReason;
 

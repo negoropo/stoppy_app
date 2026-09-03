@@ -146,6 +146,8 @@ final class KnockoutRegistrationResponseDto {
       return KnockoutRegistrationResult.success(
         tournament: domainTournament,
         playerEntry: playerEntry!.toDomain(),
+        remainingGamePoints: remainingGamePoints,
+        playerProfile: playerProfile?.toDomain(),
       );
     }
 

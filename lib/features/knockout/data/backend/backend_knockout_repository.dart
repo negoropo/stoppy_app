@@ -1,8 +1,11 @@
 import 'package:stoppy_app/core/backend/api_contract.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
 import 'package:stoppy_app/core/backend/backend_api_client.dart';
 import 'package:stoppy_app/core/backend/backend_repository_not_configured.dart';
+import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
 import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
+import 'package:stoppy_app/features/knockout/data/dto/knockout_mutation_dtos.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_hall_of_fame_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_entry.dart';
@@ -14,10 +17,17 @@ import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.d
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_history_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
 
-final class BackendKnockoutRepository implements KnockoutRepository {
-  const BackendKnockoutRepository({required this.apiClient});
+final class BackendKnockoutRepository
+    implements
+        KnockoutRepository,
+        ServerAuthoritativeKnockoutRegistrationRepository {
+  const BackendKnockoutRepository({
+    required this.apiClient,
+    DomainErrorMapper errorMapper = const DomainErrorMapper(),
+  }) : _errorMapper = errorMapper;
 
   final BackendApiClient apiClient;
+  final DomainErrorMapper _errorMapper;
 
   static const tournamentPath = ApiContract.knockoutTournament;
   static const registerPath = ApiContract.knockoutRegistration;
@@ -50,10 +60,23 @@ final class BackendKnockoutRepository implements KnockoutRepository {
     required PlayerProfile playerProfile,
     IdempotencyKey? idempotencyKey,
   }) {
-    // Prepared only: the future backend registration mutation must require a
-    // caller-owned idempotency key because it deducts GP and creates tournament
-    // participation state atomically on the server.
-    return backendNotConnected('BackendKnockoutRepository', 'registerPlayer');
+    final key = idempotencyKey;
+    if (key == null) {
+      throw _malformedPayload(
+        'Knockout registration requires an idempotency key.',
+      );
+    }
+
+    // The backend owns authenticated identity, current tournament selection,
+    // registration eligibility, duplicate detection, and GP deduction. The
+    // client sends an empty claim plus caller-owned idempotency.
+    return _post(
+      registerPath,
+      body: const KnockoutRegistrationRequestDto().toJson(),
+      headers: key.toHeader(),
+      decode: (data) =>
+          KnockoutRegistrationResponseDto.fromJson(data).toDomain(),
+    );
   }
 
   @override
@@ -133,5 +156,40 @@ final class BackendKnockoutRepository implements KnockoutRepository {
   @override
   Future<List<KnockoutHallOfFameEntry>> fetchHallOfFame() {
     return backendNotConnected('BackendKnockoutRepository', 'fetchHallOfFame');
+  }
+
+  Future<T> _post<T>(
+    String path, {
+    required Map<String, Object?> body,
+    required Map<String, String> headers,
+    required T Function(Map<String, Object?> data) decode,
+  }) async {
+    try {
+      final response = await apiClient.post(path, body: body, headers: headers);
+
+      if (!response.isSuccess) {
+        throw _errorMapper.toRepositoryException(response.requireError());
+      }
+
+      return decode(response.requireData());
+    } on RepositoryDomainException {
+      rethrow;
+    } on ApiException catch (exception) {
+      throw _errorMapper.toRepositoryException(exception.error);
+    } on FormatException catch (exception) {
+      throw _malformedPayload(exception.message);
+    } on ArgumentError catch (exception) {
+      throw _malformedPayload(
+        exception.message?.toString() ?? 'Malformed Knockout payload.',
+      );
+    } on StateError catch (exception) {
+      throw _malformedPayload(exception.message);
+    }
+  }
+
+  RepositoryDomainException _malformedPayload(String message) {
+    return _errorMapper.toRepositoryException(
+      ApiError(code: ApiErrorCode.malformedPayload, message: message),
+    );
   }
 }

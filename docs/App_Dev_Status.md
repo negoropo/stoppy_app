@@ -10687,3 +10687,841 @@ Future session policy:
 * Add backend-runtime Simulator validation only when the relevant real backend application server endpoint exists
 
 ---
+
+## 🔄 Session Update
+
+### Session: Session 41 — Knockout Backend Registration Mutation Integration
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Activate Knockout tournament registration as the first real Knockout backend mutation while preserving the existing gameplay, League backend integration from Sessions 36–39, authentication/session architecture, mock-default runtime behavior, caller-owned idempotency, server-authoritative competitive/economy ownership, and disconnected Knockout run-submission/lifecycle/settlement mutations.
+
+The session connected `BackendKnockoutRepository.registerPlayer` to the real backend API boundary through `POST /api/v1/knockout/register`, using an authenticated empty-object request and explicit caller-owned `Idempotency-Key`.
+
+The backend remains authoritative for authenticated player identity, current monthly tournament selection, registration-window validation, duplicate registration detection, 25 GP deduction, authoritative tournament entry state, remaining GP, and optional player-profile projection.
+
+The registration caller was hardened to preserve the same idempotency key across ambiguous outcomes, including network, timeout, server, malformed-response, and unexpected-response failures, while clearing the pending mutation identity only after confirmed success/idempotent replay or definitive rejection.
+
+Knockout run submission, tournament lifecycle mutations, settlement, bracket progression, repechage, champion persistence, records writes, and Hall of Fame writes remain explicitly disconnected from ordinary Flutter backend runtime.
+
+No PostgreSQL implementation, backend application server implementation, Knockout run-submission activation, settlement integration, gameplay change, League behavior change, Purchase behavior change, or Ads behavior change was introduced.
+
+---
+
+### 📦 Deliverables
+
+* [x] `BackendKnockoutRepository.registerPlayer` activated
+* [x] `POST /api/v1/knockout/register` connected
+* [x] Centralized `ApiContract.knockoutRegistration` path used
+* [x] Registration request body remains exactly `{}`
+* [x] Registration requires explicit caller-owned `IdempotencyKey`
+* [x] Missing registration idempotency key rejected before HTTP
+* [x] No HTTP request performed when idempotency key is missing
+* [x] `Idempotency-Key` sent through existing centralized header abstraction
+* [x] HTTP transport remains free of logical mutation identity generation
+* [x] Authorization remains owned by `HttpBackendApiClient`
+* [x] Backend repository does not inject Bearer authorization itself
+* [x] Client player ID excluded from registration request body
+* [x] Client username excluded from registration request body
+* [x] Client GP balance excluded from registration request body
+* [x] Client tournament ID excluded from registration request authority
+* [x] Client tournament state excluded from registration request authority
+* [x] Client registration eligibility excluded from registration request authority
+* [x] Client entry-cost authority excluded from registration request authority
+* [x] Backend remains authoritative for authenticated player identity
+* [x] Backend remains authoritative for current tournament selection
+* [x] Backend remains authoritative for registration-window validation
+* [x] Backend remains authoritative for tournament lifecycle validation
+* [x] Backend remains authoritative for duplicate registration detection
+* [x] Backend remains authoritative for GP availability
+* [x] Backend remains authoritative for atomic 25 GP deduction
+* [x] Backend remains authoritative for resulting tournament entry
+* [x] Backend remains authoritative for remaining GP projection
+* [x] Optional authoritative `PlayerProfile` projection supported
+* [x] Accepted registration response connected to domain result
+* [x] Idempotent replay response connected to domain success
+* [x] Definitive registration rejection connected to domain failure
+* [x] Registration response DTO validation preserved
+* [x] Accepted registration requires authoritative player entry
+* [x] Accepted registration requires authoritative remaining GP
+* [x] Accepted registration tournament/entry consistency enforced
+* [x] Authoritative player-profile GP / remaining-GP consistency enforced
+* [x] Contradictory registration response states rejected
+* [x] Unknown mutation statuses rejected
+* [x] Unknown registration rejection codes rejected
+* [x] Backend response decoding failures mapped through repository-domain errors
+* [x] API transport failures mapped through existing domain error architecture
+* [x] Local backend GP pre-deduction removed from server-authoritative registration flow
+* [x] Mock registration GP behavior preserved unchanged
+* [x] Mock runtime remains the default runtime
+* [x] `ServerAuthoritativeKnockoutRegistrationRepository` capability marker used
+* [x] Backend registration distinguished from mock/local registration without concrete repository coupling
+* [x] Backend success consumes authoritative `PlayerProfile` when supplied
+* [x] Backend success falls back to authoritative `remainingGamePoints` when profile projection is omitted
+* [x] Backend registration does not call local `AuthRepository.updatePlayerProfile`
+* [x] Mock registration continues to persist local player-profile changes through `AuthRepository`
+* [x] Authoritative tournament state consumed from backend result
+* [x] Authoritative player-entry state consumed from backend result
+* [x] Post-registration state refresh preserved
+* [x] Successful registration survives post-success refresh failure
+* [x] Registration success projection preserved when subsequent read refresh fails
+* [x] Duplicate registration taps blocked while mutation is pending
+* [x] Synchronous and asynchronous repository failures normalized through `Future.sync`
+* [x] Caller-owned registration mutation identity implemented
+* [x] Registration idempotency key generated above HTTP/repository transport boundary
+* [x] Registration idempotency key changed to opaque format
+* [x] Player ID removed from idempotency key
+* [x] Tournament ID removed from idempotency key
+* [x] Opaque key format compatible with shared `IdempotencyKey` constraints
+* [x] New logical registration attempt creates a new key
+* [x] Same unresolved logical registration reuses the same key
+* [x] Success clears pending registration key
+* [x] Idempotent replay clears pending registration key
+* [x] Definitive domain rejection clears pending registration key
+* [x] Network ambiguity preserves pending registration key
+* [x] Request timeout preserves pending registration key
+* [x] Server error preserves pending registration key
+* [x] Malformed backend response preserves pending registration key
+* [x] Unexpected backend response preserves pending registration key
+* [x] No automatic retry behavior introduced
+* [x] Retry remains explicit and player initiated
+* [x] Definitive rejection creates a new key for a later new logical attempt
+* [x] Malformed response ambiguity hardened during manual review
+* [x] Unexpected-response ambiguity hardened during manual review
+* [x] Idempotency key contains only allowed header-safe characters
+* [x] Idempotency key remains below 128-character maximum
+* [x] Shared `IdempotencyKey` abstraction preserved unchanged
+* [x] `IdempotencyKey.toString()` remains redacted
+* [x] Knockout run submission remains disconnected
+* [x] `submitKnockoutRun` performs no backend HTTP request
+* [x] `closeRegistration` remains disconnected
+* [x] `startTournament` remains disconnected
+* [x] `settleCurrentRound` remains disconnected
+* [x] Server-only lifecycle mutations perform no HTTP request
+* [x] Bracket progression remains server/internal
+* [x] Bye advancement remains server/internal
+* [x] Repechage remains server/internal
+* [x] Tournament completion remains server/internal
+* [x] Champion persistence remains server/internal
+* [x] Knockout records writes remain server/internal
+* [x] Hall of Fame writes remain server/internal
+* [x] Knockout backend reads remain disconnected
+* [x] Existing League backend reads preserved
+* [x] Existing League entry mutation preserved
+* [x] Existing League run-submission mutation preserved
+* [x] Existing League idempotency lifecycle preserved
+* [x] League settlement remains disconnected
+* [x] Existing authentication/session behavior preserved
+* [x] Existing Purchase behavior preserved
+* [x] Existing Ads behavior preserved
+* [x] Existing gameplay behavior preserved
+* [x] Existing Knockout tournament rules preserved
+* [x] No PostgreSQL implementation introduced
+* [x] No backend application server implementation introduced
+* [x] No automatic HTTP retry policy introduced
+* [x] Backend registration repository tests expanded
+* [x] Knockout registration DTO tests preserved and reviewed
+* [x] Knockout registration UI/runtime tests expanded
+* [x] Authoritative player-profile projection test added
+* [x] Authoritative remaining-GP-only projection test added
+* [x] Network ambiguous retry key-reuse test added
+* [x] Malformed-response retry key-reuse test added
+* [x] Unexpected-response retry key-reuse test added
+* [x] Definitive-rejection new-key test added
+* [x] Duplicate-tap protection test added
+* [x] True synchronous repository failure test added
+* [x] Opaque idempotency key test added
+* [x] Registration request authority-field exclusion tests added
+* [x] Missing idempotency key pre-HTTP test added
+* [x] Accepted registration mapping test added
+* [x] Idempotent replay mapping test added
+* [x] Definitive rejection mapping test added
+* [x] API failure no-retry test added
+* [x] Malformed success payload rejection test added
+* [x] Disconnected Knockout run mutation test preserved
+* [x] Disconnected server lifecycle mutation tests preserved
+* [x] API documentation updated
+* [x] Architecture documentation updated
+* [x] Anti-cheat documentation updated
+* [x] Persistence documentation updated
+* [x] `docs/App_Dev_Status.md` intentionally left unchanged until final Session 41 approval
+* [x] Manual production-code review completed
+* [x] Manual repository-contract review completed
+* [x] Manual registration DTO review completed
+* [x] Manual UI idempotency lifecycle review completed
+* [x] Manual backend repository test review completed
+* [x] Manual widget test review completed
+* [x] Manual DTO test review completed
+* [x] Manual API error semantics review completed
+* [x] Manual shared idempotency abstraction review completed
+* [x] Static analysis passed
+* [x] Focused Knockout UI tests passed
+* [x] Focused Backend Knockout repository tests passed
+* [x] Focused Knockout mutation DTO tests passed
+* [x] Full Flutter test suite passed
+* [x] Whitespace validation passed
+
+---
+
+### 🛠️ Work Done
+
+* Activated `BackendKnockoutRepository.registerPlayer`
+
+* Connected registration to:
+
+  * `POST /api/v1/knockout/register`
+  * caller-owned `Idempotency-Key`
+  * empty JSON body
+  * authenticated backend session through the existing HTTP client
+
+* Preserved the backend registration authority boundary:
+
+  * player identity derives from authentication
+  * current tournament derives from backend state
+  * registration window is validated by backend
+  * tournament lifecycle is validated by backend
+  * duplicate registration is validated by backend
+  * GP availability is validated by backend
+  * 25 GP deduction is performed server-side
+  * resulting tournament entry is server-authoritative
+  * resulting GP is server-authoritative
+  * optional returned player profile is server-authoritative
+
+* Prevented client registration payload authority over:
+
+  * player ID
+  * username
+  * GP balance
+  * tournament ID
+  * tournament state
+  * registration eligibility
+  * entry cost
+
+* Required a non-null `IdempotencyKey` inside backend registration
+
+* Rejected missing idempotency keys before performing HTTP
+
+* Used the existing `IdempotencyKey.toHeader()` contract
+
+* Preserved Bearer-token handling inside `HttpBackendApiClient`
+
+* Kept backend repository free of authorization-token construction
+
+* Added backend registration POST response handling through:
+
+  * `KnockoutRegistrationResponseDto`
+  * `accepted`
+  * `idempotentReplay`
+  * `rejected`
+
+* Connected accepted and replay responses to successful `KnockoutRegistrationResult`
+
+* Connected business rejection responses to failure `KnockoutRegistrationResult`
+
+* Preserved API/transport failures as repository-domain exceptions
+
+* Preserved malformed DTO response failures as typed malformed-payload errors
+
+* Extended `KnockoutRegistrationResult` with:
+
+  * authoritative remaining GP
+  * optional authoritative player profile
+
+* Preserved existing domain failure reasons
+
+* Preserved the existing capability-marker architecture through:
+
+  * `ServerAuthoritativeKnockoutRegistrationRepository`
+
+* Updated `KnockoutHomeScreen` registration behavior
+
+* Distinguished backend/server-authoritative registration from mock registration
+
+* Preserved mock-only local GP pre-check
+
+* Removed local GP pre-check from backend registration flow
+
+* Preserved mock local 25 GP deduction behavior
+
+* Prevented backend runtime from calculating `current GP - 25`
+
+* Consumed authoritative returned `PlayerProfile` when supplied
+
+* Added authoritative `remainingGamePoints` fallback when no profile projection is supplied
+
+* Prevented backend registration from calling `AuthRepository.updatePlayerProfile`
+
+* Preserved player-profile propagation through `onPlayerProfileUpdated`
+
+* Preserved mock `AuthRepository.updatePlayerProfile` behavior
+
+* Preserved registration result state locally before post-success refresh
+
+* Added safe post-success refresh fallback
+
+* Added player-facing message when registration succeeds but subsequent tournament refresh fails
+
+* Added `_isRegistering` duplicate-tap guard
+
+* Wrapped registration invocation in `Future.sync`
+
+* Unified synchronous and asynchronous failure classification
+
+* Added caller-owned registration idempotency lifecycle
+
+* Added pending registration key state to `KnockoutHomeScreen`
+
+* Initially implemented caller-owned registration key reuse
+
+* Manual review identified that embedding player/tournament identifiers in the key was unnecessary
+
+* Replaced the key with an opaque format:
+
+  * `knockout-registration-{utcMicroseconds}-{counter}`
+
+* Confirmed opaque key contains:
+
+  * no player identity
+  * no tournament identity
+  * only characters allowed by `IdempotencyKey`
+  * significantly fewer than 128 characters
+
+* Added pending-key preservation for ambiguous outcomes:
+
+  * `ApiErrorCode.networkUnavailable`
+  * `ApiErrorCode.requestTimeout`
+  * `ApiErrorCode.serverError`
+  * `ApiErrorCode.malformedPayload`
+  * `ApiErrorCode.unexpectedResponse`
+
+* Manual review identified malformed-response ambiguity as a critical idempotency case
+
+* Confirmed a backend mutation may have been committed before response DTO decoding fails
+
+* Prevented malformed response failures from discarding the logical mutation identity
+
+* Preserved the same key for explicit retry after malformed responses
+
+* Preserved the same key for explicit retry after unexpected responses
+
+* Cleared pending key after:
+
+  * successful registration
+  * idempotent replay
+  * definitive domain/business rejection
+  * non-ambiguous failure
+
+* Ensured a later new logical registration attempt creates a fresh key
+
+* Added test coverage proving no automatic retry occurs
+
+* Added tests proving the same key is reused only after explicit player retry
+
+* Added tests proving definitive rejection creates a new mutation identity
+
+* Added opaque-key validation tests
+
+* Added tests proving the generated key does not include player ID
+
+* Added tests proving the generated key does not include tournament ID
+
+* Added tests proving generated key round-trips through `IdempotencyKey`
+
+* Added backend repository request tests for:
+
+  * exact registration path
+  * empty body
+  * explicit idempotency header
+  * absence of player ID
+  * absence of GP balance
+  * absence of tournament ID
+  * absence of repository-level Authorization injection
+
+* Added backend response tests for:
+
+  * accepted registration
+  * idempotent replay
+  * definitive rejection
+  * malformed authoritative response
+
+* Added pre-HTTP missing-key validation test
+
+* Added no-automatic-retry API failure test
+
+* Preserved backend disconnection tests for:
+
+  * Knockout run submission
+  * registration close
+  * tournament start
+  * round settlement
+
+* Confirmed disconnected mutations perform no POST request
+
+* Reviewed registration mutation DTO tests
+
+* Confirmed request body rejects client authority fields
+
+* Confirmed accepted/replay/rejected semantics
+
+* Confirmed contradictory payloads are rejected
+
+* Confirmed profile GP must equal remaining GP when both are supplied
+
+* Added UI test for authoritative profile projection
+
+* Added UI test for authoritative remaining-GP-only projection
+
+* Added ambiguous network retry key-reuse test
+
+* Added malformed-response retry key-reuse test
+
+* Added unexpected-response retry key-reuse test
+
+* Added definitive-rejection key-clear test
+
+* Added duplicate registration tap protection test
+
+* Added true synchronous repository failure test
+
+* Preserved existing mock Knockout UI/runtime tests
+
+* Reviewed `ApiErrorCode`
+
+* Confirmed separate error classifications for:
+
+  * transport ambiguity
+  * server ambiguity
+  * malformed response
+  * unexpected response
+  * authentication/authorization
+  * validation/business rejection
+  * local storage/infrastructure failure
+
+* Reviewed shared `IdempotencyKey`
+
+* Confirmed existing shared abstraction supports:
+
+  * blank-key rejection
+  * whitespace normalization
+  * 128-character maximum
+  * safe header-friendly character set
+  * centralized header conversion
+  * value equality
+  * redacted `toString()`
+
+* Confirmed no Knockout-specific idempotency abstraction is required
+
+* Updated `docs/API_Plan.md`
+
+* Documented active Knockout registration mutation
+
+* Documented authenticated empty-body request contract
+
+* Documented required caller-owned idempotency
+
+* Documented backend ownership of player identity, tournament selection, registration window, duplicate detection, and GP deduction
+
+* Documented authoritative accepted/replay projections
+
+* Preserved Knockout run submission as disconnected
+
+* Updated `docs/Architecture.md`
+
+* Documented Knockout registration as the first connected Knockout backend mutation
+
+* Preserved server-authoritative Knockout lifecycle/settlement ownership
+
+* Updated `docs/Anti_Cheat_Plan.md`
+
+* Documented that ordinary Flutter runtime cannot authoritatively control registration eligibility, tournament selection, or GP mutation
+
+* Preserved run submission as a future validation-claim flow
+
+* Updated `docs/Persistence_Map.md`
+
+* Documented future atomic backend registration persistence
+
+* Preserved server/internal ownership of settlement and tournament progression
+
+---
+
+### 📁 Files Changed
+
+Production:
+
+* `lib/features/knockout/data/backend/backend_knockout_repository.dart`
+* `lib/features/knockout/data/dto/knockout_mutation_dtos.dart`
+* `lib/features/knockout/domain/models/knockout_registration_result.dart`
+* `lib/features/knockout/domain/repositories/knockout_repository.dart`
+* `lib/features/knockout/presentation/screens/knockout_home_screen.dart`
+
+Tests:
+
+* `test/features/knockout/data/backend/backend_knockout_repository_test.dart`
+* `test/features/knockout/presentation/screens/knockout_home_screen_test.dart`
+
+Existing Session 40 test file manually re-reviewed without required Session 41 production-contract changes:
+
+* `test/features/knockout/data/dto/knockout_mutation_dtos_test.dart`
+
+Documentation:
+
+* `docs/API_Plan.md`
+* `docs/Architecture.md`
+* `docs/Persistence_Map.md`
+* `docs/Anti_Cheat_Plan.md`
+
+Reference files manually reviewed without Session 41 production changes:
+
+* `lib/core/backend/api_error.dart`
+* `lib/core/backend/idempotency_key.dart`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Knockout tournament registration is now the first connected Knockout backend mutation
+* Mock repositories remain the default application runtime
+* Backend runtime remains opt-in only
+* Backend registration requires explicit caller-owned idempotency
+* HTTP transport does not generate mutation identity
+* The registration request body is intentionally empty
+* Authenticated backend session remains the player-identity authority
+* Client player ID is not registration authority
+* Client username is not registration authority
+* Client GP balance is not registration authority
+* Client tournament ID is not registration authority
+* Client tournament state is not registration authority
+* Client registration eligibility is not registration authority
+* Client entry cost is not registration authority
+* Backend resolves the current monthly tournament
+* Backend validates registration window
+* Backend validates tournament lifecycle
+* Backend validates duplicate registration
+* Backend validates GP availability
+* Backend atomically deducts the 25 GP entry cost
+* Backend returns authoritative tournament entry state
+* Backend returns authoritative remaining GP
+* Backend may return an authoritative player-profile projection
+* Accepted backend profile projection takes precedence over client/local reconstruction
+* Backend runtime does not locally deduct 25 GP
+* Mock runtime preserves local GP deduction behavior
+* Backend registration does not persist profile changes through local `AuthRepository`
+* Registration mutation identity belongs to the caller/application layer
+* Registration idempotency keys are opaque
+* Registration idempotency keys do not contain player ID
+* Registration idempotency keys do not contain tournament ID
+* Same unresolved logical registration reuses the same key
+* New logical registration attempt uses a new key
+* Success clears the pending key
+* Idempotent replay clears the pending key
+* Definitive rejection clears the pending key
+* Ambiguous failures preserve the pending key
+* Ambiguous failures include network failure
+* Ambiguous failures include timeout
+* Ambiguous failures include server errors
+* Ambiguous failures include malformed backend responses
+* Ambiguous failures include unexpected backend responses
+* Malformed backend response cannot be treated as proof that registration was not persisted
+* No automatic retry behavior exists
+* Player must explicitly retry ambiguous registration failures
+* Duplicate registration taps are blocked while the mutation is in progress
+* `Future.sync` normalizes synchronous and asynchronous failure paths
+* Successful mutation result survives subsequent refresh failure
+* Knockout backend reads remain disconnected
+* Knockout run submission remains disconnected
+* Knockout run submission will require its own future server-authoritative validation-claim integration
+* Knockout registration close remains disconnected
+* Tournament start remains disconnected
+* Round settlement remains disconnected
+* Bracket advancement remains server/internal
+* Bye progression remains server/internal
+* Repechage remains server/internal
+* Tournament completion remains server/internal
+* Champion persistence remains server/internal
+* Knockout records writes remain server/internal
+* Hall of Fame writes remain server/internal
+* Existing League backend integration remains unchanged
+* Existing League entry idempotency remains unchanged
+* Existing League run-submission idempotency remains unchanged
+* League settlement remains disconnected
+* Authentication/session behavior remains unchanged
+* Purchase and Ads behavior remain unchanged
+* No gameplay behavior changed
+* No Knockout tournament rules changed
+* No PostgreSQL implementation was introduced
+* No backend application server implementation was introduced
+* Real backend end-to-end Knockout registration validation remains dependent on an actual server implementing the endpoint
+* Simulator testing in mock runtime is useful only as a regression/UI smoke test for this session
+* Full server-authoritative registration behavior is primarily covered by repository/DTO/widget tests until the backend endpoint exists
+
+---
+
+### 🧪 Validation
+
+* [x] `backend_knockout_repository.dart` manually reviewed and approved
+* [x] `knockout_mutation_dtos.dart` manually reviewed and approved
+* [x] `knockout_registration_result.dart` manually reviewed and approved
+* [x] `knockout_repository.dart` manually reviewed and approved
+* [x] `knockout_home_screen.dart` manually reviewed
+* [x] Initial registration idempotency lifecycle manually reviewed
+* [x] Opaque-key improvement identified during review
+* [x] Malformed-response idempotency ambiguity identified during review
+* [x] Narrow idempotency lifecycle correction applied
+* [x] Corrected `knockout_home_screen.dart` re-reviewed and approved
+* [x] `backend_knockout_repository_test.dart` manually reviewed and approved
+* [x] `knockout_home_screen_test.dart` manually reviewed and approved
+* [x] `knockout_mutation_dtos_test.dart` manually reviewed and approved
+* [x] `api_error.dart` manually reviewed and approved
+* [x] `idempotency_key.dart` manually reviewed and approved
+* [x] Registration request empty-body contract validated
+* [x] Registration player-identity exclusion validated
+* [x] Registration GP-authority exclusion validated
+* [x] Registration tournament-authority exclusion validated
+* [x] Missing idempotency key pre-HTTP failure validated
+* [x] Caller-owned idempotency header validated
+* [x] Repository Authorization ownership boundary validated
+* [x] Accepted response mapping validated
+* [x] Idempotent replay mapping validated
+* [x] Definitive rejection mapping validated
+* [x] Registration profile/remaining-GP consistency validated
+* [x] Authoritative profile projection validated
+* [x] Authoritative remaining-GP-only projection validated
+* [x] Mock GP deduction preservation validated
+* [x] Backend local GP pre-deduction exclusion validated
+* [x] Duplicate registration tap protection validated
+* [x] Synchronous failure normalization validated
+* [x] Network ambiguous retry identity validated
+* [x] Malformed-response ambiguous retry identity validated
+* [x] Unexpected-response ambiguous retry identity validated
+* [x] Definitive rejection key clearing validated
+* [x] Opaque registration key validated
+* [x] Player ID exclusion from key validated
+* [x] Tournament ID exclusion from key validated
+* [x] Shared `IdempotencyKey` charset compatibility validated
+* [x] Shared `IdempotencyKey` length compatibility validated
+* [x] No automatic retry behavior validated
+* [x] Knockout run submission remains disconnected
+* [x] Knockout lifecycle mutations remain disconnected
+* [x] No HTTP request from disconnected mutations validated
+* [x] Static analysis passed
+* [x] Focused Knockout presentation tests passed
+* [x] Focused Backend Knockout repository tests passed
+* [x] Focused Knockout mutation DTO tests passed
+* [x] Complete Flutter test suite passed
+* [x] Whitespace validation passed
+* [x] No gameplay behavior changed
+* [x] No League behavior changed
+* [x] No Knockout tournament rules changed
+* [x] No Purchase behavior changed
+* [x] No Ads behavior changed
+
+Final automated validation commands included:
+
+```bash
+dart format \
+  lib/features/knockout/presentation/screens/knockout_home_screen.dart \
+  test/features/knockout/presentation/screens/knockout_home_screen_test.dart
+
+flutter analyze
+
+flutter test \
+  test/features/knockout/presentation/screens/knockout_home_screen_test.dart
+
+flutter test \
+  test/features/knockout/data/backend/backend_knockout_repository_test.dart
+
+flutter test \
+  test/features/knockout/data/dto/knockout_mutation_dtos_test.dart
+
+flutter test --reporter compact
+
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `flutter analyze` — no issues found
+* Focused `KnockoutHomeScreen` tests — 21 tests passed
+* Focused Backend Knockout repository tests — 9 tests passed
+* Focused Knockout mutation DTO tests — 13 tests passed
+* Complete Flutter test suite — 569 tests passed
+* `git diff --check` — no whitespace errors
+
+Manual validation:
+
+* Initial `BackendKnockoutRepository` implementation manually reviewed and provisionally approved
+* Registration mutation DTOs manually reviewed and approved
+* Knockout registration domain result manually reviewed and approved
+* Knockout repository contract manually reviewed and approved
+* Initial `KnockoutHomeScreen` registration lifecycle manually reviewed
+* Opaque-key hardening opportunity identified
+* Malformed-response mutation ambiguity identified as a Session 41 blocker
+* Narrow correction applied through Codex
+* Corrected registration idempotency lifecycle manually re-reviewed
+* Backend repository tests manually reviewed and approved
+* Knockout presentation tests manually reviewed
+* Two final regression-test gaps identified:
+
+  * authoritative remaining-GP response without player-profile projection
+  * `unexpectedResponse` idempotency preservation
+* Two final regression tests added without production-code changes
+* Final presentation test suite manually re-reviewed and approved
+* Knockout mutation DTO tests manually reviewed and approved
+* `ApiErrorCode` semantics manually reviewed and approved
+* Shared `IdempotencyKey` constraints manually reviewed and approved
+* Session 41 approved as technically complete
+* No additional production files required review for Session 41 closure
+* Simulator validation is optional as a mock-runtime regression smoke test; no real backend endpoint exists yet for end-to-end registration verification
+
+---
+
+### 📌 Next Session
+
+Session 42 — Knockout Backend Read Integration
+
+Planned focus:
+
+* [ ] Review the complete Knockout backend read surface
+* [ ] Connect only the minimum backend reads required to make Knockout backend runtime usable
+* [ ] Implement `fetchCurrentTournament`
+* [ ] Implement current authenticated player entry retrieval
+* [ ] Implement player tournament status retrieval where required
+* [ ] Implement active duel read where required
+* [ ] Reuse centralized `ApiContract` paths
+* [ ] Keep authenticated backend identity authoritative
+* [ ] Avoid trusting caller player IDs as backend authority where endpoint design permits authenticated self-projections
+* [ ] Decode existing Knockout persistence/read DTOs
+* [ ] Map backend read payloads into existing domain models
+* [ ] Harden malformed read-response handling
+* [ ] Preserve backend error → domain error mapping
+* [ ] Preserve mock repository behavior unchanged
+* [ ] Preserve mock runtime as default
+* [ ] Preserve Knockout registration mutation from Session 41 unchanged
+* [ ] Preserve registration caller-owned idempotency lifecycle
+* [ ] Preserve no-automatic-retry policy
+* [ ] Keep Knockout run submission disconnected
+* [ ] Keep tournament lifecycle mutations disconnected
+* [ ] Keep round settlement disconnected
+* [ ] Keep bracket progression server/internal
+* [ ] Keep repechage server/internal
+* [ ] Keep champion/records/Hall of Fame writes server/internal
+* [ ] Preserve League backend integration unchanged
+* [ ] Add focused backend read repository tests
+* [ ] Add malformed read-payload tests
+* [ ] Add Knockout backend-runtime UI/read integration tests where appropriate
+* [ ] Update backend documentation only where read activation status changes
+
+Session boundary:
+
+* Connect backend reads only
+* Do not activate Knockout run submission
+* Do not activate tournament close/start mutations
+* Do not activate settlement
+* Do not move bracket progression to Flutter
+* Do not move repechage to Flutter
+* Do not add client-authoritative player identity
+* Do not redesign Knockout tournament rules
+* Do not redesign League rules
+* Do not introduce automatic HTTP retries
+* Do not implement PostgreSQL or backend application server code
+* Preserve Session 41 registration mutation exactly unless a confirmed read-integration defect requires a narrow compatibility change
+* Keep the session narrowly scoped
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup
+* ✅ Session 2 — Base structure and documentation
+* ✅ Session 3 — Game base rendering
+* ✅ Session 4 — Collision and validation
+* ✅ Session 5 — Level system
+* ✅ Session 6 — Run Points (superseded)
+* ✅ Session 7 — Lives system (superseded)
+* ✅ Session 8 — Precision Points
+* ✅ Session 9 — Registration/Login
+* ✅ Session 10 — GP System
+* ✅ Session 11 — Purchases
+* ✅ Session 12 — Ads
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow
+* ✅ Session 13 — League Structure
+* ✅ Session 14 — Weekly League Entry + Runtime Integration
+* ✅ Session 15 — Weekly League Scoring + Ranking UI
+* ✅ Session 16 — Weekly League History + Personal Records
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow
+* ✅ Session 19 — League Polish + Edge Case Hardening
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status
+* ✅ Session 23 — Knockout Tournament History + Records
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning
+* ✅ Session 27 — Backend Repository Contracts Preparation
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening
+* ✅ Session 30 — Backend Networking Client Preparation
+* ✅ Session 31 — Backend Authentication Integration
+* ✅ Session 32 — Secure Session Persistence + Refresh Token Policy
+* ✅ Session 33 — Authentication Session Startup Flow Verification
+* ✅ Session 34 — Authentication Logout + Session Lifecycle Hardening
+* ✅ Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+* ✅ Session 36 — League Backend Integration Foundation
+* ✅ Session 37 — League Backend Mutation Contract Design + Idempotency Preparation
+* ✅ Session 38 — League Backend Entry Mutation Integration
+* ✅ Session 39 — League Backend Run Submission Integration
+* ✅ Session 40 — Knockout Backend Mutation Integration Preparation
+* ✅ Session 41 — Knockout Backend Registration Mutation Integration
+* ⏳ Session 42 — Knockout Backend Read Integration
+
+---
+
+### 🧭 Current State
+
+Current session: Session 42 — Knockout Backend Read Integration
+
+Status: Ready ⏳
+
+Future session policy:
+
+* Keep sessions narrowly scoped
+* Integrate one backend capability group at a time
+* Preserve Sessions 36–41 backend architecture and League behavior
+* Preserve Knockout registration as the only connected Knockout mutation
+* Connect required Knockout reads before Knockout run submission
+* Keep authenticated backend identity authoritative
+* Prefer authenticated self-projection endpoints for player-specific reads when supported by the API contract
+* Do not trust caller-provided competitive state as authority
+* Preserve caller-owned registration idempotency
+* Reuse the same registration idempotency key only for the same unresolved logical mutation
+* Use a new registration key for a new logical mutation
+* Do not automatically retry competitive/economy mutations
+* Preserve distinction between read failures and mutation ambiguity
+* Consume authoritative backend read projections without client-side reconstruction
+* Preserve mock repositories as the default runtime
+* Keep backend runtime opt-in only
+* Preserve League backend read integration
+* Preserve League entry mutation integration
+* Preserve League run-submission integration
+* Keep League settlement server-authoritative and disconnected
+* Keep Knockout run submission disconnected until its dedicated session
+* Keep Knockout settlement/lifecycle progression server-authoritative and disconnected
+* Keep bracket advancement, bye progression, repechage, tournament completion, champion persistence, records writes, and Hall of Fame writes server/internal
+* Preserve no-automatic-retry policy
+* Normalize transport/API/DTO failures into domain-facing errors
+* Avoid broad refactoring during backend read activation
+* Preserve existing gameplay behavior
+* Preserve existing League behavior
+* Preserve existing Knockout tournament rules
+* Add backend-runtime Simulator/end-to-end validation only when the corresponding real backend application-server endpoints exist
+
+---

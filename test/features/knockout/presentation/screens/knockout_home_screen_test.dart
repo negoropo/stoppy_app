@@ -1,15 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stoppy_app/core/backend/api_error.dart';
+import 'package:stoppy_app/core/backend/domain_error_mapper.dart';
 import 'package:stoppy_app/core/backend/idempotency_key.dart';
 import 'package:stoppy_app/features/auth/domain/models/auth_state.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 import 'package:stoppy_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_hall_of_fame_entry.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_player_records.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_player_status.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_registration_result.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
-import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_history_entry.dart';
+import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
+import 'package:stoppy_app/features/knockout/presentation/screens/knockout_home_screen.dart';
 import 'package:stoppy_app/features/league/domain/models/league_player_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_entry.dart';
 import 'package:stoppy_app/features/league/domain/models/league_ranking_snapshot.dart';
@@ -100,6 +110,418 @@ void main() {
     );
     expect(find.text('Registered'), findsOneWidget);
     expect(find.text('Registered at: 2026-05-22 09:30'), findsOneWidget);
+  });
+
+  testWidgets('backend registration uses authoritative profile projection', (
+    WidgetTester tester,
+  ) async {
+    PlayerProfile? updatedProfile;
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final authoritativeProfile = playerProfile.copyWith(gamePoints: 80);
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [
+        _registrationSuccess(
+          tournament: _registrationTournamentWithEntry(),
+          playerProfile: authoritativeProfile,
+          remainingGamePoints: 80,
+        ),
+      ],
+    );
+    final authRepository = _UpdatingAuthRepository(playerProfile);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: authRepository,
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (profile) {
+            updatedProfile = profile;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(updatedProfile?.gamePoints, 80);
+    expect(authRepository.updateCalls, 0);
+    expect(find.text('Your GP: 80'), findsOneWidget);
+    expect(
+      find.text('You are registered for this monthly Knockout.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('backend registration uses remaining GP without profile', (
+    WidgetTester tester,
+  ) async {
+    PlayerProfile? updatedProfile;
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [
+        _registrationSuccess(
+          tournament: _registrationTournamentWithEntry(),
+          playerProfile: null,
+          remainingGamePoints: 75,
+        ),
+      ],
+    );
+    final authRepository = _UpdatingAuthRepository(playerProfile);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: authRepository,
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (profile) {
+            updatedProfile = profile;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(updatedProfile?.gamePoints, 75);
+    expect(authRepository.updateCalls, 0);
+    expect(find.text('Your GP: 75'), findsOneWidget);
+    expect(
+      find.text('You are registered for this monthly Knockout.'),
+      findsOneWidget,
+    );
+    expect(find.text('Registered'), findsOneWidget);
+  });
+
+  testWidgets('ambiguous backend registration retry reuses same key', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [
+        const _AsynchronousRegistrationFailure(
+          RepositoryDomainException(
+            'Network unavailable. Please try again.',
+            code: ApiErrorCode.networkUnavailable,
+          ),
+        ),
+        _registrationSuccess(
+          tournament: _registrationTournamentWithEntry(),
+          playerProfile: playerProfile.copyWith(gamePoints: 75),
+          remainingGamePoints: 75,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+    expect(find.text('Network unavailable. Please try again.'), findsOneWidget);
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(repository.registrationKeys.length, 2);
+    expect(repository.registrationKeys[1], repository.registrationKeys[0]);
+    final reusedKey = repository.registrationKeys.first!.value;
+    expect(reusedKey, isNot(contains(playerProfile.id)));
+    expect(reusedKey, isNot(contains('2026-06')));
+    expect(IdempotencyKey(reusedKey).value, reusedKey);
+    expect(
+      find.text('You are registered for this monthly Knockout.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('malformed backend registration response keeps retry key', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [
+        const _AsynchronousRegistrationFailure(
+          RepositoryDomainException(
+            'Received an invalid response. Please try again later.',
+            code: ApiErrorCode.malformedPayload,
+          ),
+        ),
+        _registrationSuccess(
+          tournament: _registrationTournamentWithEntry(),
+          playerProfile: playerProfile.copyWith(gamePoints: 75),
+          remainingGamePoints: 75,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Received an invalid response. Please try again later.'),
+      findsOneWidget,
+    );
+    expect(repository.registrationKeys.length, 1);
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(repository.registrationKeys.length, 2);
+    expect(repository.registrationKeys[1], repository.registrationKeys[0]);
+    expect(
+      find.text('You are registered for this monthly Knockout.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('unexpected backend registration response keeps retry key', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [
+        const _AsynchronousRegistrationFailure(
+          RepositoryDomainException(
+            'Unexpected backend response. Please try again.',
+            code: ApiErrorCode.unexpectedResponse,
+          ),
+        ),
+        _registrationSuccess(
+          tournament: _registrationTournamentWithEntry(),
+          playerProfile: playerProfile.copyWith(gamePoints: 75),
+          remainingGamePoints: 75,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Unexpected backend response. Please try again.'),
+      findsOneWidget,
+    );
+    expect(repository.registrationKeys.length, 1);
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(repository.registrationKeys.length, 2);
+    expect(repository.registrationKeys[1], repository.registrationKeys[0]);
+    expect(
+      find.text('You are registered for this monthly Knockout.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('definitive backend registration rejection clears retry key', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [
+        KnockoutRegistrationResult.failure(
+          tournament: _registrationTournament(),
+          failureReason:
+              KnockoutRegistrationFailureReason.insufficientGamePoints,
+          message: 'You need 25 GP to register.',
+        ),
+        _registrationSuccess(
+          tournament: _registrationTournamentWithEntry(),
+          playerProfile: playerProfile.copyWith(gamePoints: 75),
+          remainingGamePoints: 75,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+    expect(find.text('You need 25 GP to register.'), findsOneWidget);
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(repository.registrationKeys.length, 2);
+    expect(
+      repository.registrationKeys[1],
+      isNot(repository.registrationKeys[0]),
+    );
+    expect(
+      find.text('You are registered for this monthly Knockout.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('backend registration ignores duplicate taps while pending', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final completer = Completer<KnockoutRegistrationResult>();
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [completer.future],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pump();
+    await tester.tap(find.text('Register for Knockout'), warnIfMissed: false);
+
+    expect(repository.registrationKeys.length, 1);
+
+    completer.complete(
+      _registrationSuccess(
+        tournament: _registrationTournamentWithEntry(),
+        playerProfile: playerProfile.copyWith(gamePoints: 75),
+        remainingGamePoints: 75,
+      ),
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('synchronous backend registration failure is handled', (
+    WidgetTester tester,
+  ) async {
+    final playerProfile = PlayerProfile(
+      id: 'player-id',
+      username: 'Tester',
+      createdAt: DateTime(2026),
+      gamePoints: 100,
+    );
+    final repository = _ServerAuthoritativeKnockoutScreenRepository(
+      initialTournament: _registrationTournament(),
+      registrationOutcomes: [
+        const _SynchronousRegistrationFailure(
+          RepositoryDomainException(
+            'Received an invalid response. Please try again later.',
+            code: ApiErrorCode.malformedPayload,
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: KnockoutHomeScreen(
+          playerProfile: playerProfile,
+          authRepository: _UpdatingAuthRepository(playerProfile),
+          knockoutRepository: repository,
+          onPlayerProfileUpdated: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Register for Knockout'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Received an invalid response. Please try again later.'),
+      findsOneWidget,
+    );
+    expect(find.text('Register for Knockout'), findsOneWidget);
+    expect(repository.registrationKeys.length, 1);
   });
 
   testWidgets('updates local player profile when parent profile changes', (
@@ -688,6 +1110,7 @@ class _UpdatingAuthRepository implements AuthRepository {
   _UpdatingAuthRepository(this.playerProfile);
 
   PlayerProfile playerProfile;
+  int updateCalls = 0;
 
   @override
   Future<AuthState> currentAuthState() async {
@@ -715,7 +1138,192 @@ class _UpdatingAuthRepository implements AuthRepository {
 
   @override
   Future<PlayerProfile> updatePlayerProfile(PlayerProfile playerProfile) async {
+    updateCalls += 1;
     this.playerProfile = playerProfile;
     return playerProfile;
   }
+}
+
+class _ServerAuthoritativeKnockoutScreenRepository
+    implements
+        KnockoutRepository,
+        ServerAuthoritativeKnockoutRegistrationRepository {
+  _ServerAuthoritativeKnockoutScreenRepository({
+    required KnockoutTournament initialTournament,
+    required List<Object> registrationOutcomes,
+  }) : _tournament = initialTournament,
+       _registrationOutcomes = [...registrationOutcomes];
+
+  KnockoutTournament _tournament;
+  KnockoutPlayerEntry? _entry;
+  final List<Object> _registrationOutcomes;
+  final List<IdempotencyKey?> registrationKeys = [];
+
+  @override
+  Future<KnockoutTournament> fetchCurrentTournament() async => _tournament;
+
+  @override
+  Future<KnockoutPlayerEntry?> currentEntry({
+    required String tournamentId,
+    required String playerId,
+  }) async {
+    final entry = _entry;
+    if (entry == null ||
+        entry.tournamentId != tournamentId ||
+        entry.playerId != playerId) {
+      return null;
+    }
+    return entry;
+  }
+
+  @override
+  Future<KnockoutPlayerStatus> fetchPlayerStatus({
+    required String tournamentId,
+    required String playerId,
+  }) async {
+    return KnockoutPlayerStatus(
+      state: _entry == null
+          ? KnockoutPlayerTournamentState.notRegistered
+          : KnockoutPlayerTournamentState.registeredWaitingStart,
+    );
+  }
+
+  @override
+  Future<KnockoutRegistrationResult> registerPlayer({
+    required KnockoutTournament tournament,
+    required PlayerProfile playerProfile,
+    IdempotencyKey? idempotencyKey,
+  }) {
+    registrationKeys.add(idempotencyKey);
+    if (_registrationOutcomes.isEmpty) {
+      throw StateError('No Knockout registration outcome queued.');
+    }
+
+    final outcome = _registrationOutcomes.removeAt(0);
+    if (outcome is _SynchronousRegistrationFailure) {
+      throw outcome.error;
+    }
+    if (outcome is _AsynchronousRegistrationFailure) {
+      return Future<KnockoutRegistrationResult>.error(outcome.error);
+    }
+    if (outcome is Future<KnockoutRegistrationResult>) {
+      return outcome.then(_recordRegistrationResult);
+    }
+    if (outcome is KnockoutRegistrationResult) {
+      return Future.value(_recordRegistrationResult(outcome));
+    }
+    throw StateError('Unsupported Knockout registration outcome.');
+  }
+
+  KnockoutRegistrationResult _recordRegistrationResult(
+    KnockoutRegistrationResult result,
+  ) {
+    if (result.isSuccess && result.playerEntry != null) {
+      _entry = result.playerEntry;
+      _tournament = result.tournament;
+    }
+    return result;
+  }
+
+  @override
+  Future<KnockoutDuelSnapshot?> fetchActiveDuel({
+    required String tournamentId,
+    required String playerId,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<KnockoutPlayerRecords> fetchPlayerRecords(String playerId) async {
+    return KnockoutPlayerRecords.empty(playerId);
+  }
+
+  @override
+  Future<List<KnockoutTournamentHistoryEntry>> fetchPlayerHistory(
+    String playerId,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<List<KnockoutHallOfFameEntry>> fetchHallOfFame() async {
+    return const [];
+  }
+
+  @override
+  Future<KnockoutTournament> closeRegistration({required String tournamentId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<KnockoutTournament> startTournament({required String tournamentId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> submitKnockoutRun(
+    KnockoutRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<KnockoutTournament> settleCurrentRound({
+    required String tournamentId,
+  }) {
+    throw UnimplementedError();
+  }
+}
+
+final class _SynchronousRegistrationFailure {
+  const _SynchronousRegistrationFailure(this.error);
+
+  final Exception error;
+}
+
+final class _AsynchronousRegistrationFailure {
+  const _AsynchronousRegistrationFailure(this.error);
+
+  final Exception error;
+}
+
+KnockoutRegistrationResult _registrationSuccess({
+  required KnockoutTournament tournament,
+  required PlayerProfile? playerProfile,
+  required int remainingGamePoints,
+}) {
+  return KnockoutRegistrationResult.success(
+    tournament: tournament,
+    playerEntry: tournament.entries.single,
+    remainingGamePoints: remainingGamePoints,
+    playerProfile: playerProfile,
+  );
+}
+
+KnockoutTournament _registrationTournament() {
+  return KnockoutTournament(
+    id: '2026-06',
+    name: 'June Knockout',
+    entryCostGamePoints: 25,
+    tournamentMonth: DateTime(2026, 6),
+    registrationOpensAt: DateTime(2026, 5),
+    registrationClosesAt: DateTime(2026, 5, 31, 23, 59),
+    startsAt: DateTime(2026, 6),
+  );
+}
+
+KnockoutTournament _registrationTournamentWithEntry() {
+  return _registrationTournament().copyWith(
+    entries: [
+      KnockoutPlayerEntry(
+        playerId: 'player-id',
+        username: 'Tester',
+        tournamentId: '2026-06',
+        registeredAt: DateTime(2026, 5, 22, 9, 30),
+        accountCreatedAt: DateTime(2026),
+        entryCostGamePoints: 25,
+      ),
+    ],
+  );
 }

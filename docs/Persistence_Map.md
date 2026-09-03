@@ -50,9 +50,10 @@ The UI should not change during this migration. If a widget needs to change when
 - DTO mappers define the future REST JSON to domain boundary.
 - `AuthSessionStore` prepares token persistence without choosing a secure storage implementation yet.
 - API errors should be mapped to domain-facing exceptions before reaching widgets.
-- Historical note: backend authentication and selected League backend
-  integrations have since been activated behind the same repository contracts,
-  while Knockout backend mutations remain disconnected.
+- Historical note: backend authentication, selected League backend
+  integrations, and Knockout registration have since been activated behind the
+  same repository contracts, while Knockout run submission and server-only
+  Knockout lifecycle mutations remain disconnected.
 
 ## Session 29 PostgreSQL Entity Mapping Preparation
 
@@ -113,10 +114,12 @@ contracts, but PostgreSQL persistence and idempotency storage remain future
 backend responsibilities. League settlement remains disconnected from Flutter
 backend repositories.
 
-## Session 40 Knockout Mutation Persistence Preparation
+## Sessions 40-41 Knockout Mutation Persistence Preparation
 
-Knockout registration and Knockout run submission must eventually be persisted
-atomically with idempotency records. Suggested PostgreSQL constraints:
+Knockout registration is now connected from Flutter backend runtime, and
+Knockout run submission remains a prepared future mutation. Both must be
+persisted atomically with idempotency records on the future backend. Suggested
+PostgreSQL constraints:
 
 - `knockout_player_entries`: unique registration per `(tournament_id,
   player_id)`.
