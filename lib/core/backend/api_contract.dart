@@ -27,6 +27,7 @@ abstract final class ApiContract {
   static const leagueRunSubmission = '$apiPrefix/runs/league';
 
   static const knockoutTournament = '$apiPrefix/knockout/tournament';
+  static const knockoutEntry = '$apiPrefix/knockout/entry';
   static const knockoutRegistration = '$apiPrefix/knockout/register';
   static const knockoutStatus = '$apiPrefix/knockout/status';
   static const knockoutActiveDuel = '$apiPrefix/knockout/active-duel';

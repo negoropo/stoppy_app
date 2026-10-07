@@ -511,7 +511,7 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Auth responses keep profile and JWT/session transport data in data-layer DTOs.
 * Competitive run validation claims are transport contracts only; they do not alter local gameplay or scoring.
 * Token refresh is now implemented by the authentication data layer.
-* Backend authentication, selected League backend integrations, and Knockout registration are connected; Knockout run submission and server-only Knockout lifecycle mutations remain disconnected, and Flutter contains no PostgreSQL implementation.
+* Backend authentication, selected League backend integrations, Knockout registration, and Knockout backend read projections are connected; Knockout run submission and server-only Knockout lifecycle mutations remain disconnected, and Flutter contains no PostgreSQL implementation.
 
 ### Session 30 Networking Client Preparation
 
@@ -540,9 +540,10 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * `HttpBackendApiClient` excludes Bearer tokens from login, registration, and
   refresh requests.
 * Expired access tokens are never sent as Bearer tokens.
-* League backend reads, weekly entry mutation, and League run submission are
-  connected in backend runtime. League settlement and Knockout backend
-  mutations remain disconnected.
+* League backend reads, weekly entry mutation, League run submission, Knockout
+  backend reads, and Knockout registration are connected in backend runtime.
+  League settlement, Knockout run submission, and Knockout lifecycle mutations
+  remain disconnected.
 
 ### Session 37 League Mutation Contract Preparation
 
@@ -599,6 +600,29 @@ mutations remain disconnected.
   activated in its own session.
 * No automatic retry, run-submission endpoint, settlement endpoint, PostgreSQL
   persistence, or gameplay behavior change is introduced by this integration.
+
+### Session 42 Knockout Backend Read Integration
+
+`BackendKnockoutRepository` now consumes the backend read projections required
+by the existing Knockout UI/runtime.
+
+* Connected reads:
+  * current tournament;
+  * authenticated current-player entry;
+  * authenticated player tournament status;
+  * authenticated active duel;
+  * authenticated player records;
+  * authenticated player tournament history;
+  * champion-only Hall of Fame.
+* Player-specific backend reads use authenticated self-projection semantics and
+  do not send caller-provided player IDs as authority.
+* The backend remains authoritative for lifecycle, entries, status, duel
+  assignment, scores, run counts, byes, eliminations, champion state, records,
+  and Hall of Fame projections.
+* Knockout registration remains the only connected Knockout mutation.
+* Knockout run submission, tournament close/start, round settlement, bracket
+  advancement, repechage, champion writes, records writes, and Hall of Fame
+  writes remain disconnected from ordinary Flutter backend runtime.
 
 ### Domain Logic
 

@@ -163,7 +163,8 @@ When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connec
 - Future Google, Apple, and Facebook login flows must validate provider credentials on the backend and return this same Stoppy `AuthResponseDto`; provider identity tokens are not stored as Stoppy sessions.
 - League entry and League run submission are connected backend League
   mutations in Flutter backend runtime. Knockout registration is connected as
-  the first backend Knockout mutation. League settlement, Knockout run
+  the first backend Knockout mutation, and Knockout read projections required
+  by the current UI/runtime are connected. League settlement, Knockout run
   submission, and Knockout settlement remain disconnected.
 
 ## Error Strategy
@@ -505,6 +506,31 @@ submission because the request can remain an authenticated empty body while the
 backend owns player identity, GP deduction, registration-window validation,
 duplicate detection, and resulting tournament entry state.
 
+### GET /api/v1/knockout/tournament
+
+Returns the current monthly Knockout tournament projection.
+
+Server responsibilities:
+
+- resolve the current tournament
+- return authoritative lifecycle state
+- return authoritative registered entries, rounds, byes, eliminations, and
+  champion state where available
+
+### GET /api/v1/knockout/entry
+
+Returns the authenticated player's current Knockout entry, or no entry.
+
+Server responsibilities:
+
+- derive player identity from authentication
+- return the current player's entry projection when registered
+- return a valid no-entry response when not registered
+
+Client responsibilities:
+
+- never submit player identity as authority for this read
+
 ### POST /api/v1/knockout/register
 
 Registers the authenticated player for the current monthly knockout.
@@ -545,6 +571,19 @@ Server responsibilities:
 - return registration state
 - return active duel or bye state
 - return eliminated/champion/completed state
+
+### GET /api/v1/knockout/active-duel
+
+Returns the authenticated player's current active duel projection, or no active
+duel.
+
+Server responsibilities:
+
+- derive player identity from authentication
+- return authoritative match, round, opponent, score, run-count, and end-time
+  data
+- return no active duel when the player is not currently assigned to a playable
+  duel
 
 ### GET /api/v1/knockout/history
 

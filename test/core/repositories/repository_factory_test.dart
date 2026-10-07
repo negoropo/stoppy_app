@@ -64,7 +64,7 @@ void main() {
       expect(repositories.leagueRepository, isA<BackendLeagueRepository>());
 
       expect(
-        knockoutRepository.fetchCurrentTournament,
+        () => knockoutRepository.closeRegistration(tournamentId: 'monthly-1'),
         throwsA(
           isA<ApiException>().having(
             (exception) => exception.error.code,
