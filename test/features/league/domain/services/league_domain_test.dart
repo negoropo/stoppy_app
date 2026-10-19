@@ -918,6 +918,39 @@ void main() {
   group('WeeklyLeagueSettlementSchedule', () {
     const schedule = WeeklyLeagueSettlementSchedule();
 
+    for (final month in [1, 7]) {
+      test('preserves Sunday 23:59 local wall time in month $month', () {
+        // Explicit local calendar dates exercise winter and summer without
+        // assuming a permanent UTC offset or depending on today's date.
+        final seasonId = LeagueSeasonId.fromDate(DateTime(2026, month, 14, 12));
+        final monday = seasonId.weekStartDate;
+        final expected = DateTime(
+          monday.year,
+          monday.month,
+          monday.day + 6,
+          23,
+          59,
+        );
+        final settlementTime = schedule.settlementTimeForSeason(seasonId);
+
+        expect(settlementTime, expected);
+        expect(settlementTime.weekday, DateTime.sunday);
+        expect(settlementTime.hour, 23);
+        expect(settlementTime.minute, 59);
+        expect(
+          schedule.isSettlementDue(
+            now: DateTime(expected.year, expected.month, expected.day, 23, 58),
+            seasonId: seasonId,
+          ),
+          isFalse,
+        );
+        expect(
+          schedule.isSettlementDue(now: expected, seasonId: seasonId),
+          isTrue,
+        );
+      });
+    }
+
     test('opens settlement at Sunday 23:59 local Europe Lisbon time', () {
       final seasonId = LeagueSeasonId.fromDate(DateTime(2026, 5, 13, 12));
 

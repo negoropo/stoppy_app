@@ -133,12 +133,62 @@ final class BackendKnockoutRepository
     KnockoutRun run, {
     IdempotencyKey? idempotencyKey,
   }) {
-    // Prepared only: knockout runs will be submitted as validation claims, not
-    // trusted results. The backend must own active-duel eligibility, duplicate
-    // detection, accepted scoring, and duel aggregate updates.
-    return backendNotConnected(
-      'BackendKnockoutRepository',
-      'submitKnockoutRun',
+    if (idempotencyKey == null ||
+        run.startedAt == null ||
+        run.tournamentId == null) {
+      throw _malformedPayload(
+        'Knockout submission requires a key and run context.',
+      );
+    }
+    final Map<String, Object?> body;
+    try {
+      body = KnockoutRunSubmissionRequestDto.fromJson({
+        'runId': run.id,
+        'tournamentId': run.tournamentId,
+        'roundNumber': run.roundNumber,
+        'matchId': run.matchId,
+        'runStartedAt': run.startedAt!.toIso8601String(),
+        'runCompletedAt': run.completedAt.toIso8601String(),
+        'claimedFinalPrecisionPoints': run.score,
+        'runMode': 'knockout',
+      }).toJson();
+    } on FormatException catch (error) {
+      throw _malformedPayload(error.message);
+    } on ApiException catch (error) {
+      throw _errorMapper.toRepositoryException(error.error);
+    }
+    // Context and score are claims. Authentication, duel assignment, accepted
+    // scoring and persistence are validated exclusively by the server.
+    return _post(
+      runSubmissionPath,
+      body: body,
+      headers: idempotencyKey.toHeader(),
+      decode: (data) {
+        final response = KnockoutRunSubmissionResponseDto.fromJson(data);
+        if (!response.accepted) {
+          throw _errorMapper.toRepositoryException(
+            ApiError(
+              code: ApiErrorCode.validationFailed,
+              message: 'Knockout run submission was rejected.',
+              details: {'rejectionCode': response.rejectionCode!.name},
+            ),
+          );
+        }
+        final acceptedRun = response.acceptedRun!;
+        // Identity and association must resolve this logical claim. Player
+        // identity and the accepted score remain server-authoritative.
+        if (acceptedRun.id != body['runId'] ||
+            acceptedRun.matchId != body['matchId'] ||
+            acceptedRun.roundNumber != body['roundNumber']) {
+          throw const FormatException(
+            'Accepted Knockout run does not match the submitted run association.',
+          );
+        }
+        // The existing bool contract exposes resolution only, not a locally
+        // reconstructed competitive projection. Replay is successful too.
+        acceptedRun.toDomain();
+        return true;
+      },
     );
   }
 

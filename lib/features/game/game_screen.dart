@@ -44,6 +44,22 @@ enum _LeagueRunSubmissionStatus {
   completed,
 }
 
+final class _FinalizedKnockoutRun {
+  const _FinalizedKnockoutRun({
+    required this.id,
+    required this.playerId,
+    required this.score,
+    required this.startedAt,
+    required this.completedAt,
+  });
+
+  final String id;
+  final String playerId;
+  final int score;
+  final DateTime startedAt;
+  final DateTime completedAt;
+}
+
 class GameScreen extends StatefulWidget {
   const GameScreen({
     super.key,
@@ -131,6 +147,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   IdempotencyKey? _pendingLeagueRunSubmissionIdempotencyKey;
   String? _leagueRunSubmissionMessage;
   bool _knockoutRunSubmitted = false;
+  bool _isSubmittingKnockoutRun = false;
+  bool _canRetryKnockoutRun = false;
+  _FinalizedKnockoutRun? _finalizedKnockoutRun;
+  KnockoutRun? _pendingKnockoutRun;
+  IdempotencyKey? _pendingKnockoutKey;
+  String? _knockoutSubmissionMessage;
   late DateTime _runStartedAt;
   int _runInstanceSequence = 0;
   int _lastBannerLoadedRunLevel = 1;
@@ -840,6 +862,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _restartRun({RunMode? runModeOverride}) {
+    if (_isSubmittingKnockoutRun || _canRetryKnockoutRun) return;
     if (_leagueRunSubmissionStatus ==
         _LeagueRunSubmissionStatus.ambiguousFailure) {
       setState(() {
@@ -912,6 +935,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _pendingLeagueRunSubmissionIdempotencyKey = null;
       _leagueRunSubmissionMessage = null;
       _knockoutRunSubmitted = false;
+      _finalizedKnockoutRun = null;
+      _pendingKnockoutRun = null;
+      _pendingKnockoutKey = null;
+      _knockoutSubmissionMessage = null;
       _isExtraLifeOfferVisible = false;
       _hasUsedRewardedContinue = false;
       _isScoreTransitionVisible = false;
@@ -1112,46 +1139,168 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final knockoutRepository = widget.knockoutRepository;
 
     if (_knockoutRunSubmitted ||
+        _finalizedKnockoutRun != null ||
         _runMode != RunMode.tournament ||
         playerProfile == null ||
         knockoutRepository == null) {
       return;
     }
 
+    // Freeze gameplay values before any read. Context retries must never derive
+    // a new logical run or completion time from mutable gameplay state.
+    _finalizedKnockoutRun = _FinalizedKnockoutRun(
+      id: 'knockout-run:$_runInstanceSequence:${_runStartedAt.toUtc().microsecondsSinceEpoch}',
+      playerId: playerProfile.id,
+      score: finalScore,
+      startedAt: _runStartedAt,
+      completedAt: runEndedAt,
+    );
+    _resolveKnockoutRunContext();
+  }
+
+  bool _isCurrentKnockoutAttempt(_FinalizedKnockoutRun attempt) {
+    return mounted && identical(_finalizedKnockoutRun, attempt);
+  }
+
+  bool _isRetryableKnockoutFailure(Object error) {
+    return error is RepositoryDomainException &&
+        {
+          ApiErrorCode.networkUnavailable,
+          ApiErrorCode.requestTimeout,
+          ApiErrorCode.serverError,
+          ApiErrorCode.malformedPayload,
+          ApiErrorCode.unexpectedResponse,
+        }.contains(error.code);
+  }
+
+  void _resolveKnockoutRunContext() {
+    final attempt = _finalizedKnockoutRun;
+    final repository = widget.knockoutRepository;
+    if (!mounted ||
+        attempt == null ||
+        repository == null ||
+        _isSubmittingKnockoutRun) {
+      return;
+    }
+    setState(() {
+      _isSubmittingKnockoutRun = true;
+      _canRetryKnockoutRun = false;
+      _knockoutSubmissionMessage = 'Loading Knockout run context...';
+    });
     unawaited(
-      knockoutRepository
-          .fetchCurrentTournament()
-          .then((tournament) async {
-            final duel = await knockoutRepository.fetchActiveDuel(
-              tournamentId: tournament.id,
-              playerId: playerProfile.id,
+      Future<void>.sync(() async {
+        try {
+          final tournament = await repository.fetchCurrentTournament();
+          if (!_isCurrentKnockoutAttempt(attempt)) return;
+          final duel = await repository.fetchActiveDuel(
+            tournamentId: tournament.id,
+            playerId: attempt.playerId,
+          );
+          if (!_isCurrentKnockoutAttempt(attempt)) return;
+          if (duel == null || duel.hasBye) {
+            _completeKnockoutSubmission(
+              'No active Knockout duel is available.',
             );
+            return;
+          }
+          _pendingKnockoutRun = KnockoutRun(
+            id: attempt.id,
+            playerId: attempt.playerId,
+            matchId: duel.match.id,
+            roundNumber: duel.roundNumber,
+            score: attempt.score,
+            completedAt: attempt.completedAt,
+            startedAt: attempt.startedAt,
+            tournamentId: tournament.id,
+          );
+          _pendingKnockoutKey = IdempotencyKey(attempt.id);
+          _isSubmittingKnockoutRun = false;
+          _retryKnockoutRunSubmission();
+        } catch (error) {
+          if (!_isCurrentKnockoutAttempt(attempt)) return;
+          if (_isRetryableKnockoutFailure(error)) {
+            setState(() {
+              _isSubmittingKnockoutRun = false;
+              _canRetryKnockoutRun = true;
+              _knockoutSubmissionMessage =
+                  'Knockout run context could not be loaded. Retry to submit this run.';
+            });
+            return;
+          }
+          _completeKnockoutSubmission(
+            'Knockout run context could not be loaded.',
+          );
+        }
+      }),
+    );
+  }
 
-            if (duel == null || duel.hasBye || _knockoutRunSubmitted) {
-              return;
-            }
-
-            try {
-              final accepted = await knockoutRepository.submitKnockoutRun(
-                KnockoutRun(
-                  id: '${playerProfile.id}-${duel.match.id}-${runEndedAt.microsecondsSinceEpoch}',
-                  playerId: playerProfile.id,
-                  matchId: duel.match.id,
-                  roundNumber: duel.roundNumber,
-                  score: finalScore,
-                  completedAt: runEndedAt,
-                ),
-              );
-
-              _knockoutRunSubmitted = accepted;
-            } catch (_) {
-              _knockoutRunSubmitted = false;
-            }
+  void _retryKnockoutRunSubmission() {
+    if (!mounted || _isSubmittingKnockoutRun) return;
+    final attempt = _finalizedKnockoutRun;
+    if (attempt == null) return;
+    // Before POST, retry context reads. After POST ambiguity, the immutable
+    // claim/key already exist and must be reused without refreshing context.
+    if (_pendingKnockoutRun == null) {
+      _resolveKnockoutRunContext();
+      return;
+    }
+    final run = _pendingKnockoutRun;
+    final key = _pendingKnockoutKey;
+    final repository = widget.knockoutRepository;
+    if (_isSubmittingKnockoutRun ||
+        run == null ||
+        key == null ||
+        repository == null) {
+      return;
+    }
+    setState(() {
+      _isSubmittingKnockoutRun = true;
+      _canRetryKnockoutRun = false;
+      _knockoutSubmissionMessage = 'Submitting Knockout run...';
+    });
+    // Future.sync routes synchronous DTO failures through the same lifecycle.
+    // Explicit retries preserve the exact finalized claim and mutation key.
+    unawaited(
+      Future<bool>.sync(
+            () => repository.submitKnockoutRun(run, idempotencyKey: key),
+          )
+          .then((accepted) {
+            if (!_isCurrentKnockoutAttempt(attempt)) return;
+            _completeKnockoutSubmission(
+              accepted ? null : 'Knockout run submission was rejected.',
+            );
           })
-          .catchError((_) {
-            _knockoutRunSubmitted = false;
+          .catchError((Object error) {
+            if (!_isCurrentKnockoutAttempt(attempt)) return;
+            if (_isRetryableKnockoutFailure(error)) {
+              setState(() {
+                _isSubmittingKnockoutRun = false;
+                _canRetryKnockoutRun = true;
+                _knockoutSubmissionMessage =
+                    'Knockout run submission could not be confirmed.';
+              });
+            } else {
+              _completeKnockoutSubmission(
+                'Knockout run submission was rejected.',
+              );
+            }
           }),
     );
+  }
+
+  void _completeKnockoutSubmission(String? message) {
+    _knockoutRunSubmitted = true;
+    _finalizedKnockoutRun = null;
+    _pendingKnockoutRun = null;
+    _pendingKnockoutKey = null;
+    _isSubmittingKnockoutRun = false;
+    _canRetryKnockoutRun = false;
+    if (mounted) {
+      setState(() {
+        _knockoutSubmissionMessage = message;
+      });
+    }
   }
 
   int _finalScoreFor({
@@ -1337,6 +1486,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               _leagueRunSubmissionStatus ==
                               _LeagueRunSubmissionStatus.submitting,
                           onRetryLeagueSubmission: _retryLeagueRunSubmission,
+                          knockoutSubmissionMessage: _knockoutSubmissionMessage,
+                          canRetryKnockoutSubmission: _canRetryKnockoutRun,
+                          isSubmittingKnockout: _isSubmittingKnockoutRun,
+                          onRetryKnockoutSubmission:
+                              _retryKnockoutRunSubmission,
                           onRestart: _restartRun,
                         ),
                       if (kShowDebugOverlay)
@@ -1734,6 +1888,10 @@ class _GameOverOverlay extends StatelessWidget {
     required this.canRetryLeagueSubmission,
     required this.isRetryingLeagueSubmission,
     required this.onRetryLeagueSubmission,
+    required this.knockoutSubmissionMessage,
+    required this.canRetryKnockoutSubmission,
+    required this.isSubmittingKnockout,
+    required this.onRetryKnockoutSubmission,
     required this.onRestart,
   });
 
@@ -1747,6 +1905,10 @@ class _GameOverOverlay extends StatelessWidget {
   final bool canRetryLeagueSubmission;
   final bool isRetryingLeagueSubmission;
   final VoidCallback onRetryLeagueSubmission;
+  final String? knockoutSubmissionMessage;
+  final bool canRetryKnockoutSubmission;
+  final bool isSubmittingKnockout;
+  final VoidCallback onRetryKnockoutSubmission;
   final VoidCallback onRestart;
 
   String _formatPoints(int value) {
@@ -1921,11 +2083,28 @@ class _GameOverOverlay extends StatelessWidget {
             ],
 
             FilledButton(
-              onPressed: canRetryLeagueSubmission || isRetryingLeagueSubmission
+              onPressed:
+                  canRetryLeagueSubmission ||
+                      isRetryingLeagueSubmission ||
+                      canRetryKnockoutSubmission ||
+                      isSubmittingKnockout
                   ? null
                   : onRestart,
               child: const Text('Restart run'),
             ),
+            if (knockoutSubmissionMessage != null)
+              Text(knockoutSubmissionMessage!, textAlign: TextAlign.center),
+            if (canRetryKnockoutSubmission || isSubmittingKnockout)
+              FilledButton(
+                onPressed: isSubmittingKnockout
+                    ? null
+                    : onRetryKnockoutSubmission,
+                child: Text(
+                  isSubmittingKnockout
+                      ? 'Submitting Knockout run...'
+                      : 'Retry Knockout submission',
+                ),
+              ),
           ],
         ),
       ),

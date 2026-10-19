@@ -456,7 +456,9 @@ The app should continue to depend on domain-facing repository contracts. Product
 `AppEnvironment` is the environment configuration boundary for repository selection.
 
 * `RepositoryRuntime.mock` remains the default runtime.
-* `RepositoryRuntime.backend` creates backend repository skeletons.
+* `RepositoryRuntime.backend` selects backend repositories; authentication,
+  implemented League surfaces, Knockout registration, reads and run submission
+  are connected as of Session 43. Server-only lifecycle writes remain disconnected.
 * `STP_REPOSITORY_RUNTIME` can later select `mock` or `backend`.
 * `STP_API_BASE_URL` can later provide the REST API base URL.
 
@@ -511,7 +513,7 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
 * Auth responses keep profile and JWT/session transport data in data-layer DTOs.
 * Competitive run validation claims are transport contracts only; they do not alter local gameplay or scoring.
 * Token refresh is now implemented by the authentication data layer.
-* Backend authentication, selected League backend integrations, Knockout registration, and Knockout backend read projections are connected; Knockout run submission and server-only Knockout lifecycle mutations remain disconnected, and Flutter contains no PostgreSQL implementation.
+* Backend authentication, selected League backend integrations, Knockout registration, Knockout backend reads, and Knockout run submission are connected; server-only Knockout lifecycle mutations remain disconnected, and Flutter contains no PostgreSQL implementation.
 
 ### Session 30 Networking Client Preparation
 
@@ -541,8 +543,8 @@ The backend preparation layer now defines a versioned `ApiContract`, defensive J
   refresh requests.
 * Expired access tokens are never sent as Bearer tokens.
 * League backend reads, weekly entry mutation, League run submission, Knockout
-  backend reads, and Knockout registration are connected in backend runtime.
-  League settlement, Knockout run submission, and Knockout lifecycle mutations
+  backend reads, registration, and run submission are connected in backend runtime.
+  League settlement and Knockout lifecycle mutations
   remain disconnected.
 
 ### Session 37 League Mutation Contract Preparation
@@ -573,9 +575,9 @@ run submission are the connected competitive backend mutations.
 
 ### Sessions 40-41 Knockout Mutation Boundary And Registration Integration
 
-Knockout registration is now connected in Flutter backend runtime as the first
-backend Knockout mutation. Knockout run submission and server-only lifecycle
-mutations remain disconnected.
+At Session 41, Knockout registration became the first connected backend
+Knockout mutation. Run submission was connected later in Session 43;
+server-only lifecycle mutations remain disconnected.
 
 * Knockout repository mutations are classified as:
   * player-initiated: monthly tournament registration;
@@ -589,8 +591,8 @@ mutations remain disconnected.
 * Knockout registration requires caller-owned `Idempotency-Key` values.
   Replaying an unresolved logical registration must reuse the same key; new
   logical registrations require new keys.
-* Knockout run submission also requires caller-owned `Idempotency-Key` values
-  once connected, but it remains explicitly disconnected in this session.
+* At Session 41, run submission remained disconnected. Session 43 activates it
+  with its own caller-owned `Idempotency-Key`, independent of registration.
 * Knockout run submissions are validation claims only. The client may provide
   structural run evidence, but active duel eligibility, accepted score,
   duplicate detection, duel aggregation, and advancement remain
@@ -619,10 +621,48 @@ by the existing Knockout UI/runtime.
 * The backend remains authoritative for lifecycle, entries, status, duel
   assignment, scores, run counts, byes, eliminations, champion state, records,
   and Hall of Fame projections.
-* Knockout registration remains the only connected Knockout mutation.
-* Knockout run submission, tournament close/start, round settlement, bracket
+* At Session 42, registration was the only connected Knockout mutation; run
+  submission was subsequently connected in Session 43.
+* Tournament close/start, round settlement, bracket
   advancement, repechage, champion writes, records writes, and Hall of Fame
   writes remain disconnected from ordinary Flutter backend runtime.
+
+### Session 43 Knockout Backend Run Submission
+
+Knockout run submission is now connected through `BackendKnockoutRepository`
+using the prepared claim/response DTOs and caller-owned `Idempotency-Key`.
+This supersedes the earlier session notes marking run submission disconnected.
+Optional tournament/start-time metadata on `KnockoutRun` supplies claim context
+without changing mock scoring. The existing bool repository contract exposes
+accepted/replay resolution; server scores are validated and never reconstructed
+or applied as local competitive authority.
+
+GameScreen first freezes logical run identity, player, final PP and timestamps.
+Transient tournament/duel read failures retain these values for explicit
+context-read recovery. Once context resolves, it constructs the claim/key once.
+After network, timeout, server, malformed-response or unexpected-response POST
+failures, explicit retry reuses the same claim/key without refetching context.
+Definitive outcomes clear pending state; restart is blocked during context
+resolution, submission, or unresolved retryable failure. Attempt identity guards
+reject stale asynchronous completions. Registration keys
+remain independent. No automatic retry exists, and mocks remain the default.
+Tournament start/close, settlement, bracket/bye/repechage progression,
+completion, champion, records and Hall of Fame writes remain disconnected
+from ordinary backend client control.
+
+Accepted/replay responses must preserve the submitted logical run ID, match ID
+and round number. Server-owned player identity is not compared with the client
+claim; accepted PP may be corrected by the server. Contradictory associations
+are malformed responses. Structural DTO checks are not anti-cheat enforcement:
+the current POST does not automatically include complete validation evidence.
+All pending recovery state lives in GameScreen memory; process-restart recovery
+and persistent offline queues remain deferred. PostgreSQL persistence and
+server-side idempotency storage are future backend responsibilities.
+
+Known deferred League issue: fixed-duration arithmetic across a Lisbon DST
+transition week can shift the displayed local settlement hour. The rule remains
+Sunday 23:59 Europe/Lisbon. Deterministic widget dates/clock injection stabilize
+tests but do not fix transition-week scheduling correctness.
 
 ### Domain Logic
 

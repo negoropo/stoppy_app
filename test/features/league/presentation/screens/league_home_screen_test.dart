@@ -116,10 +116,14 @@ void main() {
           authRepository: MockAuthRepository(),
           leagueRepository: repository,
           onPlayerProfileUpdated: (_) {},
+          // Keep this rendering test in a fixed week with no clock transition.
+          now: () => DateTime(2026, 5, 13, 12),
         ),
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(repository.weeklyRunSeasonRequests.single.value, '2026-05-11');
 
     await tester.scrollUntilVisible(
       find.text('Weekly Score'),
@@ -1075,6 +1079,7 @@ class _LeagueScreenRepository implements LeagueRepository {
   int enterCallCount = 0;
   int snapshotRequestCount = 0;
   int currentEntryCallCount = 0;
+  final weeklyRunSeasonRequests = <LeagueSeasonId>[];
 
   @override
   Future<LeaguePlayerEntry?> currentEntry(String playerId) async {
@@ -1138,6 +1143,7 @@ class _LeagueScreenRepository implements LeagueRepository {
     required String playerId,
     required LeagueSeasonId seasonId,
   }) async {
+    weeklyRunSeasonRequests.add(seasonId);
     return weeklyRuns;
   }
 

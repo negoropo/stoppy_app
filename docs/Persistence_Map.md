@@ -46,14 +46,15 @@ The UI should not change during this migration. If a widget needs to change when
 - `AppEnvironment` selects mock or backend repository runtime.
 - `RepositoryFactory` creates the concrete repository bundle from that environment.
 - Mock repositories remain the default runtime and test fixture.
-- Backend repositories are skeletons behind the same contracts and must not be called for real networking yet.
+- At Session 27, backend repositories were disconnected skeletons behind the same contracts; see the current integration note below.
 - DTO mappers define the future REST JSON to domain boundary.
-- `AuthSessionStore` prepares token persistence without choosing a secure storage implementation yet.
+- At Session 27, `AuthSessionStore` prepared persistence; Sessions 31-32 later
+  selected secure backend session storage and memory-only mock sessions.
 - API errors should be mapped to domain-facing exceptions before reaching widgets.
 - Historical note: backend authentication, selected League backend
-  integrations, Knockout backend reads, and Knockout registration have since
-  been activated behind the same repository contracts, while Knockout run
-  submission and server-only Knockout lifecycle mutations remain disconnected.
+  integrations, Knockout backend reads, registration, and run submission have
+  since been activated behind the same repository contracts. Server-only
+  Knockout lifecycle mutations remain disconnected. Mock remains the default.
 
 ## Session 29 PostgreSQL Entity Mapping Preparation
 
@@ -117,7 +118,23 @@ backend repositories.
 ## Sessions 40-42 Knockout Backend Persistence Preparation
 
 Knockout read projections and registration are now connected from Flutter
-backend runtime. Knockout run submission remains a prepared future mutation.
+backend runtime. Session 43 also connects Knockout run submission as a claim
+with explicit caller-owned idempotency. The finalized claim/key survive ambiguous
+failures for explicit retry; accepted/replay or definitive rejection resolves
+the attempt. No automatic retry or client-side competitive persistence is added.
+
+Before context resolution, GameScreen stores frozen logical identity, player,
+score and timestamps. Transient read failures allow explicit read recovery;
+after context resolves, ambiguous POST retries preserve the exact run/key and
+do not refetch association data. This state is memory-only: recovery after app
+termination/process restart and persistent offline queues remain deferred.
+
+Accepted and replay runs retain the submitted logical run ID, match ID and round
+number. Contradictory associations are malformed responses. Authenticated player
+identity and the final accepted PP score remain server-owned, including score
+correction. Structural DTO checks do not implement anti-cheat; the current POST
+does not automatically carry complete validation evidence. PostgreSQL writes
+and server-side idempotency records remain future backend work.
 Mutations must be persisted atomically with idempotency records on the future
 backend. Suggested PostgreSQL constraints:
 
@@ -137,9 +154,8 @@ backend. Suggested PostgreSQL constraints:
   and Hall of Fame writes remain trusted backend jobs and must not be triggered
   by ordinary client mutation payloads.
 
-Session 40 prepares DTO and repository-contract boundaries only. Backend
-Knockout mutations remain disconnected from Flutter runtime and mock
-repositories remain the default local/test implementation.
+Historical Session 40 prepared DTO/repository boundaries only. Sessions 41-43
+connect registration, reads and run submission; mocks remain the default.
 
 ## Session 31 Authentication Session Boundary
 

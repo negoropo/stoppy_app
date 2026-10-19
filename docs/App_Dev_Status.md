@@ -12231,3 +12231,324 @@ Future session policy:
 * Preserve existing League behavior
 * Preserve existing Knockout tournament rules
 * Add backend-runtime Simulator/end-to-end validation only when the corresponding real backend application-server endpoints exist
+
+---
+
+
+## 🔄 Session Update
+
+### Session: Session 43 — Knockout Backend Run Submission Integration
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Connect Knockout run submission in Flutter backend runtime using the existing Knockout domain/repository contracts and prepared mutation DTOs, without giving the client authority over competitive results. Preserve authenticated server identity, server-side duel eligibility and scoring, caller-owned idempotency, Session 41 registration, Session 42 read integrations, and mock runtime as the default.
+
+Integrate `POST /api/v1/runs/knockout` into `BackendKnockoutRepository.submitKnockoutRun` and the `GameScreen` final-results flow. Make manual recovery safe across two distinct stages: transient tournament/duel context-read failures before constructing a claim, and ambiguous POST outcomes after a claim and idempotency key have been fixed.
+
+Tournament close/start, round settlement, bracket/bye/repechage advancement, champion persistence, records writes and Hall of Fame writes remain server/internal or disconnected. No real backend server, PostgreSQL persistence, complete anti-cheat enforcement, offline queue or durable process-restart recovery was implemented.
+
+---
+
+### 📦 Deliverables
+
+* [x] Existing Knockout run domain model, backend repository and mutation contracts reviewed
+* [x] `BackendKnockoutRepository.submitKnockoutRun` connected
+* [x] `POST /api/v1/runs/knockout` connected through centralized `ApiContract`
+* [x] Explicit caller-owned `Idempotency-Key` required before HTTP
+* [x] Knockout run claim contains run ID, tournament ID, round number, match ID, start/completion timestamps, claimed final PP and `runMode: knockout`
+* [x] Client player ID excluded from authoritative POST payload
+* [x] Server remains authoritative for authenticated identity, eligibility, final score, run aggregation and duel results
+* [x] Accepted and `idempotentReplay` responses resolve the existing `Future<bool>` repository contract
+* [x] Definitive rejected submissions retain machine-readable rejection reasons
+* [x] Contradictory accepted/replay `runId`, `matchId` or `roundNumber` mapped to `malformedPayload`
+* [x] Server-owned `playerId` and potentially corrected accepted score not compared to untrusted client values
+* [x] Structurally invalid claims and missing idempotency keys rejected before transport
+* [x] Backend/API failures mapped to domain-facing exceptions
+* [x] No automatic HTTP retry introduced
+* [x] GameScreen freezes logical run ID, player ID, score, start time and completion time before asynchronous context reads
+* [x] Current tournament and active duel read to associate a finalized run with its current Knockout context
+* [x] Transient tournament/duel read failures keep frozen run information for manual retry
+* [x] Claim and idempotency key created only after valid tournament/duel context is resolved
+* [x] Ambiguous POST outcomes retain the identical `KnockoutRun` object and `IdempotencyKey`
+* [x] POST retry does not re-read tournament or duel context
+* [x] Manual retry covers network, timeout, server, malformed-response and unexpected-response failures
+* [x] Definitive no-active-duel and bye cases do not submit a run
+* [x] Definitive submission outcomes clear pending retry state
+* [x] Restart blocked during context resolution, active submission and unresolved retryable failures
+* [x] Repeated retry callbacks cannot trigger concurrent submissions
+* [x] Stale asynchronous callbacks and completions after widget disposal are guarded
+* [x] New finalized runs receive distinct logical identity and key
+* [x] League weekly-run request uses the injected clock for season selection
+* [x] Session 41 registration mutation and its independent idempotency preserved
+* [x] Session 42 Knockout read integration preserved
+* [x] Mock Knockout behavior and default mock runtime preserved
+* [x] Existing League backend entry and run submission preserved
+* [x] Authentication/session and Purchase/Ads behavior preserved
+* [x] No server/internal Knockout lifecycle mutation activated
+* [x] No PostgreSQL or backend application server implementation introduced
+* [x] Focused Knockout backend repository tests expanded
+* [x] GameScreen widget recovery/idempotency tests expanded
+* [x] League screen test records and verifies requested `LeagueSeasonId`
+* [x] `docs/API_Plan.md` updated and two stale historical references corrected
+* [x] `docs/Architecture.md` updated
+* [x] `docs/Persistence_Map.md` updated
+* [x] Manual review of nine affected production, test and documentation files completed
+* [x] `flutter analyze` reported clean by Codex
+* [x] Full Flutter suite reported 638 passing tests by Codex
+* [x] UTC full Flutter suite reported 638 passing tests by Codex
+* [x] Formatting and whitespace checks reported passing by Codex
+
+---
+
+### 🛠️ Work Done
+
+* Activated the previously prepared Knockout run mutation in `BackendKnockoutRepository` with the centralized `/api/v1/runs/knockout` endpoint.
+
+* Preserved authenticated identity as backend authority. The serialized request contains the Knockout run's structural claim (`runId`, `tournamentId`, `roundNumber`, `matchId`, `runStartedAt`, `runCompletedAt`, `claimedFinalPrecisionPoints`, `runMode`) but not `playerId`, client-owned duel results or other competitive projections.
+
+* Required caller-supplied `IdempotencyKey` and valid structural run context before transport. The backend repository neither creates a key nor performs automatic retries.
+
+* Decoded `accepted`, `idempotentReplay` and `rejected` responses. Definitive rejection maps to a typed domain error with `rejectionCode`; accepted and replay responses return `true` after validating the submitted run/match/round association.
+
+* Added defensive checks rejecting any accepted/replayed run whose `id`, `matchId`, or `roundNumber` contradict the POST claim. Contradictions become `ApiErrorCode.malformedPayload` without equating the client-supplied identity/score with authoritative server data.
+
+* Added a finalized Knockout run snapshot in GameScreen containing logical ID, player ID, final score, start time and completion time. The snapshot is frozen before the asynchronous tournament/duel reads.
+
+* Introduced two-phase explicit recovery:
+  * **Read/context stage:** when current tournament or active-duel reads fail temporarily, retain the frozen snapshot; retry reads on the player's action.
+  * **POST stage:** after valid context produces `KnockoutRun` and `IdempotencyKey`, ambiguous outcomes retain and resubmit that exact claim/key, without re-reading context or changing its match association.
+
+* Protected finalization against duplicated submissions, repeated button callbacks, stale completions and asynchronous results after disposal. Prevented restarting a run while a Knockout submission remains active or unresolved.
+
+* Treated no active duel and bye as definitive non-submission outcomes. Synchronous and asynchronous repository exceptions follow the appropriate classification and final-results UI behavior.
+
+* Kept existing Knockout registration keys independent of run-submission keys, kept reads intact, and retained server/internal ownership of lifecycle, settlement and advancement.
+
+* Fixed the League screen's weekly-run season lookup to use `(widget.now ?? DateTime.now)()` consistently with its displayed settlement calculation; recorded `LeagueSeasonId` calls in the fake repository and asserted a fixed-week request.
+
+* Expanded `widget_test.dart` to cover context reads that complete after disposal; 10 read-failure permutations (tournament/duel × five retryable error codes); frozen snapshot preservation when clock time changes; no-duel/bye cases; asynchronous and synchronous rejection; explicit retry of an identical POST claim/key; repeated callbacks; and distinct keys for subsequent runs.
+
+* Expanded `backend_knockout_repository_test.dart` to verify outbound JSON, mandatory key, the absence of authoritative player identity, accepted and replay semantics, six mismatched association combinations, rejection taxonomy, malformed responses, invalid claims and no automatic retry.
+
+* Updated `docs/API_Plan.md`, `docs/Architecture.md`, and `docs/Persistence_Map.md` with the connected mutation, two-stage recovery, server-authority boundaries and remaining persistence limitations. Corrected two outdated future-tense references in `API_Plan.md` after final manual review.
+
+---
+
+### 📁 Files Changed
+
+Production:
+
+* `lib/features/game/game_screen.dart`
+* `lib/features/knockout/data/backend/backend_knockout_repository.dart`
+* `lib/features/league/presentation/screens/league_home_screen.dart`
+
+Tests:
+
+* `test/widget_test.dart`
+* `test/features/knockout/data/backend/backend_knockout_repository_test.dart`
+* `test/features/league/presentation/screens/league_home_screen_test.dart`
+
+Documentation:
+
+* `docs/API_Plan.md`
+* `docs/Architecture.md`
+* `docs/Persistence_Map.md`
+
+Final status documentation:
+
+* `docs/App_Dev_Status.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Knockout run submission is connected **in the Flutter backend client**, not in a deployed backend server.
+* Mock repositories remain the default; backend runtime is opt-in.
+* The current POST provides structural claim context, **not complete validation evidence**. Server-side anti-cheat and authoritative run verification remain to be implemented.
+* Tournament, round and match identifiers in the client payload are claims; server must validate their eligibility and association.
+* Backend owns accepted player identity and score, including score corrections; client validates only the accepted/replayed run association required by the current contract.
+* A transient tournament or duel read failure occurs **before** a submission/key exists; the frozen snapshot is used to retry context resolution.
+* An ambiguous POST failure occurs **after** the claim/key exists; subsequent attempts must reuse both exactly, without reading the latest tournament/duel again.
+* No automatic HTTP retries are permitted for competitive/economy mutations.
+* Valid no-duel and bye states result in no submission, not a retryable error.
+* A malformed response after the POST is ambiguous and therefore eligible for explicit same-key retry.
+* Run recovery is currently **memory-only** in `GameScreen`; pending attempts can be lost on widget/process restart. Persistent recovery and offline queue are deferred.
+* Backend storage of idempotency records, request fingerprints and atomic persistence is deferred to the future server.
+* Knockout registration behavior remains connected and unchanged; its keys are independent of run-submission keys.
+* All Session 42 backend reads remain connected.
+* Tournament close/start, round settlement, bracket advancement, bye progression, repechage, champion persistence, records and Hall of Fame writes remain server-only/disconnected.
+* League settlement remains disconnected; existing League backend mutations remain intact.
+* League uses an injected clock consistently for weekly-run requests and settlement display in the reviewed screen, but separate clock samples can still straddle a week boundary.
+* **Known deferred Lisbon DST issue:** fixed-duration week arithmetic may shift the displayed local Sunday settlement time during a timezone transition week. Deterministic widget tests do not fix this.
+* No actual backend server, PostgreSQL schema, database migration, production backend integration or live Simulator end-to-end validation is claimed.
+* No game scoring, Knockout tournament rules, purchases or ads were redesigned in this session.
+* Reported automated checks come from Codex execution; our manual review covered the supplied files rather than independently running the local Flutter project.
+
+---
+
+### 🧪 Validation
+
+* [x] `game_screen.dart` manually reviewed and approved after robustness correction
+* [x] `backend_knockout_repository.dart` manually reviewed and approved after response-association correction
+* [x] `widget_test.dart` manually reviewed and approved
+* [x] `backend_knockout_repository_test.dart` manually reviewed and approved
+* [x] `league_home_screen.dart` manually reviewed and approved
+* [x] `league_home_screen_test.dart` manually reviewed and approved
+* [x] `docs/API_Plan.md` manually reviewed; two historical references corrected and re-reviewed
+* [x] `docs/Architecture.md` manually reviewed and approved
+* [x] `docs/Persistence_Map.md` manually reviewed and approved
+* [x] Verified snapshot identity, player, PP and timestamps stay fixed across read failures
+* [x] Verified retries after ambiguous POST reuse the same run/key without additional reads
+* [x] Verified duplicate retry callback protection and restart gating
+* [x] Verified stale read completions after disposal cannot submit
+* [x] Verified valid no-duel and bye behavior
+* [x] Verified synchronous/async definitive rejection handling
+* [x] Verified accepted/replay association matching for `runId`, `matchId` and `roundNumber`
+* [x] Verified malformed association error mapping
+* [x] Verified claim omits player identity as authority
+* [x] Verified injected League clock determines requested season
+* [x] `flutter analyze` reported successful by Codex
+* [x] Normal-timezone full test suite reported successful by Codex
+* [x] UTC full test suite reported successful by Codex
+* [x] Formatting and whitespace checks reported successful by Codex
+
+Final automated validation commands **reported by Codex**:
+
+```bash
+flutter analyze
+flutter test --reporter compact
+env TZ=UTC flutter test --reporter compact
+git diff --check
+```
+
+Recorded automated validation results (from Codex report):
+
+* `flutter analyze` — no issues found
+* `flutter test --reporter compact` — **638 tests passed**
+* `env TZ=UTC flutter test --reporter compact` — **638 tests passed**
+* `git diff --check` — no whitespace errors reported before the final documentation-only cleanup
+* Formatting checks — passed, per Codex report
+* No new Flutter test execution was required for the last wording-only update to `API_Plan.md`
+
+Manual validation:
+
+* Nine changed production/test/documentation files reviewed individually and approved
+* Response association and retry robustness issues corrected during review
+* League injected-clock regression coverage verified
+* Two stale historical references in `API_Plan.md` corrected and manually confirmed
+* No additional production-code corrections identified after final review
+* Session 43 accepted as technically complete
+
+---
+
+### 📌 Next Session
+
+**Proposed:** Session 44 — Backend Server Foundation + Integration Readiness
+
+Planned focus (to confirm when opening the next session):
+
+* [ ] Review `Backend_Plan.md`, `Anti_Cheat_Plan.md`, `API_Plan.md` and current server-readiness assumptions
+* [ ] Decide the first narrowly scoped implementation slice for the actual backend application server
+* [ ] Prepare a reachable development/test backend environment and PostgreSQL integration plan
+* [ ] Define server-side authenticated identity, idempotency persistence and request fingerprinting responsibilities
+* [ ] Preserve the existing REST envelope, paths and DTO contracts, identifying any mismatches before server implementation
+* [ ] Plan server-authoritative run validation evidence rather than accepting client PP claims as trusted results
+* [ ] Decide the implementation/test order for auth, League and Knockout endpoints
+* [ ] Plan deterministic integration tests with a real server or controlled test server
+* [ ] Keep mock runtime as the default and retain all existing client behavior
+* [ ] Keep lifecycle, settlement and anti-cheat changes separate until their server foundations are ready
+
+Session boundary:
+
+* The exact Session 44 scope is **proposed**, not an approved implementation task
+* Do not silently add Flutter gameplay or Knockout rule changes
+* Do not move settlement, winner decisions or bracket advancement into Flutter
+* Do not treat current DTO checks as complete anti-cheat
+* Do not enable automatic mutation retries
+* Keep sessions incremental and independently testable
+
+---
+
+### 📊 Progress Update
+
+* ✅ Session 1 — Initial setup
+* ✅ Session 2 — Base structure and documentation
+* ✅ Session 3 — Game base rendering
+* ✅ Session 4 — Collision and validation
+* ✅ Session 5 — Level system
+* ✅ Session 6 — Run Points (superseded)
+* ✅ Session 7 — Lives system (superseded)
+* ✅ Session 8 — Precision Points
+* ✅ Session 9 — Registration/Login
+* ✅ Session 10 — GP System
+* ✅ Session 11 — Purchases
+* ✅ Session 12 — Ads
+* ✅ Session 12.1 — RP Target Bonus + Reward Summary Flow
+* ✅ Session 13 — League Structure
+* ✅ Session 14 — Weekly League Entry + Runtime Integration
+* ✅ Session 15 — Weekly League Scoring + Ranking UI
+* ✅ Session 16 — Weekly League History + Personal Records
+* ✅ Session 16.1 — Gameplay Simplification + PP Tier System
+* ✅ Session 17 — Promotion / Relegation Runtime + Weekly Settlement Flow
+* ✅ Session 18 — Last Division Expansion + League Re-entry Flow
+* ✅ Session 19 — League Polish + Edge Case Hardening
+* ✅ Session 20 — Knockout Foundation + Tournament Lifecycle
+* ✅ Session 21 — Active Knockout Runtime + Duel Progression
+* ✅ Session 22 — Knockout Duel UI Polish + Player Tournament Status
+* ✅ Session 23 — Knockout Tournament History + Records
+* ✅ Session 24 — Knockout Hall of Fame + Player Knockout Stats Polish
+* ✅ Session 25 — Competitive Profile + Knockout Statistics Polish
+* ✅ Session 26 — Backend Foundation + Data Persistence Planning
+* ✅ Session 27 — Backend Repository Contracts Preparation
+* ✅ Session 28 — Backend Integration Layer + Repository Wiring Preparation
+* ✅ Session 29 — Backend API Contracts + Serialization Hardening
+* ✅ Session 30 — Backend Networking Client Preparation
+* ✅ Session 31 — Backend Authentication Integration
+* ✅ Session 32 — Secure Session Persistence + Refresh Token Policy
+* ✅ Session 33 — Authentication Session Startup Flow Verification
+* ✅ Session 34 — Authentication Logout + Session Lifecycle Hardening
+* ✅ Session 35 — Authentication Lifecycle Final Review + Backend Integration Readiness
+* ✅ Session 36 — League Backend Integration Foundation
+* ✅ Session 37 — League Backend Mutation Contract Design + Idempotency Preparation
+* ✅ Session 38 — League Backend Entry Mutation Integration
+* ✅ Session 39 — League Backend Run Submission Integration
+* ✅ Session 40 — Knockout Backend Mutation Integration Preparation
+* ✅ Session 41 — Knockout Backend Registration Mutation Integration
+* ✅ Session 42 — Knockout Backend Read Integration
+* ✅ Session 43 — Knockout Backend Run Submission Integration
+
+* ⏳ Session 44 — Backend Server Foundation + Integration Readiness (proposed)
+
+---
+
+### 🧭 Current State
+
+Last completed session: **Session 43 — Knockout Backend Run Submission Integration**
+
+Status: **Completed ✅**
+
+Next proposed session: **Session 44 — Backend Server Foundation + Integration Readiness**
+
+Future session policy:
+
+* Keep work narrowly scoped, with explicit review before each new integration slice
+* Preserve the connected Auth, League and Knockout client backend integrations from Sessions 31–43
+* Preserve mock repositories as the default runtime; backend remains opt-in
+* Keep the real backend server authoritative for authentication, GP, tournament and League state, scores, validation and settlement
+* Treat run-submission payloads as untrusted claims, never as confirmed competitive results
+* Use caller-owned idempotency keys and require server-side atomic persistence and replay before production use
+* Never introduce automatic retries for competitive/economy mutations without an explicitly safe contract
+* Preserve two-stage manual recovery in Flutter; plan durable pending-submission recovery separately
+* Keep Knockout registration idempotency independent of run submissions
+* Keep tournament lifecycle, bracket advancement, bye progression, repechage, settlement, champion, records and Hall of Fame writes server/internal
+* Keep League settlement server-authoritative and disconnected from ordinary Flutter mutations
+* Address Europe/Lisbon DST transition-week correctness before production scheduling
+* Plan complete validation evidence and server-side anti-cheat before real competitive scoring is trusted
+* Require backend-integrated/Simulator end-to-end tests only after compatible reachable server endpoints exist
+* Preserve existing gameplay rules, League rules, Knockout rules, Purchase and Ads behavior unless explicitly scoped

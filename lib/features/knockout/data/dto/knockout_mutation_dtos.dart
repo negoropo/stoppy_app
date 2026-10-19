@@ -223,15 +223,15 @@ final class KnockoutRunSubmissionRequestDto {
   }
 
   KnockoutRunSubmissionRequestDto _validated() {
-    if (runId.isEmpty) {
+    if (runId.trim().isEmpty) {
       throw const FormatException('Knockout run ID must not be blank.');
     }
 
-    if (tournamentId.isEmpty) {
+    if (tournamentId.trim().isEmpty) {
       throw const FormatException('Knockout tournament ID must not be blank.');
     }
 
-    if (matchId.isEmpty) {
+    if (matchId.trim().isEmpty) {
       throw const FormatException('Knockout match ID must not be blank.');
     }
 
@@ -239,6 +239,10 @@ final class KnockoutRunSubmissionRequestDto {
       throw const FormatException(
         'Claimed final Precision Points must not be negative.',
       );
+    }
+
+    if (roundNumber <= 0) {
+      throw const FormatException('Knockout round number must be positive.');
     }
 
     if (runCompletedAt.isBefore(runStartedAt)) {

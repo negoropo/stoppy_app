@@ -22,12 +22,14 @@ class LeagueHomeScreen extends StatefulWidget {
     required this.authRepository,
     required this.leagueRepository,
     required this.onPlayerProfileUpdated,
+    this.now,
   });
 
   final PlayerProfile playerProfile;
   final AuthRepository authRepository;
   final LeagueRepository leagueRepository;
   final ValueSetter<PlayerProfile> onPlayerProfileUpdated;
+  final DateTime Function()? now;
 
   @override
   State<LeagueHomeScreen> createState() => _LeagueHomeScreenState();
@@ -80,7 +82,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
     );
     final weeklyRunsFuture = widget.leagueRepository.fetchPlayerWeeklyRuns(
       playerId: _playerProfile.id,
-      seasonId: LeagueSeasonId.fromDate(DateTime.now()),
+      seasonId: LeagueSeasonId.fromDate((widget.now ?? DateTime.now)()),
     );
     final snapshotFuture = entry == null || !entry.hasReservedSlot
         ? Future<LeagueRankingSnapshot?>.value()
@@ -262,7 +264,7 @@ class _LeagueHomeScreenState extends State<LeagueHomeScreen> {
     final hasActiveEntry = entry?.isActive ?? false;
     final hasReservedSlot = entry?.hasReservedSlot ?? false;
     final nextSettlementTime = _settlementSchedule.settlementTimeForSeason(
-      LeagueSeasonId.fromDate(DateTime.now()),
+      LeagueSeasonId.fromDate((widget.now ?? DateTime.now)()),
     );
 
     return Scaffold(

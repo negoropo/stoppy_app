@@ -33,8 +33,322 @@ import 'package:stoppy_app/features/purchases/presentation/screens/store_screen.
 import 'package:stoppy_app/main.dart';
 import 'package:stoppy_app/features/knockout/data/mock_knockout_repository.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_duel_snapshot.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_match.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 
 void main() {
+  testWidgets(
+    'Knockout stale context completion after disposal cannot submit',
+    (tester) async {
+      final repository = _SubmissionKnockoutRepository([]);
+      final context = Completer<KnockoutDuelSnapshot?>();
+      repository.duelOutcomes.add(context);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameScreen(
+            playerProfile: PlayerProfile(
+              id: 'player-id',
+              username: 'Tester',
+              createdAt: DateTime(2026),
+            ),
+            knockoutRepository: repository,
+            initialRunMode: RunMode.tournament,
+            initialDifficultyState: const DifficultyState.initial(),
+            initialLevelConfig: _failingLevelConfig,
+          ),
+        ),
+      );
+      await _failRunAndShowFinalResults(tester);
+      await tester.pump();
+      expect(repository.duelReadCount, 1);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Restart run'),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      context.complete(
+        KnockoutDuelSnapshot(
+          tournamentId: '2026-06',
+          roundNumber: 1,
+          roundEndsAt: DateTime(2027),
+          playerId: 'player-id',
+          opponentId: 'opponent',
+          match: const KnockoutMatch(
+            id: 'match',
+            roundNumber: 1,
+            status: KnockoutMatchStatus.active,
+            playerOneId: 'player-id',
+            playerTwoId: 'opponent',
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(repository.runs, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final stage in ['tournament', 'duel']) {
+    for (final code in [
+      ApiErrorCode.networkUnavailable,
+      ApiErrorCode.requestTimeout,
+      ApiErrorCode.serverError,
+      ApiErrorCode.malformedPayload,
+      ApiErrorCode.unexpectedResponse,
+    ]) {
+      testWidgets(
+        'Knockout $stage context $code preserves frozen run on retry',
+        (tester) async {
+          final repository = _SubmissionKnockoutRepository([]);
+          final failure = RepositoryDomainException('Read failed', code: code);
+          if (stage == 'tournament') {
+            repository.tournamentOutcomes.add(failure);
+          } else {
+            repository.duelOutcomes.add(failure);
+          }
+          final startedAt = DateTime(2026, 6, 2, 10);
+          var now = startedAt;
+          await tester.pumpWidget(
+            MaterialApp(
+              home: GameScreen(
+                playerProfile: PlayerProfile(
+                  id: 'player-id',
+                  username: 'Tester',
+                  createdAt: DateTime(2026),
+                ),
+                knockoutRepository: repository,
+                initialRunMode: RunMode.tournament,
+                initialDifficultyState: const DifficultyState.initial(),
+                initialLevelConfig: _failingLevelConfig,
+                now: () => now,
+              ),
+            ),
+          );
+          now = startedAt.add(const Duration(minutes: 2));
+          final completedAt = now;
+          await _failRunAndShowFinalResults(tester);
+          await tester.pump();
+          expect(repository.runs, isEmpty);
+          expect(repository.tournamentReadCount, 1);
+          expect(repository.duelReadCount, stage == 'duel' ? 1 : 0);
+          expect(
+            tester
+                .widget<FilledButton>(
+                  find.widgetWithText(FilledButton, 'Restart run'),
+                )
+                .onPressed,
+            isNull,
+          );
+          await tester.pump(const Duration(seconds: 2));
+          expect(repository.tournamentReadCount, 1);
+          now = startedAt.add(const Duration(hours: 5));
+          final gate = Completer<KnockoutTournament>();
+          repository.tournamentOutcomes.add(gate);
+          final retry = tester
+              .widget<FilledButton>(
+                find.widgetWithText(FilledButton, 'Retry Knockout submission'),
+              )
+              .onPressed!;
+          retry();
+          retry();
+          await tester.pump();
+          retry();
+          expect(repository.tournamentReadCount, 2);
+          expect(repository.runs, isEmpty);
+          gate.complete(
+            KnockoutTournament(
+              id: '2026-06',
+              name: 'June Knockout',
+              entryCostGamePoints: 25,
+              tournamentMonth: DateTime(2026, 6),
+              registrationOpensAt: DateTime(2026, 5),
+              registrationClosesAt: DateTime(2026, 5, 31),
+              startsAt: DateTime(2026, 6),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          expect(repository.runs, hasLength(1));
+          final run = repository.runs.single;
+          expect(
+            run.id,
+            'knockout-run:0:${startedAt.toUtc().microsecondsSinceEpoch}',
+          );
+          expect(run.playerId, 'player-id');
+          expect(run.score, 0);
+          expect(run.startedAt, startedAt);
+          expect(run.completedAt, completedAt);
+          expect(repository.keys.single, isNotNull);
+          retry();
+          await tester.pump();
+          expect(repository.runs, hasLength(1));
+          expect(find.text('Retry Knockout submission'), findsNothing);
+          expect(
+            tester
+                .widget<FilledButton>(
+                  find.widgetWithText(FilledButton, 'Restart run'),
+                )
+                .onPressed,
+            isNotNull,
+          );
+        },
+      );
+    }
+  }
+
+  for (final outcome in ['no duel', 'bye', 'async rejection']) {
+    testWidgets('Knockout $outcome resolves without retry', (tester) async {
+      final repository = _SubmissionKnockoutRepository([
+        if (outcome == 'async rejection')
+          const RepositoryDomainException(
+            'Rejected',
+            code: ApiErrorCode.validationFailed,
+          ),
+      ]);
+      if (outcome == 'no duel') repository.duelOutcomes.add(null);
+      repository.bye = outcome == 'bye';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameScreen(
+            playerProfile: PlayerProfile(
+              id: 'player-id',
+              username: 'Tester',
+              createdAt: DateTime(2026),
+            ),
+            knockoutRepository: repository,
+            initialRunMode: RunMode.tournament,
+            initialDifficultyState: const DifficultyState.initial(),
+            initialLevelConfig: _failingLevelConfig,
+          ),
+        ),
+      );
+      await _failRunAndShowFinalResults(tester);
+      await tester.pump();
+      expect(repository.runs, hasLength(outcome == 'async rejection' ? 1 : 0));
+      expect(find.text('Retry Knockout submission'), findsNothing);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Restart run'),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final code in [
+    ApiErrorCode.networkUnavailable,
+    ApiErrorCode.requestTimeout,
+    ApiErrorCode.serverError,
+    ApiErrorCode.malformedPayload,
+    ApiErrorCode.unexpectedResponse,
+  ]) {
+    testWidgets('Knockout $code retries the same claim and key explicitly', (
+      tester,
+    ) async {
+      final completion = Completer<bool>();
+      final repository = _SubmissionKnockoutRepository([
+        RepositoryDomainException('Submission unavailable', code: code),
+        completion,
+      ]);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameScreen(
+            playerProfile: PlayerProfile(
+              id: 'player-id',
+              username: 'Tester',
+              createdAt: DateTime(2026),
+            ),
+            knockoutRepository: repository,
+            initialRunMode: RunMode.tournament,
+            initialDifficultyState: const DifficultyState.initial(),
+            initialLevelConfig: _failingLevelConfig,
+          ),
+        ),
+      );
+      await _failRunAndShowFinalResults(tester);
+      await tester.pump();
+      expect(repository.runs, hasLength(1));
+      await tester.pump(const Duration(seconds: 2));
+      expect(repository.runs, hasLength(1));
+      expect(find.text('Retry Knockout submission'), findsOneWidget);
+      final retry = tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Retry Knockout submission'),
+          )
+          .onPressed!;
+      retry();
+      retry(); // A stale callback must not start a concurrent mutation.
+      await tester.pump();
+      expect(repository.runs, hasLength(2));
+      expect(repository.runs.last, same(repository.runs.first));
+      expect(repository.keys.last, same(repository.keys.first));
+      expect(repository.tournamentReadCount, 1);
+      expect(repository.duelReadCount, 1);
+      expect(find.text('Retry Knockout submission'), findsNothing);
+      completion.complete(
+        true,
+      ); // Replay and accepted both resolve the bool contract.
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Retry Knockout submission'), findsNothing);
+      await tester.tap(find.text('Restart run'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 31));
+      await _exitRunAndShowFinalResults(tester);
+      await tester.pump();
+      expect(repository.runs, hasLength(3));
+      expect(repository.keys.last, isNot(repository.keys.first));
+    });
+  }
+
+  testWidgets(
+    'Synchronous definitive Knockout rejection resolves finalization',
+    (tester) async {
+      final repository = _SubmissionKnockoutRepository([
+        const RepositoryDomainException(
+          'Rejected',
+          code: ApiErrorCode.validationFailed,
+        ),
+      ], throwsSynchronously: true);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameScreen(
+            playerProfile: PlayerProfile(
+              id: 'player-id',
+              username: 'Tester',
+              createdAt: DateTime(2026),
+            ),
+            knockoutRepository: repository,
+            initialRunMode: RunMode.tournament,
+            initialDifficultyState: const DifficultyState.initial(),
+            initialLevelConfig: _failingLevelConfig,
+          ),
+        ),
+      );
+      await _failRunAndShowFinalResults(tester);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(repository.runs, hasLength(1));
+      expect(find.text('Retry Knockout submission'), findsNothing);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Restart run'),
+            )
+            .onPressed,
+        isNotNull,
+      );
+    },
+  );
+
   Future<MockAuthRepository> authenticatedRepository() async {
     final repository = MockAuthRepository();
     await repository.register(username: 'Tester', password: 'pass123');
@@ -1245,6 +1559,76 @@ void main() {
       isNot(leagueRepository.idempotencyKeys[0]),
     );
   });
+}
+
+class _SubmissionKnockoutRepository extends MockKnockoutRepository {
+  _SubmissionKnockoutRepository(
+    this.outcomes, {
+    this.throwsSynchronously = false,
+  });
+  final bool throwsSynchronously;
+  final List<Object> outcomes;
+  final runs = <KnockoutRun>[];
+  final keys = <IdempotencyKey?>[];
+  final tournamentOutcomes = <Object>[];
+  final duelOutcomes = <Object?>[];
+  int tournamentReadCount = 0;
+  int duelReadCount = 0;
+  bool bye = false;
+
+  @override
+  Future<KnockoutTournament> fetchCurrentTournament() async {
+    tournamentReadCount++;
+    if (tournamentOutcomes.isNotEmpty) {
+      final outcome = tournamentOutcomes.removeAt(0);
+      if (outcome is Completer<KnockoutTournament>) return outcome.future;
+      throw outcome;
+    }
+    return super.fetchCurrentTournament();
+  }
+
+  @override
+  Future<KnockoutDuelSnapshot?> fetchActiveDuel({
+    required String tournamentId,
+    required String playerId,
+  }) async {
+    duelReadCount++;
+    if (duelOutcomes.isNotEmpty) {
+      final outcome = duelOutcomes.removeAt(0);
+      if (outcome == null) return null;
+      if (outcome is Completer<KnockoutDuelSnapshot?>) return outcome.future;
+      throw outcome;
+    }
+    return KnockoutDuelSnapshot(
+      tournamentId: tournamentId,
+      roundNumber: 1,
+      roundEndsAt: DateTime(2027),
+      playerId: playerId,
+      opponentId: 'opponent',
+      hasBye: bye,
+      match: KnockoutMatch(
+        id: 'match',
+        roundNumber: 1,
+        status: KnockoutMatchStatus.active,
+        playerOneId: playerId,
+        playerTwoId: 'opponent',
+      ),
+    );
+  }
+
+  @override
+  Future<bool> submitKnockoutRun(
+    KnockoutRun run, {
+    IdempotencyKey? idempotencyKey,
+  }) {
+    runs.add(run);
+    keys.add(idempotencyKey);
+    if (outcomes.isEmpty) return Future.value(true);
+    final outcome = outcomes.removeAt(0);
+    if (outcome is Completer<bool>) return outcome.future;
+    if (throwsSynchronously) throw outcome;
+    return Future<bool>.error(outcome);
+  }
 }
 
 Future<void> _failRunAndShowFinalResults(WidgetTester tester) async {

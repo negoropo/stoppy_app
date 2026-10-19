@@ -478,30 +478,212 @@ void main() {
       );
     });
 
-    test(
-      'run submission remains explicitly disconnected from backend runtime',
-      () {
-        final apiClient = _FakeBackendApiClient();
-        final repository = BackendKnockoutRepository(apiClient: apiClient);
+    for (final status in ['accepted', 'idempotentReplay']) {
+      test(
+        'run submission resolves $status with claim and explicit key',
+        () async {
+          final apiClient = _FakeBackendApiClient()
+            ..enqueuePostSuccess({
+              'status': status,
+              'newlyPersisted': status == 'accepted',
+              'acceptedRun': {
+                'id': 'run-1',
+                'playerId': 'server-player',
+                'matchId': 'match-1',
+                'roundNumber': 1,
+                'score': 40000,
+                'completedAt': DateTime.utc(2026, 6, 2, 10).toIso8601String(),
+              },
+            });
+          final run = _runClaim();
+          final accepted = await BackendKnockoutRepository(
+            apiClient: apiClient,
+          ).submitKnockoutRun(run, idempotencyKey: IdempotencyKey('run-key'));
+          expect(accepted, isTrue);
+          final request = apiClient.postRequests.single;
+          expect(request.path, ApiContract.knockoutRunSubmission);
+          expect(request.headers, {
+            ApiContract.idempotencyKeyHeader: 'run-key',
+          });
+          expect(request.body, {
+            'runId': run.id,
+            'tournamentId': '2026-06',
+            'roundNumber': 1,
+            'matchId': 'match-1',
+            'runStartedAt': run.startedAt!.toIso8601String(),
+            'runCompletedAt': run.completedAt.toIso8601String(),
+            'claimedFinalPrecisionPoints': 42000,
+            'runMode': 'knockout',
+          });
+          expect(apiClient.getRequests, isEmpty);
+        },
+      );
+    }
 
+    for (final status in ['accepted', 'idempotentReplay']) {
+      for (final field in ['id', 'matchId', 'roundNumber']) {
+        test('$status rejects mismatched accepted run $field', () async {
+          final apiClient = _FakeBackendApiClient()
+            ..enqueuePostSuccess({
+              'status': status,
+              'newlyPersisted': status == 'accepted',
+              'acceptedRun': {
+                'id': 'run-1',
+                'matchId': 'match-1',
+                'roundNumber': 1,
+                'playerId': 'authenticated-player',
+                'score': 40000,
+                'completedAt': DateTime.utc(2026, 6, 2, 10).toIso8601String(),
+                field: field == 'roundNumber' ? 2 : 'different-id',
+              },
+            });
+          await expectLater(
+            BackendKnockoutRepository(apiClient: apiClient).submitKnockoutRun(
+              _runClaim(),
+              idempotencyKey: IdempotencyKey('key'),
+            ),
+            throwsA(
+              isA<RepositoryDomainException>().having(
+                (e) => e.code,
+                'code',
+                ApiErrorCode.malformedPayload,
+              ),
+            ),
+          );
+          expect(apiClient.postRequests, hasLength(1));
+        });
+      }
+    }
+
+    for (final rejection in [
+      'noActiveDuel',
+      'roundMismatch',
+      'validationFailed',
+      'settlementInProgress',
+    ]) {
+      test(
+        'run rejection $rejection preserves machine-readable reason',
+        () async {
+          final apiClient = _FakeBackendApiClient()
+            ..enqueuePostSuccess({
+              'status': 'rejected',
+              'newlyPersisted': false,
+              'rejectionCode': rejection,
+            });
+          await expectLater(
+            BackendKnockoutRepository(apiClient: apiClient).submitKnockoutRun(
+              _runClaim(),
+              idempotencyKey: IdempotencyKey('key'),
+            ),
+            throwsA(
+              isA<RepositoryDomainException>()
+                  .having((e) => e.code, 'code', ApiErrorCode.validationFailed)
+                  .having(
+                    (e) => e.details['rejectionCode'],
+                    'reason',
+                    rejection,
+                  ),
+            ),
+          );
+          expect(apiClient.postRequests, hasLength(1));
+        },
+      );
+    }
+
+    for (final payload in <Map<String, Object?>>[
+      {'status': 'accepted', 'newlyPersisted': true},
+      {'status': 'rejected', 'newlyPersisted': false},
+    ]) {
+      test(
+        'malformed run response $payload maps to malformedPayload',
+        () async {
+          final apiClient = _FakeBackendApiClient()
+            ..enqueuePostSuccess(payload);
+          await expectLater(
+            BackendKnockoutRepository(apiClient: apiClient).submitKnockoutRun(
+              _runClaim(),
+              idempotencyKey: IdempotencyKey('key'),
+            ),
+            throwsA(
+              isA<RepositoryDomainException>().having(
+                (e) => e.code,
+                'code',
+                ApiErrorCode.malformedPayload,
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    for (final code in [
+      ApiErrorCode.networkUnavailable,
+      ApiErrorCode.requestTimeout,
+      ApiErrorCode.serverError,
+      ApiErrorCode.unauthenticated,
+    ]) {
+      test('run submission maps $code without automatic retry', () async {
+        final apiClient = _FakeBackendApiClient()
+          ..enqueuePostFailure(ApiError(code: code, message: 'unavailable'));
+        await expectLater(
+          BackendKnockoutRepository(apiClient: apiClient).submitKnockoutRun(
+            _runClaim(),
+            idempotencyKey: IdempotencyKey('key'),
+          ),
+          throwsA(
+            isA<RepositoryDomainException>().having(
+              (e) => e.code,
+              'code',
+              code,
+            ),
+          ),
+        );
+        expect(apiClient.postRequests, hasLength(1));
+        expect(apiClient.getRequests, isEmpty);
+      });
+    }
+
+    test('run submission rejects invalid claim before transport', () {
+      final client = _FakeBackendApiClient();
+      final repository = BackendKnockoutRepository(apiClient: client);
+      for (final run in [
+        _runClaim().copyWith(tournamentId: ' '),
+        _runClaim().copyWith(startedAt: DateTime.utc(2026, 6, 1)),
+        _runClaim().copyWith(startedAt: DateTime.utc(2026, 6, 3)),
+      ]) {
         expect(
           () => repository.submitKnockoutRun(
-            KnockoutRun(
-              id: 'run-1',
-              playerId: 'player-1',
-              matchId: 'match-1',
-              roundNumber: 1,
-              score: 42000,
-              completedAt: DateTime.utc(2026, 6, 2, 10),
-            ),
-            idempotencyKey: IdempotencyKey('knockout-run-1'),
+            run,
+            idempotencyKey: IdempotencyKey('key'),
           ),
-          throwsNotImplementedFor('submitKnockoutRun'),
+          throwsA(
+            isA<RepositoryDomainException>().having(
+              (e) => e.code,
+              'code',
+              ApiErrorCode.malformedPayload,
+            ),
+          ),
         );
-        expect(apiClient.postRequests, isEmpty);
-        expect(apiClient.getRequests, isEmpty);
-      },
-    );
+      }
+      expect(client.postRequests, isEmpty);
+    });
+
+    test('run submission requires explicit key before transport', () {
+      final apiClient = _FakeBackendApiClient();
+      final repository = BackendKnockoutRepository(apiClient: apiClient);
+      expect(
+        () => repository.submitKnockoutRun(_runClaim()),
+        throwsA(
+          isA<RepositoryDomainException>().having(
+            (e) => e.code,
+            'code',
+            ApiErrorCode.malformedPayload,
+          ),
+        ),
+      );
+      expect(apiClient.postRequests, isEmpty);
+      expect(apiClient.getRequests, isEmpty);
+    });
 
     test('server-only lifecycle mutations remain disconnected', () {
       final apiClient = _FakeBackendApiClient();
@@ -540,6 +722,17 @@ Matcher throwsNotImplementedFor(String methodName) {
         ),
   );
 }
+
+KnockoutRun _runClaim() => KnockoutRun(
+  id: 'run-1',
+  playerId: 'untrusted-player',
+  matchId: 'match-1',
+  roundNumber: 1,
+  score: 42000,
+  tournamentId: '2026-06',
+  startedAt: DateTime.utc(2026, 6, 2, 9, 55),
+  completedAt: DateTime.utc(2026, 6, 2, 10),
+);
 
 KnockoutTournament _tournament({List<KnockoutPlayerEntry> entries = const []}) {
   return KnockoutTournament(

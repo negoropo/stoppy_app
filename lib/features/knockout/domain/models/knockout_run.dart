@@ -6,6 +6,8 @@ class KnockoutRun {
     required this.roundNumber,
     required this.score,
     required this.completedAt,
+    this.tournamentId,
+    this.startedAt,
   }) : assert(id != ''),
        assert(playerId != ''),
        assert(matchId != ''),
@@ -26,6 +28,10 @@ class KnockoutRun {
 
   final DateTime completedAt;
 
+  /// Claim context only; the server validates the current tournament and duel.
+  final String? tournamentId;
+  final DateTime? startedAt;
+
   KnockoutRun copyWith({
     String? id,
     String? playerId,
@@ -33,6 +39,8 @@ class KnockoutRun {
     int? roundNumber,
     int? score,
     DateTime? completedAt,
+    String? tournamentId,
+    DateTime? startedAt,
   }) {
     return KnockoutRun(
       id: id ?? this.id,
@@ -41,6 +49,8 @@ class KnockoutRun {
       roundNumber: roundNumber ?? this.roundNumber,
       score: score ?? this.score,
       completedAt: completedAt ?? this.completedAt,
+      tournamentId: tournamentId ?? this.tournamentId,
+      startedAt: startedAt ?? this.startedAt,
     );
   }
 }

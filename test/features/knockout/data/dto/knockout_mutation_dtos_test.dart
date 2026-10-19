@@ -114,6 +114,30 @@ void main() {
   });
 
   group('KnockoutRunSubmissionRequestDto', () {
+    test(
+      'direct serialization rejects blank identifiers and nonpositive round',
+      () {
+        for (final field in [
+          'runId',
+          'tournamentId',
+          'matchId',
+          'roundNumber',
+        ]) {
+          final dto = KnockoutRunSubmissionRequestDto(
+            runId: field == 'runId' ? ' ' : 'run-1',
+            tournamentId: field == 'tournamentId' ? ' ' : '2026-06',
+            matchId: field == 'matchId' ? ' ' : 'match-1',
+            roundNumber: field == 'roundNumber' ? 0 : 1,
+            runStartedAt: DateTime.utc(2026, 6, 2),
+            runCompletedAt: DateTime.utc(2026, 6, 2),
+            claimedFinalPrecisionPoints: 0,
+            runMode: KnockoutRunSubmissionMode.knockout,
+          );
+          expect(dto.toJson, throwsFormatException);
+        }
+      },
+    );
+
     test('serializes a run claim without client player identity authority', () {
       final startedAt = DateTime.utc(2026, 6, 2, 10);
       final completedAt = startedAt.add(const Duration(minutes: 12));
@@ -210,6 +234,26 @@ void main() {
   });
 
   group('KnockoutRunSubmissionResponseDto', () {
+    test(
+      'rejects replay marked newly persisted and rejection without reason',
+      () {
+        for (final payload in [
+          {'status': 'idempotentReplay', 'newlyPersisted': true},
+          {'status': 'rejected', 'newlyPersisted': false},
+          {
+            'status': 'rejected',
+            'newlyPersisted': false,
+            'rejectionCode': 'unknown',
+          },
+        ]) {
+          expect(
+            () => KnockoutRunSubmissionResponseDto.fromJson(payload),
+            throwsFormatException,
+          );
+        }
+      },
+    );
+
     test('maps accepted and idempotent replay semantics', () {
       final runDto = KnockoutRunDto.fromDomain(
         KnockoutRun(

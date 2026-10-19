@@ -50,9 +50,9 @@ The Flutter app already has prepared API response/error models for this future c
 The Flutter app prepares backend integration through environment configuration and a repository factory.
 
 - `STP_REPOSITORY_RUNTIME=mock` keeps mock repositories active.
-- `STP_REPOSITORY_RUNTIME=backend` creates backend repository skeletons.
+- `STP_REPOSITORY_RUNTIME=backend` selects the implemented backend repositories.
 - `STP_API_BASE_URL` defines the future REST API base URL.
-- The HTTP client exists, mock runtime remains the default, and only backend authentication is connected when backend runtime is explicitly selected.
+- Mock runtime remains the default. Opt-in backend runtime connects authentication, implemented League reads/entry/run submission, Knockout registration, Knockout reads, and Knockout run submission. Server-only settlement and lifecycle mutations remain disconnected.
 
 Backend repositories should receive a `BackendApiClient` plus an auth session store. The API client should attach the current access token when required, decode the response envelope, and surface `ApiError` for repository-level mapping.
 
@@ -164,8 +164,8 @@ When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connec
 - League entry and League run submission are connected backend League
   mutations in Flutter backend runtime. Knockout registration is connected as
   the first backend Knockout mutation, and Knockout read projections required
-  by the current UI/runtime are connected. League settlement, Knockout run
-  submission, and Knockout settlement remain disconnected.
+  by the current UI/runtime are connected. Knockout run submission is connected
+  in Session 43. League and Knockout settlement remain disconnected.
 
 ## Error Strategy
 
@@ -500,11 +500,10 @@ mutation must reuse the same key and payload. A new registration attempt or a
 different completed run must use a different key. `HttpBackendApiClient` must
 never generate mutation identity and no automatic retry policy is active.
 
-Session 40 selects Knockout tournament registration as the first backend
-Knockout mutation to activate in a future session. It is safer than run
-submission because the request can remain an authenticated empty body while the
-backend owns player identity, GP deduction, registration-window validation,
-duplicate detection, and resulting tournament entry state.
+Session 40 prepared the Knockout mutation contracts. Session 41 connected
+tournament registration, Session 42 connected the read projections, and Session
+43 connected Knockout run submission. Server-only lifecycle mutations remain
+disconnected.
 
 ### GET /api/v1/knockout/tournament
 
@@ -639,6 +638,32 @@ Server responsibilities:
 
 Submits a completed knockout duel run claim.
 
+Flutter backend runtime connects this mutation in Session 43. The caller owns
+the finalized claim and its explicit idempotency key. An unresolved submission
+can be retried by the player with the identical claim/key; there is no automatic
+retry. Accepted and idempotent replay responses both resolve the existing bool
+repository contract. Definitive rejection preserves a machine-readable reason.
+Tournament, round, match and score fields are claims validated by the server;
+player identity comes exclusively from authentication.
+
+Before POST, GameScreen freezes the logical run ID, player ID, final PP, start
+and completion timestamps. Transient tournament/duel read failures retain this
+data for explicit context-read retry. Only after valid context is resolved are
+the run claim and idempotency key constructed. After an ambiguous POST outcome,
+retry reuses the exact claim/key without refetching context.
+
+For both accepted and replay responses, `acceptedRun.id` must match submitted
+`runId`; `acceptedRun.matchId` and `acceptedRun.roundNumber` must match the
+submitted association. Contradictions map to `malformedPayload`. The server
+owns `acceptedRun.playerId` and may correct the claimed PP score; the client
+does not compare those values against untrusted identity/score claims.
+
+Current POST serialization supplies structural run context, not a complete
+validation-evidence claim. DTO consistency checks are not anti-cheat enforcement;
+competitive validation remains a future server responsibility. Pending recovery
+state exists only in GameScreen memory; app/process restart recovery and an
+offline submission queue are deferred.
+
 Request headers:
 
 - `Idempotency-Key`
@@ -676,10 +701,12 @@ Future run submission claims carry enough information for server-side verificati
 }
 ```
 
-Flutter backend runtime now serializes this claim for League run submissions.
-Session 40 prepares the same claim semantics for future Knockout run
-submission. The client-side DTO validation only checks structural consistency;
-the backend remains authoritative for timing, tier progression, duplicate
+League run submission is connected in Flutter backend runtime. Knockout run
+submission was prepared in Session 40 and connected in Session 43. Current
+client payloads provide structural claims, while complete validation evidence
+and server-side anti-cheat enforcement remain deferred.
+
+The backend remains authoritative for timing, tier progression, duplicate
 submission protection, authenticated player identity, active duel eligibility,
 and the final accepted score. No automatic retry is performed; retrying the
 same logical run must reuse the same `Idempotency-Key`. If a timeout, network
