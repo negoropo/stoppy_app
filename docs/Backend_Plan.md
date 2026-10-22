@@ -1,5 +1,26 @@
 # Backend Plan
 
+## Session 44 Implemented Foundation
+
+The isolated `backend/` application now uses Node.js 24, TypeScript, Fastify and
+the `pg` PostgreSQL driver. It implements only operational health/readiness,
+configuration validation, bounded connection pooling, safe API errors and
+explicit versioned SQL migrations. See `backend/README.md` for setup and tests.
+
+Fastify provides HTTP routing, injection-based tests and orderly shutdown. A
+small SQL migration runner keeps ordered files/checksums in
+`public.stoppy_schema_migrations`, serializes execution with a transaction-scoped
+advisory lock, and commits/rolls back a whole batch on one acquired connection.
+Migration 001 creates an empty infrastructure namespace only. Database startup
+connectivity is mandatory; migrations are a separate operator command.
+
+This is the first server implementation, not the implementation of the Flutter
+feature endpoints prepared in Sessions 31-43. Auth/JWT, GP, purchases, League,
+Knockout, run validation, server-side mutation-idempotency records, settlement
+and anti-cheat enforcement remain future server work. No client score is
+accepted or persisted by this foundation. Flutter remains mock-first and its
+existing opt-in backend contracts are unchanged.
+
 ## Architecture
 
 ### Client
@@ -9,12 +30,14 @@
 ### Backend
 
 - Custom Backend API
+- Node.js / TypeScript / Fastify foundation in `backend/`
 - REST API
 - Server-authoritative competitive logic
 
 ### Database
 
 - PostgreSQL
+- `pg` connection adapter and infrastructure-only SQL migrations
 
 ### Optional Future Components
 

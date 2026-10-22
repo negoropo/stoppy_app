@@ -2,6 +2,23 @@
 
 This map describes current mock-owned data and the expected future PostgreSQL persistence model. Production ownership must move to backend repositories backed by server-side validation.
 
+## Session 44 Infrastructure Persistence
+
+The new isolated `backend/` server implements PostgreSQL connection management
+and an explicit transactional SQL migration command. The only implemented
+database objects are `public.stoppy_schema_migrations` (version, SHA-256
+checksum, applied timestamp) and the empty `stoppy_runtime` namespace.
+Ledger inserts are parameterized; a transaction-scoped advisory lock serializes
+concurrent migrators. Changed/removed applied migrations fail; failed batches
+roll back. This migration ledger is not a competitive mutation-idempotency store.
+
+All player/economy/competitive tables in the maps below remain proposed, not
+implemented. No sessions, run claims, GP, rankings or tournament state are
+stored by this foundation. Backend server feature persistence, authentication,
+request fingerprints and atomic mutation-idempotency records remain future work.
+The separate real PostgreSQL integration test requires an empty disposable
+`*_test` database; unit tests use fake connections and no database service.
+
 | System | Current Repository | Future Database Table | Ownership | Validation Requirements |
 | --- | --- | --- | --- | --- |
 | PlayerProfile | AuthRepository / MockAuthRepository | players | Server | Unique username, authenticated writes, GP changes only through trusted economy operations, immutable registration date. |

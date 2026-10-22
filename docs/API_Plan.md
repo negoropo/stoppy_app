@@ -2,6 +2,47 @@
 
 The future API is a custom REST API backed by PostgreSQL. Endpoints below describe the first backend-facing contract shape and may evolve, but competitive state must remain server-authoritative.
 
+Session 44 introduces the server foundation in `backend/`. Only the operational
+endpoints below are implemented server-side. Auth, League and Knockout clients
+are connected in Flutter's opt-in backend runtime, but their corresponding
+server feature handlers are still unimplemented and return `notFound` here.
+Mock remains the default Flutter runtime.
+
+## Operational Endpoints (Session 44)
+
+These noncompetitive additions use the existing response/error envelope.
+
+### GET /api/v1/health
+
+Public process liveness; returns HTTP 200 without querying PostgreSQL:
+
+```json
+{"success":true,"data":{"status":"ok","service":"stoppy-api"}}
+```
+
+### GET /api/v1/ready
+
+Public minimal database-connectivity readiness; returns HTTP 200 after
+`SELECT 1`, without exposing connection details:
+
+```json
+{"success":true,"data":{"status":"ready"}}
+```
+
+Database failure returns HTTP 503:
+
+```json
+{"success":false,"error":{"code":"serverError","message":"Service is not ready."}}
+```
+
+The process fails startup before binding when configuration/connectivity is
+invalid. After startup, a database outage leaves liveness at 200 and readiness
+at 503. Readiness does not yet verify schema version. Unknown/unimplemented
+routes return HTTP 404 with `notFound`; malformed requests use `validationFailed`
+and unexpected failures use a safe `serverError` envelope. All responses disable
+caching. Migration execution is an operator command, not an HTTP endpoint.
+No Flutter `ApiContract` change or new feature integration is required.
+
 ## Versioning and Paths
 
 All public REST endpoints use the `/api/v1` prefix. The client exposes these paths through `ApiContract`; backend repositories must not duplicate string literals.

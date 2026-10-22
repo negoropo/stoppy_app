@@ -1,5 +1,32 @@
 # Architecture — Stoppy 🧠
 
+## Session 44 Server Foundation
+
+`backend/` is the first isolated custom server: Node.js 24, TypeScript, Fastify,
+and PostgreSQL through `pg`. It has its own npm lockfile/build/test configuration;
+Flutter code, repository contracts and mock-default wiring are unchanged.
+
+Only `/api/v1/health` (process liveness) and `/api/v1/ready` (PostgreSQL
+connectivity) are implemented. They reuse the client API envelope/error codes.
+Startup validates configuration and checks the database before listening;
+shutdown drains requests and closes the pool. Request/query/acquisition timeouts,
+body limits, safe error responses and conservative proxy/logging defaults are
+explicit. HTTPS ingress, rate limiting and production deployment remain future
+operational work.
+
+Migrations are explicit operator commands using ordered SQL files, checksums,
+a version ledger and transactional locking. The first migration creates an
+empty infrastructure namespace, not competitive tables. Unit tests inject a
+database adapter; optional tests use an explicitly disposable real PostgreSQL
+database. Docker Compose provides local PostgreSQL but is not needed for unit tests.
+
+Earlier statements about no backend/server persistence are historical as of
+Session 43. Session 44 adds infrastructure only: Flutter's Auth/League/Knockout
+HTTP integrations still have no corresponding feature handlers in this server.
+Authentication/JWT, GP/economy, run acceptance/anti-cheat, server-side mutation
+idempotency, competitive tables and settlement/lifecycle jobs remain deferred.
+No client PP claim is accepted as an authoritative result.
+
 ## 1. Visão Geral
 
 Stoppy é uma aplicação mobile competitiva multiplayer baseada em skill, com:

@@ -1,0 +1,27 @@
+{
+  "name": "stoppy-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25", "npm": ">=11 <12" },
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=.env dist/main.js",
+    "migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
+    "migrate:production": "node --env-file-if-exists=.env dist/migrate.js",
+    "test": "node --import tsx --test test/*.test.ts",
+    "test:integration": "node --env-file-if-exists=.env --import tsx --test test/integration/*.test.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "pg": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

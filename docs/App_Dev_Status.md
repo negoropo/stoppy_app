@@ -12552,3 +12552,464 @@ Future session policy:
 * Plan complete validation evidence and server-side anti-cheat before real competitive scoring is trusted
 * Require backend-integrated/Simulator end-to-end tests only after compatible reachable server endpoints exist
 * Preserve existing gameplay rules, League rules, Knockout rules, Purchase and Ads behavior unless explicitly scoped
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 44 — Backend Server Foundation + Integration Readiness
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the first real Stoppy backend application server using Node.js, TypeScript, Fastify and PostgreSQL, establishing an independently testable server foundation compatible with the existing Flutter REST API contracts.
+
+Introduce environment validation, HTTP lifecycle management, PostgreSQL connection pooling, transactional database migrations, operational health/readiness endpoints, standardized API error handling, and reproducible local development infrastructure.
+
+Preserve all existing Flutter authentication, League, Knockout, gameplay, economy and repository behavior.
+
+Production authentication, competitive mutations, server-authoritative run validation, settlement, anti-cheat enforcement and business-data persistence remain outside this session.
+
+---
+
+### 📦 Deliverables
+
+* [x] Isolated `backend/` application created
+* [x] Node.js 24 backend runtime established
+* [x] TypeScript backend configuration implemented
+* [x] Fastify HTTP server implemented
+* [x] PostgreSQL integration using `pg` implemented
+* [x] Backend package management and build scripts configured
+* [x] Development and production configuration prepared
+* [x] Environment variable validation implemented
+* [x] PostgreSQL URL validation implemented
+* [x] Production PostgreSQL TLS enforcement implemented
+* [x] Connection-string SSL override protection implemented
+* [x] PostgreSQL connection pool abstraction implemented
+* [x] Bounded connection pool and request/query timeouts implemented
+* [x] Database connectivity verification implemented
+* [x] `GET /api/v1/health` liveness endpoint implemented
+* [x] `GET /api/v1/ready` database readiness endpoint implemented
+* [x] Standardized API success/error envelopes preserved
+* [x] Centralized HTTP error handling implemented
+* [x] Safe handling of unknown routes implemented
+* [x] Safe logging and resource limits implemented
+* [x] Startup database connectivity validation implemented
+* [x] Graceful shutdown and resource cleanup implemented
+* [x] PostgreSQL migration infrastructure implemented
+* [x] Consecutive numbered SQL migration validation implemented
+* [x] SHA-256 migration checksum verification implemented
+* [x] Migration version ledger implemented
+* [x] Transaction-scoped PostgreSQL advisory locking implemented
+* [x] Transactional migration execution implemented
+* [x] Duplicate migration execution protection implemented
+* [x] Migration history mismatch detection implemented
+* [x] Defensive migration input validation implemented
+* [x] Immutable validated migration execution snapshot implemented
+* [x] Separate bounded migration query timeout policy implemented
+* [x] Ambiguous transaction failure handling hardened
+* [x] Failed BEGIN/COMMIT connection-discard handling implemented
+* [x] Rollback failure connection-discard protection implemented
+* [x] Repeated shutdown signal handling hardened
+* [x] Shutdown safety deadline behavior corrected
+* [x] Local PostgreSQL setup documentation created
+* [x] Docker Compose development configuration prepared
+* [x] Initial infrastructure-only SQL migration created
+* [x] Backend unit tests implemented and expanded
+* [x] PostgreSQL integration tests implemented
+* [x] Real HTTP lifecycle and draining tests implemented
+* [x] Backend architecture documentation updated
+* [x] API documentation updated
+* [x] Persistence documentation updated
+* [x] Backend README created and updated
+* [x] Flutter mock runtime preserved
+* [x] Existing Flutter backend contracts preserved
+* [x] No Flutter gameplay or competitive rules changed
+* [x] Final targeted robustness audit completed
+* [x] `npm run typecheck` passed
+* [x] `npm run build` passed
+* [x] `npm test` passed — 24 tests
+* [x] PostgreSQL integration tests passed — 2 tests
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed — 638 tests
+* [x] `git diff --check` passed
+
+---
+
+### 🛠️ Work Done
+
+* Created an isolated backend application under `backend/` using Node.js 24, TypeScript and Fastify.
+
+* Introduced backend project configuration:
+  * `package.json` and `package-lock.json`
+  * `tsconfig.json`
+  * `tsconfig.build.json`
+  * `.env.example`
+  * `.gitignore`
+  * Development, build, validation and testing scripts
+
+* Implemented backend environment configuration through `config.ts`:
+  * Explicit development, test and production environments
+  * HTTP host and port validation
+  * Log level validation
+  * PostgreSQL connection URL validation
+  * Database TLS configuration validation
+  * Mandatory verified TLS for production
+  * Rejection of SSL connection-string overrides
+  * Configuration errors that avoid exposing database credentials
+  * Immutable configuration object
+
+* Implemented PostgreSQL infrastructure through `database.ts`:
+  * Database abstraction supporting dependency injection
+  * Query and transactional connection interfaces
+  * PostgreSQL connection pooling
+  * Maximum pool size of five connections
+  * Connection timeout of three seconds
+  * Idle connection timeout of ten seconds
+  * Normal API statement timeout of five seconds
+  * Normal API client query timeout of six seconds
+  * PostgreSQL connectivity check
+  * Idle connection error handling
+  * Explicit pool shutdown
+
+* Implemented the Fastify application and standardized HTTP behavior:
+  * Versioned API prefix `/api/v1`
+  * Liveness endpoint `GET /api/v1/health`
+  * Database readiness endpoint `GET /api/v1/ready`
+  * Existing `success/data` response envelope
+  * Existing `success:false/error` failure envelope
+  * Centralized error handling
+  * Safe 404 responses for unknown endpoints
+  * Bounded request resources and timeouts
+  * Safe logging behavior
+
+* Implemented application startup and lifecycle handling:
+  * PostgreSQL connectivity verification before accepting requests
+  * Fail-fast startup behavior
+  * Separation of liveness and readiness
+  * Safe application cleanup after startup failure
+  * Fastify shutdown handling
+  * PostgreSQL resource cleanup
+  * SIGINT/SIGTERM handling
+  * In-flight HTTP request draining
+  * Protection against duplicate shutdown execution
+
+* Created SQL migration infrastructure:
+  * Numbered SQL files
+  * Three-digit consecutive migration versions
+  * Deterministic migration ordering
+  * SHA-256 checksums
+  * PostgreSQL migration ledger
+  * Transaction-scoped advisory lock
+  * Transactional migration execution
+  * Applied-history and checksum verification
+  * Idempotent migration command execution
+
+* Created the first migration:
+  * `migrations/001_runtime_foundation.sql`
+  * Infrastructure namespace and migration tracking only
+  * No player accounts, competitive entities or economy tables introduced
+
+* Performed a focused robustness audit and implemented corrections:
+  * `runMigrations()` now validates migration input independently
+  * Invalid, duplicated or incorrectly ordered migration versions are rejected before connecting
+  * Migration SQL and checksum inputs are validated
+  * The validated migration list is snapshotted before execution
+  * Migration CLI now uses a 120-second statement timeout and 125-second client query timeout
+  * Normal API timeout configuration remains unchanged
+  * Failed BEGIN or COMMIT operations cause the connection to be discarded
+  * Failed rollback operations also cause connection disposal
+  * No automatic replay is performed after uncertain COMMIT outcomes
+  * Shutdown safety deadline remains active after a close rejection
+  * Repeated termination signals trigger cleanup only once
+
+* Reviewed existing PostgreSQL TLS safeguards:
+  * Production verified TLS requirement preserved
+  * SSL URL override rejection preserved
+  * Default hostname verification preserved
+  * No unnecessary TLS configuration changes introduced
+
+* Created deterministic backend tests covering:
+  * Environment validation
+  * PostgreSQL TLS requirements
+  * HTTP health/readiness responses
+  * API error envelopes
+  * Unknown HTTP routes
+  * Migration numbering and checksums
+  * Invalid migration sequences
+  * Immutable migration snapshots
+  * Transaction failures
+  * Connection disposal behavior
+  * Query timeout profiles
+  * Startup failure cleanup
+  * Repeated shutdown signals
+  * Failed/stalled shutdown
+  * In-flight HTTP request draining
+
+* Created PostgreSQL integration tests covering migration/database behavior with a local PostgreSQL instance.
+
+* Verified migration execution:
+  * First execution applied one migration
+  * Second execution applied zero migrations
+  * No duplicate migration application occurred
+
+* Updated backend documentation:
+  * `docs/Backend_Plan.md`
+  * `docs/API_Plan.md`
+  * `docs/Architecture.md`
+  * `docs/Persistence_Map.md`
+  * `backend/README.md`
+
+* Preserved all existing Flutter behavior and repository contracts.
+
+---
+
+### 📁 Files Changed
+
+Backend configuration and infrastructure:
+
+* `backend/.env.example`
+* `backend/.gitignore`
+* `backend/README.md`
+* `backend/compose.yaml`
+* `backend/package.json`
+* `backend/package-lock.json`
+* `backend/tsconfig.json`
+* `backend/tsconfig.build.json`
+
+Backend migrations:
+
+* `backend/migrations/001_runtime_foundation.sql`
+
+Backend production code:
+
+* `backend/src/api_error.ts`
+* `backend/src/app.ts`
+* `backend/src/config.ts`
+* `backend/src/database.ts`
+* `backend/src/lifecycle.ts`
+* `backend/src/main.ts`
+* `backend/src/migrate.ts`
+* `backend/src/migrations.ts`
+
+Backend tests:
+
+* `backend/test/app.test.ts`
+* `backend/test/config.test.ts`
+* `backend/test/fakes.ts`
+* `backend/test/migrations.test.ts`
+* `backend/test/integration/postgres.test.ts`
+
+Documentation:
+
+* `docs/Backend_Plan.md`
+* `docs/API_Plan.md`
+* `docs/Architecture.md`
+* `docs/Persistence_Map.md`
+
+Final status documentation:
+
+* `docs/App_Dev_Status.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Node.js 24, TypeScript, Fastify and PostgreSQL form the initial real backend server foundation.
+* The backend is isolated from the Flutter application within `backend/`.
+* PostgreSQL is accessed through `pg` and an explicit database abstraction.
+* Database migrations are versioned, transactional and checksum-protected.
+* Advisory locks serialize concurrent migration execution.
+* Migration files are trusted deployment assets, not externally submitted SQL.
+* Applied migrations must not be silently modified or reordered.
+* Migration history mismatches cause explicit failure.
+* Normal API queries and migrations have separate bounded timeout policies.
+* Timeout budgets are per query, not a global migration execution deadline.
+* Uncertain COMMIT results must be investigated through the migration ledger before an explicit rerun.
+* Automatic migration replay after an uncertain COMMIT is not permitted.
+* PostgreSQL connections with uncertain transaction state must be discarded.
+* Backend startup requires PostgreSQL connectivity.
+* Liveness and readiness have separate operational responsibilities.
+* Readiness currently verifies database connectivity, not database schema compatibility.
+* The health endpoint does not establish that competitive backend functionality is available.
+* Verified PostgreSQL TLS is mandatory in production configuration.
+* No live production PostgreSQL TLS handshake was tested.
+* Local PostgreSQL integration tests were performed without Docker.
+* Docker Compose configuration was prepared but not executed because Docker was unavailable.
+* Backend authentication, account persistence, JWT issuance, refresh sessions and logout remain unimplemented server-side.
+* Existing Flutter authentication contracts remain unchanged.
+* League backend mutations remain implemented on the Flutter client side only.
+* Knockout backend mutations and read endpoints remain implemented on the Flutter client side only.
+* The real server does not yet implement League or Knockout business endpoints.
+* Competitive run submissions must not trust client-submitted scores.
+* Server-authoritative PP validation and anti-cheat remain future requirements.
+* Server-side mutation idempotency persistence and request fingerprinting remain unimplemented.
+* League settlement remains server-owned and unimplemented in the real backend.
+* Knockout lifecycle, settlement, advancement and Hall of Fame persistence remain unimplemented in the real backend.
+* No player, League, Knockout, GP, purchase or competitive persistence tables were created.
+* Flutter mock repositories remain the default runtime.
+* Backend runtime remains opt-in and is not yet suitable for complete end-to-end gameplay.
+* Existing Flutter gameplay, scoring, League, Knockout, ads and purchase rules were preserved.
+* Production deployment requires HTTPS ingress, rate limiting and deployment configuration.
+* No separate backend lint tool is currently configured.
+* No production deployment or live Simulator backend integration was performed.
+* Automated validation results were reported by Codex; manual review covered the selected backend infrastructure files.
+* No commit or push was performed during implementation or audit.
+
+---
+
+### 🧪 Validation
+
+* [x] `migrations.ts` manually reviewed
+* [x] `database.ts` manually reviewed
+* [x] `config.ts` manually reviewed
+* [x] `lifecycle.ts` manually reviewed
+* [x] Migration validation weakness identified and corrected
+* [x] Migration timeout separation implemented
+* [x] Ambiguous COMMIT handling corrected
+* [x] Failed rollback connection disposal validated
+* [x] Graceful shutdown robustness corrected
+* [x] Startup failure cleanup validated
+* [x] Database pool closure validation completed
+* [x] Repeated termination signal handling validated
+* [x] Real in-flight HTTP draining validated
+* [x] PostgreSQL TLS configuration reviewed
+* [x] Environment validation tests passed
+* [x] Migration integrity tests passed
+* [x] Transaction failure tests passed
+* [x] HTTP lifecycle tests passed
+* [x] Real PostgreSQL integration tests passed
+* [x] Migration execution and repeat execution validated
+* [x] HTTP health endpoint returned 200
+* [x] Database readiness endpoint returned 200 when PostgreSQL was available
+* [x] Database readiness endpoint returned safe 503 during outage
+* [x] Unknown feature endpoint returned envelope-wrapped 404
+* [x] Backend typecheck passed
+* [x] Backend build passed
+* [x] Backend unit test suite passed — 24 tests
+* [x] PostgreSQL integration test suite passed — 2 tests
+* [x] `flutter analyze` passed
+* [x] Full Flutter test suite passed — 638 tests
+* [x] `git diff --check` passed
+
+Final automated validation commands reported by Codex:
+
+```bash
+cd backend
+npm run typecheck
+npm run build
+npm test
+env NODE_ENV=test TEST_DATABASE_URL=postgresql://stoppy@127.0.0.1:55444/stoppy_audit_test npm run test:integration
+```
+
+Flutter and repository validation:
+
+```bash
+flutter analyze
+flutter test
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `npm run typecheck` — passed
+* `npm run build` — passed
+* `npm test` — **24 tests passed**
+* PostgreSQL integration — **2 tests passed**
+* `flutter analyze` — no issues
+* `flutter test` — **638 tests passed**
+* `git diff --check` — passed
+
+Manual validation:
+
+* Four core backend infrastructure files reviewed individually.
+* Migration sequencing, transaction handling, database configuration and lifecycle concerns identified.
+* Targeted corrective audit requested and completed.
+* All identified robustness corrections reported implemented.
+* Existing startup, connection cleanup and PostgreSQL TLS protections confirmed sufficient by Codex audit.
+* No further production-code corrections required for the agreed Session 44 scope.
+* No Simulator end-to-end test required because no new Flutter-facing functionality was introduced.
+* Session 44 accepted as technically complete.
+
+---
+
+### 📌 Next Session
+
+**Proposed:** Session 45 — Backend Authentication + PostgreSQL Account/Session Persistence
+
+Planned focus (to confirm when opening the next session):
+
+* [ ] Review the existing Flutter authentication contracts from Sessions 31–35
+* [ ] Review current backend authentication DTOs and API schemas
+* [ ] Define the first server-side authentication implementation scope
+* [ ] Introduce PostgreSQL player account persistence
+* [ ] Define secure password hashing and credential storage
+* [ ] Implement registration/login endpoints compatible with existing Flutter contracts
+* [ ] Prepare server-side JWT access-token issuance and verification
+* [ ] Define refresh-token persistence and rotation responsibilities
+* [ ] Preserve authenticated server identity as the authority
+* [ ] Prevent duplicate usernames through database constraints
+* [ ] Introduce transaction-safe authentication persistence
+* [ ] Add deterministic authentication and PostgreSQL integration tests
+* [ ] Preserve existing Flutter mock runtime behavior
+* [ ] Keep account/session persistence separate from competitive state and GP economy
+
+Session boundary:
+
+* The exact Session 45 scope is **proposed**, not yet an approved implementation task.
+* Do not silently alter Flutter authentication DTOs or REST contracts.
+* Do not activate League or Knockout server business mutations.
+* Do not implement competitive run scoring or settlement in the authentication session.
+* Do not trust client-supplied player identity.
+* Keep the next implementation incremental and independently testable.
+
+---
+
+### 📊 Progress Update
+
+* ✅ Sessions 1–43 — Completed, including intermediate refinement sessions and superseded functionality
+* ✅ Session 44 — Backend Server Foundation + Integration Readiness
+* ⏳ Session 45 — Backend Authentication + PostgreSQL Account/Session Persistence (proposed)
+
+---
+
+### 🧭 Current State
+
+Last completed session: **Session 44 — Backend Server Foundation + Integration Readiness**
+
+Status: **Completed ✅**
+
+Next proposed session: **Session 45 — Backend Authentication + PostgreSQL Account/Session Persistence**
+
+Current backend state:
+
+* Real Node.js/TypeScript/Fastify application server foundation implemented
+* PostgreSQL connectivity and transactional migration infrastructure operational in local testing
+* Health and readiness endpoints implemented
+* Backend unit and PostgreSQL integration tests passing
+* Authentication and competitive server endpoints not yet implemented
+* Flutter mock runtime remains the default
+* Existing Flutter Auth, League and Knockout backend client contracts preserved
+
+Future session policy:
+
+* Keep implementation sessions narrowly scoped and independently testable
+* Continue reviewing Codex changes before marking sessions completed
+* Preserve Flutter gameplay and existing competitive rules
+* Keep authentication and competitive state server-authoritative
+* Preserve mock repositories as the default until real backend integration is ready
+* Implement server-side identity, credential protection and session persistence before competitive mutations
+* Require atomic mutation idempotency and request fingerprint verification before production usage
+* Treat submitted runs as untrusted claims until complete server validation exists
+* Preserve explicit retry semantics without unsafe automatic mutation retries
+* Keep League and Knockout settlement, advancement and authoritative calculations on the server
+* Address Europe/Lisbon timezone and DST correctness before production scheduling
+* Introduce real Simulator end-to-end tests when compatible backend endpoints are available
+* Keep PostgreSQL migrations append-only and protected by checksums and transactional locking
+* Maintain comprehensive unit, integration and Flutter regression tests
+* Do not introduce gameplay or economy redesigns without an explicitly approved scope
