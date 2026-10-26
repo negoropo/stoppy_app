@@ -69,11 +69,12 @@ for (const stage of ['BEGIN', 'COMMIT']) {
 
 test('migration files have stable ordered checksums and execute transactionally', async () => {
   const migrations = await readMigrations();
-  assert.equal(migrations.length, 1);
+  assert.equal(migrations.length, 2);
   assert.equal(migrations[0]!.version, '001_runtime_foundation.sql');
-  assert.match(migrations[0]!.checksum, /^[0-9a-f]{64}$/);
+  assert.equal(migrations[1]!.version, '002_auth_accounts_sessions.sql');
+  for (const migration of migrations) assert.equal(migration.checksum, createHash('sha256').update(migration.sql).digest('hex'));
   const database = new FakeDatabase();
-  assert.equal(await runMigrations(database, migrations), 1);
+  assert.equal(await runMigrations(database, migrations), migrations.length);
   assert.equal(database.calls[0]!.sql, 'BEGIN');
   assert.equal(database.calls.at(-1)!.sql, 'COMMIT');
   const insert = database.calls.find((call) => call.sql.startsWith('INSERT'))!;

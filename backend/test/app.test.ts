@@ -36,7 +36,7 @@ test('readiness checks connectivity and returns a safe 503 error on database out
 test('unknown paths and unimplemented competitive endpoints return notFound envelopes', async () => {
   const app = buildApp(testConfig, new FakeDatabase());
   try {
-    for (const url of ['/missing', '/health', '/api/v1/auth/login', '/api/v1/runs/knockout']) {
+    for (const url of ['/missing', '/health', '/api/v1/auth/logout', '/api/v1/runs/knockout', '/api/v1/runs/league']) {
       const response = await app.inject({ method: 'POST', url });
       assert.equal(response.statusCode, 404);
       assert.deepEqual(response.json(), { success: false, error: { code: 'notFound', message: 'Route not found.' } });

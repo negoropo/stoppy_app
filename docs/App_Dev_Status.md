@@ -13013,3 +13013,750 @@ Future session policy:
 * Keep PostgreSQL migrations append-only and protected by checksums and transactional locking
 * Maintain comprehensive unit, integration and Flutter regression tests
 * Do not introduce gameplay or economy redesigns without an explicitly approved scope
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 45 — Backend Authentication + PostgreSQL Account/Session Persistence
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the first real PostgreSQL-backed authentication system for the Stoppy backend established in Session 44, connecting the existing Flutter authentication REST contracts to persistent server-side player accounts and authentication sessions.
+
+Introduce secure password hashing, player registration and login, JWT access-token issuance and verification, refresh-token persistence and rotation, session-family replay detection and revocation, authenticated player profile retrieval, and basic authentication abuse protection.
+
+Preserve PostgreSQL transaction integrity, connection lifecycle safety, existing Flutter authentication DTOs, the default mock runtime, and all existing gameplay, League, Knockout and GP economy behavior.
+
+Server-side competitive mutations, authoritative run validation, GP economy transactions, League and Knockout persistence, remote logout and production deployment remain outside this session.
+
+---
+
+### 📦 Deliverables
+
+* [x] Existing Flutter authentication contracts reviewed
+* [x] Existing backend server architecture reviewed
+* [x] Session 45 authentication architecture audit completed
+* [x] PostgreSQL player account persistence implemented
+* [x] PostgreSQL authentication session persistence implemented
+* [x] PostgreSQL refresh-token persistence implemented
+* [x] Append-only authentication migration created
+* [x] `002_auth_accounts_sessions.sql` implemented
+* [x] Migration 001 preserved unchanged
+* [x] `stoppy_auth.players` table created
+* [x] `stoppy_auth.auth_sessions` table created
+* [x] `stoppy_auth.auth_refresh_tokens` table created
+* [x] Server-generated UUID player identities implemented
+* [x] Canonical username uniqueness enforced at database level
+* [x] Case-insensitive username matching implemented
+* [x] Player display username preservation implemented
+* [x] Initial player balance of 5 GP persisted
+* [x] Existing Flutter player profile defaults preserved
+* [x] PostgreSQL authentication constraints and indexes implemented
+* [x] Argon2id password hashing implemented
+* [x] Secure password verification implemented
+* [x] Password input validation implemented
+* [x] Bounded password length and UTF-8 size validation implemented
+* [x] Dart-compatible Unicode whitespace validation implemented
+* [x] Exact password content preservation implemented
+* [x] `POST /api/v1/auth/register` implemented
+* [x] `POST /api/v1/auth/login` implemented
+* [x] `POST /api/v1/auth/refresh` implemented
+* [x] `GET /api/v1/player/profile` implemented
+* [x] Existing authentication request DTO compatibility preserved
+* [x] Existing authentication response DTO compatibility preserved
+* [x] Existing API success/error envelopes preserved
+* [x] PostgreSQL-backed authenticated player profile retrieval implemented
+* [x] Server-authoritative authenticated identity implemented
+* [x] Ed25519 JWT signing infrastructure implemented
+* [x] EdDSA JWT issuance and verification implemented
+* [x] JWT issuer and audience validation implemented
+* [x] JWT algorithm and type validation implemented
+* [x] JWT expiration and required-claim validation implemented
+* [x] JWT subject, session and token identifier validation implemented
+* [x] Production signing-key configuration requirements implemented
+* [x] Configurable access-token lifetime implemented
+* [x] Configurable refresh-token lifetime implemented
+* [x] Cryptographically secure opaque refresh-token generation implemented
+* [x] SHA-256 refresh-token digest persistence implemented
+* [x] Atomic refresh-token rotation implemented
+* [x] PostgreSQL session-family locking implemented
+* [x] Concurrent refresh-token use protection implemented
+* [x] Refresh-token replay detection implemented
+* [x] Session-family revocation implemented
+* [x] Database-backed session revocation verification implemented
+* [x] Authentication transaction helper implemented
+* [x] Transaction-safe account and session creation implemented
+* [x] Uncertain BEGIN/COMMIT handling preserved
+* [x] Failed rollback connection-discard protection preserved
+* [x] Checked-out PostgreSQL client error handling hardened
+* [x] Failed connection disposal and duplicate-release protection implemented
+* [x] Authentication IP rate limiting implemented
+* [x] Username-based registration/login rate limiting implemented
+* [x] Password hashing concurrency limits implemented
+* [x] Authentication resource and input bounds implemented
+* [x] Safe authentication error handling implemented
+* [x] Sensitive credential logging protection preserved
+* [x] Backward-clock refresh timestamp defect identified and corrected
+* [x] Acquired PostgreSQL client error-event defect identified and corrected
+* [x] Whitespace-only password compatibility defect identified and corrected
+* [x] U+0085 Unicode whitespace compatibility defect identified and corrected
+* [x] Backend authentication unit tests implemented
+* [x] PostgreSQL authentication integration tests implemented
+* [x] Authentication concurrency and security regression tests implemented
+* [x] Backend architecture documentation updated
+* [x] API documentation updated
+* [x] Persistence documentation updated
+* [x] Anti-cheat documentation updated
+* [x] Backend README updated
+* [x] Flutter mock runtime preserved
+* [x] Existing Flutter gameplay and competitive rules preserved
+* [x] Initial implementation security audit completed
+* [x] Targeted security corrections completed
+* [x] Final targeted correction audit completed
+* [x] Eight core backend files manually reviewed
+* [x] `npm run typecheck` passed
+* [x] `npm run build` passed
+* [x] `npm test` passed — 68 tests
+* [x] PostgreSQL integration tests passed — 19 tests
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed — 638 tests
+* [x] `git diff --check` passed
+
+---
+
+### 🛠️ Work Done
+
+* Reviewed the existing Flutter authentication architecture:
+  * `AuthRepository` domain boundary
+  * `BackendAuthRepository`
+  * `BackendApiClient`
+  * `AuthSessionStore`
+  * `AuthSessionRefreshCoordinator`
+  * Authentication request and response DTOs
+  * Player profile DTOs
+  * Existing authentication API contracts
+  * Authentication error mapping
+  * Secure local session persistence
+
+* Confirmed compatibility with the existing Flutter authentication endpoints:
+  * `POST /api/v1/auth/register`
+  * `POST /api/v1/auth/login`
+  * `POST /api/v1/auth/refresh`
+  * `GET /api/v1/player/profile`
+
+* Created PostgreSQL authentication persistence infrastructure:
+  * Authentication schema `stoppy_auth`
+  * Player account storage
+  * Authentication session storage
+  * Refresh-token lifecycle storage
+  * Database-enforced account uniqueness
+  * Database-enforced session ownership
+  * Database-enforced refresh-token family integrity
+
+* Created migration `002_auth_accounts_sessions.sql`:
+  * `stoppy_auth.players`
+  * `stoppy_auth.auth_sessions`
+  * `stoppy_auth.auth_refresh_tokens`
+  * UUID primary keys
+  * Foreign-key relationships
+  * Unique canonical usernames
+  * Unique refresh-token digests
+  * Timestamp integrity constraints
+  * Nonnegative GP balance constraint
+  * Refresh-token replacement integrity constraints
+  * Partial unique index preventing multiple unconsumed refresh credentials within one session
+  * Session and token expiration indexes
+
+* Preserved migration infrastructure from Session 44:
+  * Migration 001 remains unchanged
+  * Consecutive migration numbering
+  * Checksum verification
+  * Transactional migration execution
+  * PostgreSQL advisory locking
+  * Applied migration history protection
+
+* Implemented player account persistence:
+  * Server-generated UUID player identifier
+  * Display username storage
+  * Canonical lowercase username generation
+  * Case-insensitive username uniqueness
+  * Argon2id password hash storage
+  * Account creation timestamp
+  * Initial `gamePoints` value of 5
+  * Initial `adsRemoved` value of false
+  * Nullable daily GP award timestamp
+  * Nullable League division
+  * Initial weekly League entry status of false
+  * Initial reserved League slot status of false
+
+* Implemented `AuthService`:
+  * Registration orchestration
+  * Login orchestration
+  * Session creation
+  * Refresh-token renewal orchestration
+  * Authenticated profile retrieval
+  * Server-generated player and session identifiers
+  * Dependency injection for repository, hashing, token services and clock
+  * Credential responses returned only after successful persistence
+
+* Implemented `PostgresAuthRepository`:
+  * Transactional account registration
+  * PostgreSQL username conflict handling
+  * Credential lookup by canonical username
+  * Transactional authentication session creation
+  * Session-family refresh-token rotation
+  * Refresh-token replay detection
+  * Session-family revocation
+  * Authenticated player profile retrieval
+  * Database verification of session ownership, expiration and revocation
+
+* Implemented authentication REST routes:
+  * Registration endpoint
+  * Login endpoint
+  * Refresh endpoint
+  * Authenticated profile endpoint
+  * Existing `success/data` response envelopes
+  * Existing standardized authentication error envelopes
+  * Authentication-specific rate limiting
+  * Fastify route encapsulation
+
+* Implemented secure password handling:
+  * Argon2id hashing using the `argon2` dependency
+  * Secure password verification
+  * Generic invalid-credential responses
+  * Registration minimum of four UTF-16 code units
+  * Password maximum of 128 UTF-16 code units
+  * UTF-8 byte-size limit of 512 bytes
+  * Passwords never trimmed or normalized before hashing
+  * Meaningful leading and trailing whitespace preserved
+  * Whitespace-only registration passwords rejected
+  * Login minimum length not unnecessarily restricted by registration rules
+
+* Implemented Dart-compatible password blankness validation:
+  * Dedicated `isDartTrimEmpty()` helper
+  * Explicit Unicode whitespace recognition
+  * Compatibility with the installed Dart VM whitespace set
+  * U+0085 NEXT LINE handling
+  * Byte order mark whitespace handling
+  * Original password bytes preserved for hashing and verification
+
+* Implemented JWT authentication:
+  * Ed25519 signing keys
+  * EdDSA JWT signing through `jose`
+  * Explicit JWT algorithm validation
+  * JWT type validation
+  * Issuer validation
+  * Audience validation
+  * Expiration validation
+  * Required claim validation
+  * UUID verification for `sub`, `sid` and `jti`
+  * Access-token lifetime enforcement
+  * JWT expiration capped by authentication session expiration
+  * Database-backed session validation after JWT verification
+
+* Implemented configurable authentication token lifetimes:
+  * Default access-token lifetime of 24 hours
+  * Default refresh-session lifetime of 30 days
+  * Production signing-key configuration requirements
+  * Configurable JWT issuer and audience
+  * Development/test ephemeral signing-key support
+
+* Implemented secure refresh-token lifecycle management:
+  * 32 cryptographically random bytes per refresh token
+  * Base64url token encoding
+  * SHA-256 token digest persistence
+  * Raw refresh tokens not stored in PostgreSQL
+  * Atomic refresh-token consumption
+  * Atomic replacement-token creation
+  * Session-family row locking with `FOR UPDATE`
+  * Token state re-reading after acquiring the family lock
+  * Concurrent rotation protection
+  * Consumed token retention for replay detection
+  * Session-family revocation on token reuse
+  * Replacement expiration constrained by the original session-family expiration
+
+* Implemented transaction-safe authentication persistence:
+  * Shared `inTransaction()` helper
+  * Explicit BEGIN/COMMIT/ROLLBACK lifecycle
+  * Transaction-local PostgreSQL lock timeout
+  * Atomic account and session creation
+  * Atomic refresh-token rotation
+  * No password hashing while holding database transaction locks
+  * No automatic replay after uncertain commits
+  * Connection discard after uncertain BEGIN/COMMIT failures
+  * Connection discard after failed rollbacks
+  * Credential responses only after successful transaction completion
+
+* Extended PostgreSQL acquired-client protection:
+  * Error listener attached immediately after checkout
+  * Connection failure state tracking
+  * Pending query rejection after connection error events
+  * Further SQL prevented on failed connections
+  * Damaged connections discarded
+  * Healthy connections remain reusable
+  * Duplicate release protection
+  * Listener cleanup after pool handoff
+  * Safe sanitization of connection errors
+
+* Implemented authentication abuse protection:
+  * Process-local IP request limiting
+  * Username-based registration/login attempt limiting
+  * 30 authentication requests per IP per minute
+  * 10 registration/login attempts per username per minute
+  * Maximum of 10,000 rate-limit buckets
+  * Maximum of two concurrent password-hashing operations
+  * Bounded request payloads
+  * Bounded credential lengths
+  * Existing safe error logging preserved
+
+* Performed initial post-implementation security audit:
+  * Registration and login flows reviewed
+  * PostgreSQL schema constraints reviewed
+  * Concurrent registration reviewed
+  * JWT verification reviewed
+  * Refresh-token rotation reviewed
+  * Session-family replay revocation reviewed
+  * Database transaction failure handling reviewed
+  * PostgreSQL client error lifecycle reviewed
+  * Flutter DTO and authentication behavior compared
+
+* Identified and corrected a backward-clock refresh-token revocation defect:
+  * Application timestamps could precede persisted creation timestamps
+  * PostgreSQL constraints could reject replay-revocation writes
+  * Failed revocation transactions could leave compromised sessions active
+  * Lifecycle writes now use persisted timestamps as lower bounds
+  * Token consumption and replacement creation use consistent timestamps
+  * JWT issuance remains based on application wall time
+  * Original session-family expiration is not extended
+  * PostgreSQL regression tests added for clock skew, replay revocation and concurrency
+
+* Identified and corrected an acquired PostgreSQL connection error defect:
+  * Checked-out PostgreSQL clients could emit unhandled error events
+  * Connection errors could previously terminate the Node.js process
+  * Acquired connections now retain explicit error-event protection
+  * Failed connections are rejected and discarded
+  * Release behavior is idempotent
+  * Connection listener lifecycle is safely managed
+  * Regression tests cover errors before and during transactions, commit, rollback and release
+
+* Identified and corrected a password compatibility defect:
+  * Whitespace-only passwords could previously be accepted during registration
+  * Flutter login rejects whitespace-only passwords
+  * Backend registration now rejects passwords without meaningful characters
+  * Existing valid passwords with surrounding whitespace remain unchanged
+  * Registration minimum and maximum bounds remain intact
+  * Short-password login compatibility remains supported at repository/backend level
+
+* Performed final targeted correction audit:
+  * Backward-clock transaction integrity correction confirmed
+  * PostgreSQL acquired-client lifecycle correction confirmed
+  * Remaining U+0085 Unicode whitespace incompatibility identified
+  * Dedicated Dart-compatible whitespace predicate implemented
+  * Final unit and PostgreSQL regression tests added
+  * No further approval-blocking defect reported
+
+* Completed manual review of eight backend files:
+  * `backend/src/auth/auth_repository.ts`
+  * `backend/src/auth/auth_service.ts`
+  * `backend/src/database.ts`
+  * `backend/src/transaction.ts`
+  * `backend/src/auth/token_service.ts`
+  * `backend/src/auth/auth_validation.ts`
+  * `backend/migrations/002_auth_accounts_sessions.sql`
+  * `backend/src/auth/auth_routes.ts`
+
+* Updated backend and project documentation:
+  * Authentication API behavior
+  * PostgreSQL account/session persistence
+  * Authentication security architecture
+  * Session lifecycle responsibilities
+  * Credential validation policies
+  * Backend environment requirements
+  * Deferred production authentication requirements
+
+* Preserved all existing Flutter authentication and competitive behavior:
+  * No Flutter implementation changes
+  * No authentication REST contract changes
+  * No gameplay or scoring changes
+  * No League business rule changes
+  * No Knockout business rule changes
+  * No GP awarding or spending implementation
+  * Mock repositories remain the default runtime
+
+---
+
+### 📁 Files Changed
+
+Backend migration:
+
+* `backend/migrations/002_auth_accounts_sessions.sql`
+
+Backend authentication production code:
+
+* `backend/src/auth/auth_config.ts`
+* `backend/src/auth/auth_repository.ts`
+* `backend/src/auth/auth_service.ts`
+* `backend/src/auth/auth_routes.ts`
+* `backend/src/auth/auth_validation.ts`
+* `backend/src/auth/auth_rate_limiter.ts`
+* `backend/src/auth/password_hasher.ts`
+* `backend/src/auth/token_service.ts`
+
+Backend infrastructure:
+
+* `backend/src/transaction.ts`
+* `backend/src/database.ts`
+* `backend/src/app.ts`
+* `backend/src/config.ts`
+* `backend/src/api_error.ts`
+
+Backend tests:
+
+* `backend/test/auth.test.ts`
+* `backend/test/auth_service.test.ts`
+* `backend/test/transaction.test.ts`
+* `backend/test/app.test.ts`
+* `backend/test/config.test.ts`
+* `backend/test/database.test.ts`
+* `backend/test/migrations.test.ts`
+* `backend/test/fakes.ts`
+* `backend/test/integration/postgres.test.ts`
+
+Backend configuration and documentation:
+
+* `backend/.env.example`
+* `backend/package.json`
+* `backend/package-lock.json`
+* `backend/README.md`
+
+Project documentation:
+
+* `docs/API_Plan.md`
+* `docs/Architecture.md`
+* `docs/Persistence_Map.md`
+* `docs/Anti_Cheat_Plan.md`
+* `docs/Backend_Plan.md`
+
+Final status documentation:
+
+* `docs/App_Dev_Status.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Session 45 introduces the first real server-side Stoppy authentication implementation.
+* PostgreSQL is now responsible for persistent player accounts and authentication sessions.
+* Player identities are generated by the backend using UUIDs.
+* Authenticated player identity is established from verified JWT credentials and database session state.
+* Client-supplied player identifiers are not trusted as authentication authority.
+* The server implements registration, login, token refresh and authenticated profile retrieval.
+* Authentication responses preserve the existing Flutter REST and DTO contracts.
+* Existing authentication API error envelopes remain compatible with Flutter.
+* Passwords are protected using Argon2id.
+* Passwords are not trimmed or normalized before hashing or verification.
+* Registration requires at least four UTF-16 code units and a non-whitespace character.
+* Password length and UTF-8 byte-size limits are enforced.
+* The four-character minimum is retained temporarily for compatibility.
+* Stronger production password requirements must be coordinated with Flutter validation.
+* Backend usernames follow an explicit ASCII policy with a maximum of 32 characters.
+* Username uniqueness is case-insensitive while display case is preserved.
+* Flutter username validation remains broader than the backend policy and must be aligned before production.
+* Flutter login form validation and backend support for shorter legacy passwords are not fully aligned.
+* Dart-compatible whitespace-only password validation includes U+0085.
+* Valid passwords containing meaningful surrounding whitespace remain unchanged.
+* JWTs use EdDSA with Ed25519 signing keys.
+* JWT issuer, audience, algorithm, type, expiration and required claims are verified.
+* Default access-token lifetime is 24 hours.
+* The 24-hour access-token lifetime is a transitional policy, not necessarily the final production setting.
+* Default refresh-session lifetime is 30 days.
+* Access-token expiration never exceeds the corresponding session expiration.
+* Refresh tokens contain 32 cryptographically secure random bytes.
+* PostgreSQL stores refresh-token digests rather than plaintext tokens.
+* Refresh tokens rotate strictly and atomically.
+* PostgreSQL row locking serializes refresh operations within a session family.
+* Reuse of a consumed refresh token revokes its authentication session.
+* Consumed refresh-token records are retained to support replay detection.
+* A successful refresh response lost in transit can require a new login.
+* No refresh-token reuse grace period was introduced.
+* Refresh-token lifecycle timestamp clamping protects database integrity against backward clock movement.
+* Timestamp clamping does not guarantee absolute-time correctness under arbitrary server clock skew.
+* Correct clock synchronization remains necessary for JWT issuance, verification and expiration.
+* Session-family expiration is not extended during refresh-token rotation.
+* PostgreSQL authentication writes use explicit transactions.
+* No automatic replay occurs after uncertain COMMIT results.
+* Connections with uncertain transaction state are discarded.
+* Acquired PostgreSQL connections are protected against unhandled error events.
+* Failed PostgreSQL connections cannot be intentionally reused as healthy connections.
+* Authentication rate limiting is currently process-local.
+* The implemented limits are 30 requests/IP/minute and 10 registration/login attempts/username/minute.
+* Rate-limit storage is bounded to 10,000 buckets.
+* Password hashing concurrency is limited to two operations.
+* Distributed rate limiting remains necessary for a multi-instance production deployment.
+* Authentication logging must not expose plaintext passwords, access tokens, refresh tokens, password hashes, signing keys or database credentials.
+* Production requires stable, securely managed JWT signing keys.
+* Development/test ephemeral signing keys can invalidate existing access tokens after backend restart.
+* PostgreSQL accounts and sessions survive backend restarts, but usable authentication also depends on stable signing configuration.
+* Signing-key rollover remains unimplemented.
+* Remote logout and server-side logout revocation remain unimplemented.
+* Flutter logout continues to clear only the locally stored session.
+* Full automatic refresh of protected Flutter requests remains a future integration requirement.
+* Expired authentication-record cleanup remains unimplemented.
+* Account recovery, account deletion, social authentication and profile editing remain deferred.
+* The PostgreSQL player table includes the initial GP balance and profile-related fields.
+* The presence of GP fields does not mean that server-side GP economy mutations are implemented.
+* Server-side GP earning, spending and reward validation remain future requirements.
+* Existing League backend mutations remain implemented only on the Flutter client integration side.
+* Existing Knockout backend mutations and read operations remain implemented only on the Flutter client integration side.
+* No real League or Knockout business endpoints were implemented server-side.
+* No server-side competitive score validation was introduced.
+* Client-submitted runs must continue to be treated as untrusted claims.
+* Server-authoritative Precision Points validation and anti-cheat remain future requirements.
+* Server-side mutation idempotency persistence and request fingerprint verification remain unimplemented.
+* League settlement and Knockout lifecycle settlement remain server-owned future work.
+* Existing Flutter gameplay, scoring, League, Knockout, ads and purchase behavior remains unchanged.
+* Flutter mock repositories remain the default runtime.
+* Backend runtime remains opt-in and is not yet ready for complete end-to-end competitive gameplay.
+* Migration 001 remains unchanged.
+* Migration 002 must remain checksum-protected and must not be silently modified after application.
+* The Session 45 implementation was reviewed through multiple targeted security audits.
+* Eight core backend files were manually reviewed individually.
+* All identified Session 45 approval-blocking security and compatibility defects were reported corrected.
+* Automated validation results were reported by Codex.
+* Local PostgreSQL integration tests used a disposable test database.
+* No mobile-to-server end-to-end authentication test was performed.
+* No live Simulator backend authentication test was performed.
+* No production deployment was performed.
+* No commit or push was performed during implementation and review.
+
+---
+
+### 🧪 Validation
+
+* [x] Existing Flutter authentication repository contracts reviewed
+* [x] Existing authentication DTO compatibility reviewed
+* [x] Existing backend architecture reviewed
+* [x] Authentication implementation architecture audit completed
+* [x] PostgreSQL authentication schema reviewed
+* [x] Authentication migration reviewed
+* [x] Player account uniqueness constraints reviewed
+* [x] Authentication session constraints reviewed
+* [x] Refresh-token replacement constraints reviewed
+* [x] Concurrent registration behavior tested
+* [x] Registration endpoint behavior tested
+* [x] Login endpoint behavior tested
+* [x] Refresh endpoint behavior tested
+* [x] Authenticated profile endpoint behavior tested
+* [x] Password hashing and verification tested
+* [x] Generic invalid-credential behavior tested
+* [x] JWT signature and algorithm validation tested
+* [x] JWT issuer and audience validation tested
+* [x] JWT expiration and required claims tested
+* [x] Session revocation behavior tested
+* [x] Refresh-token rotation tested
+* [x] Concurrent refresh-token behavior tested
+* [x] Refresh-token replay revocation tested
+* [x] Expired credential handling tested
+* [x] Transaction rollback behavior tested
+* [x] Uncertain COMMIT handling tested
+* [x] PostgreSQL client error-event handling tested
+* [x] Failed connection disposal tested
+* [x] Duplicate connection release protection tested
+* [x] Backward-clock refresh timestamp defect reproduced during audit
+* [x] Backward-clock timestamp correction implemented
+* [x] Clock-skewed refresh rotation tested against PostgreSQL
+* [x] Replay revocation and protected-access denial tested
+* [x] Failed revocation rollback behavior tested
+* [x] Acquired PostgreSQL client error defect reproduced during audit
+* [x] PostgreSQL client lifecycle correction implemented
+* [x] Error events during transaction lifecycle tested
+* [x] Healthy connection reuse and listener cleanup tested
+* [x] Whitespace-only registration password defect identified
+* [x] Whitespace-only password rejection implemented
+* [x] Unicode U+0085 password incompatibility identified
+* [x] Dart-compatible Unicode whitespace validation implemented
+* [x] U+0085-only password rejection tested
+* [x] Meaningful password with surrounding U+0085 preserved and tested
+* [x] Real PostgreSQL registration/login with Unicode password tested
+* [x] Password validation boundaries tested
+* [x] Authentication rate-limit behavior tested
+* [x] Resource bounds and error-handling tests passed
+* [x] Final focused security correction review completed
+* [x] `auth_repository.ts` manually reviewed
+* [x] `auth_service.ts` manually reviewed
+* [x] `database.ts` manually reviewed
+* [x] `transaction.ts` manually reviewed
+* [x] `token_service.ts` manually reviewed
+* [x] `auth_validation.ts` manually reviewed
+* [x] `002_auth_accounts_sessions.sql` manually reviewed
+* [x] `auth_routes.ts` manually reviewed
+* [x] Backend typecheck passed
+* [x] Backend build passed
+* [x] Backend unit tests passed — 68 tests
+* [x] PostgreSQL integration tests passed — 19 tests
+* [x] `flutter analyze` passed
+* [x] Full Flutter test suite passed — 638 tests
+* [x] `git diff --check` passed
+
+Final automated validation commands reported by Codex:
+
+```bash
+cd backend
+npm run typecheck
+npm run build
+npm test
+env NODE_ENV=test TEST_DATABASE_URL=postgresql://stoppy@127.0.0.1:55445/stoppy_auth_test npm run test:integration
+```
+
+Flutter and repository validation:
+
+```bash
+flutter analyze
+flutter test --reporter compact
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `npm run typecheck` — passed
+* `npm run build` — passed
+* `npm test` — **68 tests passed**
+* PostgreSQL integration — **19 tests passed**
+* `flutter analyze` — no issues
+* `flutter test` — **638 tests passed**
+* `git diff --check` — passed
+* Total reported automated tests — **725 passed, 0 failed**
+
+Manual validation:
+
+* Eight core Session 45 backend files reviewed individually.
+* Authentication repository transaction and token rotation logic reviewed.
+* Authentication service registration/login/refresh/profile flows reviewed.
+* PostgreSQL acquired-client lifecycle protection reviewed.
+* Transaction BEGIN/COMMIT/ROLLBACK handling reviewed.
+* JWT issuance and validation reviewed.
+* Authentication input validation reviewed.
+* PostgreSQL authentication schema constraints reviewed.
+* Fastify authentication route registration reviewed.
+* Initial security audit identified three approval-blocking issues.
+* Targeted security corrections were implemented and regression-tested.
+* Final correction audit confirmed the timestamp and connection lifecycle fixes.
+* Remaining Unicode whitespace incompatibility was corrected.
+* No additional approval-blocking defect was identified during manual review.
+* No changes were required to Flutter implementation or existing migrations.
+* No real mobile-to-backend authentication flow was executed.
+* Session 45 accepted as technically complete within its agreed scope.
+
+---
+
+### 📌 Next Session
+
+**Proposed:** Session 46 — Backend Player Profile + Game Points Persistence Foundation
+
+Planned focus (to confirm when opening the next session):
+
+* [ ] Review the server-side player schema introduced in Session 45
+* [ ] Review existing Flutter player profile models and repository responsibilities
+* [ ] Review existing GP earning, spending and balance presentation rules
+* [ ] Define server ownership of player profile and GP balances
+* [ ] Distinguish authoritative persisted fields from derived competitive fields
+* [ ] Define profile persistence and mutation responsibilities
+* [ ] Review existing authentication profile endpoint compatibility
+* [ ] Design server-authoritative GP balance mutation contracts
+* [ ] Define atomic GP balance update requirements
+* [ ] Prevent negative GP balances and conflicting concurrent spending
+* [ ] Prepare auditable GP transaction persistence
+* [ ] Prepare idempotency and request fingerprinting requirements for GP mutations
+* [ ] Define future daily GP reward persistence responsibilities
+* [ ] Define future run GP reward persistence responsibilities
+* [ ] Define future League and Knockout entry fee integration boundaries
+* [ ] Preserve server-authoritative authenticated player identity
+* [ ] Define boundaries between profile/GP persistence and competitive run validation
+* [ ] Prepare deterministic backend unit tests
+* [ ] Prepare PostgreSQL integration and concurrency tests
+* [ ] Preserve existing Flutter mock runtime behavior
+* [ ] Preserve existing gameplay and competitive rules
+
+Session boundary:
+
+* The exact Session 46 scope is **proposed**, not yet an approved implementation task.
+* Review the existing GP economy rules before implementing mutations.
+* Do not silently redefine GP rewards, prices or spending rules.
+* Do not trust client-supplied GP balances or player identities.
+* Do not award GP for unverified competitive run claims.
+* Avoid implementing full League or Knockout business logic during profile/GP foundation work.
+* Keep mutation idempotency and concurrency correctness explicit.
+* Preserve existing authentication security and session lifecycle guarantees.
+* Keep implementation incremental and independently testable.
+* Continue using Codex implementation reports and manual review before session approval.
+
+---
+
+### 📊 Progress Update
+
+* ✅ Sessions 1–44 — Completed, including intermediate refinement sessions and superseded functionality
+* ✅ Session 45 — Backend Authentication + PostgreSQL Account/Session Persistence
+* ⏳ Session 46 — Backend Player Profile + Game Points Persistence Foundation (proposed)
+
+---
+
+### 🧭 Current State
+
+Last completed session: **Session 45 — Backend Authentication + PostgreSQL Account/Session Persistence**
+
+Status: **Completed ✅**
+
+Next proposed session: **Session 46 — Backend Player Profile + Game Points Persistence Foundation**
+
+Current backend state:
+
+* Real Node.js 24, TypeScript and Fastify application server foundation implemented
+* PostgreSQL connectivity and transactional migration infrastructure operational in local testing
+* Health and readiness endpoints implemented
+* PostgreSQL authentication account and session persistence implemented
+* Server-side registration and login endpoints implemented
+* Server-side refresh-token rotation and replay revocation implemented
+* Authenticated player profile retrieval implemented
+* Argon2id password hashing implemented
+* EdDSA JWT issuance and validation implemented
+* Server-authoritative authenticated player identity implemented
+* PostgreSQL transaction and acquired-client lifecycle protections implemented
+* Authentication abuse protection implemented at process level
+* Authentication backend unit and PostgreSQL integration tests passing
+* Existing Flutter authentication REST contracts preserved
+* Existing Flutter League and Knockout backend client contracts preserved
+* Flutter mock runtime remains the default
+* Real backend competitive business endpoints remain unimplemented
+* GP economy mutations remain unimplemented server-side
+* Server-authoritative run scoring and anti-cheat validation remain pending
+* Mobile-to-backend end-to-end authentication validation remains pending
+* Production authentication hardening and deployment remain pending
+
+Future session policy:
+
+* Keep implementation sessions narrowly scoped and independently testable
+* Continue reviewing Codex changes before marking sessions completed
+* Preserve Flutter gameplay and existing competitive rules
+* Keep authenticated identity and competitive state server-authoritative
+* Preserve mock repositories as the default until real backend integration is ready
+* Reuse the completed authentication infrastructure for future protected backend endpoints
+* Never trust client-supplied player identities, GP balances or authoritative scores
+* Require atomic mutation idempotency and request fingerprint verification before production usage
+* Treat submitted runs as untrusted claims until complete server validation exists
+* Preserve explicit retry semantics without unsafe automatic mutation retries
+* Keep League and Knockout settlement, advancement and authoritative calculations on the server
+* Address Europe/Lisbon timezone and DST correctness before production scheduling
+* Introduce real Simulator end-to-end tests when compatible backend endpoints are available
+* Keep PostgreSQL migrations append-only and protected by checksums and transactional locking
+* Preserve PostgreSQL connection lifecycle and uncertain transaction safeguards
+* Maintain secure password hashing, JWT verification and refresh-token replay protection
+* Address production key management, remote logout, refresh integration and distributed rate limiting
+* Maintain comprehensive backend unit, PostgreSQL integration and Flutter regression tests
+* Do not introduce gameplay or economy redesigns without an explicitly approved scope

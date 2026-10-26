@@ -15,7 +15,9 @@
     "test:integration": "node --env-file-if-exists=.env --import tsx --test test/integration/*.test.ts"
   },
   "dependencies": {
+    "argon2": "^0.45.1",
     "fastify": "^5.0.0",
+    "jose": "^6.2.13",
     "pg": "^8.0.0"
   },
   "devDependencies": {

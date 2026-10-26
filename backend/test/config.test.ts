@@ -1,8 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadConfig } from '../src/config.js';
+import { generateKeyPairSync } from 'node:crypto';
 
 const valid = { DATABASE_URL: 'postgresql://user:secret@localhost/stoppy' };
+const productionAuth = { AUTH_ISSUER: 'stoppy-test', AUTH_AUDIENCE: 'stoppy-test-app',
+  AUTH_PRIVATE_KEY: generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() };
 
 test('configuration applies explicit development defaults and is immutable', () => {
   const config = loadConfig(valid);
@@ -29,7 +32,7 @@ test('configuration rejects malformed inputs without echoing credentials', () =>
 });
 
 test('production requires certificate-verified database TLS', () => {
-  const config = loadConfig({ ...valid, NODE_ENV: 'production', DATABASE_SSL: 'verify-full' });
+  const config = loadConfig({ ...valid, ...productionAuth, NODE_ENV: 'production', DATABASE_SSL: 'verify-full' });
   assert.equal(config.databaseSsl, 'verify-full');
 });
 

@@ -1,5 +1,6 @@
 import type { Database, TransactionConnection } from '../src/database.js';
 import { loadConfig } from '../src/config.js';
+import { EventEmitter } from 'node:events';
 
 export const testConfig = loadConfig({ NODE_ENV: 'test', LOG_LEVEL: 'silent', DATABASE_URL: 'postgresql://localhost/stoppy_test' });
 
@@ -21,4 +22,21 @@ export class FakeDatabase implements Database, TransactionConnection {
   async connect() { this.connections++; return this; }
   release(discard = false) { this.released.push(discard); }
   async close() { this.closed++; }
+}
+
+/** Models pg's synchronous handoff back to its pool-owned idle error listener. */
+export class EventDatabaseClient extends EventEmitter implements TransactionConnection {
+  readonly calls: string[] = [];
+  readonly releases: boolean[] = [];
+  readonly idleError = () => {};
+  beforeQuery: (sql: string) => void | Promise<void> = () => {};
+  async query(sql: string) {
+    this.calls.push(sql);
+    await this.beforeQuery(sql);
+    return { rows: [] };
+  }
+  release(discard = false) {
+    this.releases.push(discard);
+    this.on('error', this.idleError);
+  }
 }

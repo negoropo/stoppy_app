@@ -1,5 +1,16 @@
 # Backend Plan
 
+## Session 45 Authentication Implementation (Pending Review)
+
+The server now implements registration, login, strict refresh rotation and
+authenticated profile retrieval against PostgreSQL. Migration 002 introduces
+`stoppy_auth.players`, `auth_sessions` and `auth_refresh_tokens`. Account identity
+is server-generated; only Argon2id password hashes and refresh-token digests
+persist. Initial GP is 5; no economy or competitive mutation is implemented.
+Flutter contracts and default mock runtime are unchanged. Remote logout remains
+deferred; see `backend/README.md` for the temporary credential policies and
+production blockers. The Session 44 description below is historical.
+
 ## Session 44 Implemented Foundation
 
 The isolated `backend/` application now uses Node.js 24, TypeScript, Fastify and

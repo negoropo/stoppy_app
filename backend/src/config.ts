@@ -1,4 +1,7 @@
+import { loadAuthConfig, type AuthConfig } from './auth/auth_config.js';
+
 export interface Config {
+  readonly auth: AuthConfig;
   readonly environment: 'development' | 'test' | 'production';
   readonly host: string;
   readonly port: number;
@@ -39,6 +42,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     throw new Error('DATABASE_URL must be a PostgreSQL URL with a database name and no SSL overrides.');
   }
   return Object.freeze({
+    auth: loadAuthConfig(env, environment === 'production'),
     environment, host, port, databaseUrl,
     databaseSsl,
     logLevel: choice(env.LOG_LEVEL ?? 'info', ['silent', 'error', 'warn', 'info', 'debug'], 'LOG_LEVEL'),

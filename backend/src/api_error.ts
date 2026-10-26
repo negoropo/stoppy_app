@@ -1,6 +1,6 @@
 export class ApiError extends Error {
   constructor(
-    readonly code: 'notFound' | 'validationFailed' | 'serverError',
+    readonly code: 'notFound' | 'validationFailed' | 'serverError' | 'unauthenticated' | 'conflict' | 'rateLimited',
     message: string,
     readonly statusCode: number,
   ) {

@@ -1,5 +1,19 @@
 # Persistence Map
 
+## Session 45 Account and Session Persistence (Pending Review)
+
+| Entity | Server owner | PostgreSQL table | Integrity boundary |
+| --- | --- | --- | --- |
+| Player account/profile | PostgresAuthRepository | stoppy_auth.players | Server UUID, unique generated ASCII lowercase username, Argon2id hash, GP default 5/nonnegative, immutable creation identity; no profile-write endpoint |
+| Authentication session family | PostgresAuthRepository | stoppy_auth.auth_sessions | Player FK, absolute expiry/revocation, verified on protected requests |
+| Refresh credential | PostgresAuthRepository | stoppy_auth.auth_refresh_tokens | Unique SHA-256 digest only, consumption/expiry/replacement, same-family replacement FK, at most one unconsumed token/family |
+
+Migration 002 is append-only; migration 001 and its checksum remain unchanged.
+Consumed refresh records are retained for family replay detection. Raw refresh
+tokens, JWTs and plaintext passwords are never persisted server-side. Device
+secure storage remains separate and unchanged. Remote logout and expired-record
+cleanup are deferred; competitive/economy persistence remains future work.
+
 This map describes current mock-owned data and the expected future PostgreSQL persistence model. Production ownership must move to backend repositories backed by server-side validation.
 
 ## Session 44 Infrastructure Persistence

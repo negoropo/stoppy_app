@@ -1,5 +1,27 @@
 # Architecture — Stoppy 🧠
 
+## Session 45 Server Authentication (Pending Review)
+
+Four existing Flutter auth contracts now have PostgreSQL-backed server handlers:
+registration, login, refresh, and authenticated profile. Fastify routes delegate
+to `AuthService`, password/token adapters and `PostgresAuthRepository`. Injected
+clocks and repository interfaces support deterministic tests. Flutter defaults,
+session storage, refresh coordination and local-only logout remain unchanged.
+
+Migration 002 creates a dedicated `stoppy_auth` namespace. Accounts and initial
+sessions are inserted atomically; Argon2 work occurs outside transactions.
+Refresh locks the session family, re-reads token state after locking, and commits
+replay revocation before returning rejection. Feature transactions preserve
+Session 44 uncertain-BEGIN/COMMIT and failed-rollback connection discard rules,
+without retries. JWT identity is checked against a live, non-revoked DB session.
+Auth uses Argon2id and Ed25519 JWTs through maintained libraries, strict input
+bounds and bounded process-local rate/hash-work limits. Signing keys, issuer
+and audience are explicit in production. See `backend/README.md` for temporary
+password/access-lifetime policies and remaining release requirements.
+
+No League, Knockout, GP mutation or competitive validation handler is added.
+The Session 44-only description below documents the historical foundation.
+
 ## Session 44 Server Foundation
 
 `backend/` is the first isolated custom server: Node.js 24, TypeScript, Fastify,

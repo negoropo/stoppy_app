@@ -2,8 +2,14 @@ import Fastify from 'fastify';
 import { ApiError, failure } from './api_error.js';
 import type { Config } from './config.js';
 import { checkDatabase, type Database } from './database.js';
+import { PostgresAuthRepository } from './auth/auth_repository.js';
+import { AuthService, type AuthOperations } from './auth/auth_service.js';
+import { ArgonPasswordHasher } from './auth/password_hasher.js';
+import { TokenService } from './auth/token_service.js';
+import { registerAuthRoutes } from './auth/auth_routes.js';
+import { AuthRateLimiter } from './auth/auth_rate_limiter.js';
 
-export function buildApp(config: Config, database: Database) {
+export function buildApp(config: Config, database: Database, dependencies: { auth?: AuthOperations; limiter?: AuthRateLimiter } = {}) {
   const app = Fastify({
     logger: config.logLevel === 'silent' ? false : {
       level: config.logLevel,
@@ -50,5 +56,8 @@ export function buildApp(config: Config, database: Database) {
     }
   });
   app.addHook('onClose', async () => database.close());
+  const auth = dependencies.auth ?? new AuthService(config.auth, new PostgresAuthRepository(database),
+    new ArgonPasswordHasher(), new TokenService(config.auth));
+  registerAuthRoutes(app, auth, dependencies.limiter);
   return app;
 }

@@ -1,5 +1,23 @@
 # Anti-Cheat Plan
 
+## Session 45 Authentication Boundary (Pending Review)
+
+The server now derives player identity from a verified Ed25519 JWT and a live
+PostgreSQL session. It never accepts client-supplied player identity, GP balance
+or competitive state as authentication authority. Passwords use salted Argon2id
+hashes; refresh credentials persist as SHA-256 digests only. Atomic rotation
+serializes on the family row; reuse commits family revocation, including any
+replacement access credentials. Strict replay detection means a lost response
+or failed secure-device save may require login. No automatic retry/grace exists.
+
+Process-local bounded IP/account limits and hashing concurrency bounds reduce
+abuse but are not distributed protection. HTTPS ingress, coordinated stronger
+password validation, remote logout/revocation, deployment key management and
+multi-instance abuse controls are required before production release. The
+temporary 24-hour access lifetime does not add protected-request renewal to
+Flutter. Authentication does not validate runs or activate competitive server
+endpoints. Logs/errors exclude bodies, credentials, keys, hashes and raw SQL.
+
 ## Client Is Not Trusted
 
 The Stoppy client is responsible for rendering and input collection, but it must not be trusted as the authority for competitive outcomes.

@@ -2,11 +2,42 @@
 
 The future API is a custom REST API backed by PostgreSQL. Endpoints below describe the first backend-facing contract shape and may evolve, but competitive state must remain server-authoritative.
 
-Session 44 introduces the server foundation in `backend/`. Only the operational
-endpoints below are implemented server-side. Auth, League and Knockout clients
-are connected in Flutter's opt-in backend runtime, but their corresponding
-server feature handlers are still unimplemented and return `notFound` here.
-Mock remains the default Flutter runtime.
+Session 44 introduced the server foundation in `backend/`. Session 45 adds the
+existing registration, login, refresh and authenticated profile endpoints.
+League and Knockout server feature handlers remain unimplemented and return
+`notFound` here. Mock remains the default Flutter runtime.
+
+## Session 45 Server Authentication (Pending Review)
+
+Implemented paths: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`,
+`POST /api/v1/auth/refresh`, and `GET /api/v1/player/profile`. Existing envelopes
+and DTO fields are unchanged. Registration/login data is `{playerProfile,
+session}`, refresh data is `{session}`, and profile data is the profile object.
+Only username/password are accepted for registration/login; unknown fields and
+non-string credentials are rejected. Username is trimmed, preserves display
+case, and is case-insensitively unique under the explicit ASCII policy: 1-32
+letters, digits, spaces, dots, underscores or hyphens. Unicode usernames accepted
+by mocks are not yet supported by the server. Passwords are never trimmed and
+must not be whitespace-only. Registration requires 4-128 UTF-16 code units and
+at most 512 UTF-8 bytes; login retains the maximum but does not apply the
+registration-only minimum. The registration minimum must be strengthened
+with coordinated Flutter validation before production release.
+
+The server always returns a rotated refresh token. Access defaults to 86400
+seconds; the refresh family has a fixed 2592000-second absolute lifetime.
+Access expiration is capped by family expiration. Consumed-token reuse revokes
+the entire family; a lost refresh response or failed device save can therefore
+require login. There is no grace period or automatic retry. Public auth routes
+do not require Bearer; profile identity comes only from verified JWT/session
+state, never query/body player IDs. Local Flutter logout does not revoke server
+credentials; a remote logout contract is deferred and required before release.
+
+Errors preserve the existing safe envelope: 400 `validationFailed`, 409
+`conflict` for duplicate username, 401 `unauthenticated` for invalid credentials
+or sessions, 429 `rateLimited`, and generic 500 `serverError` for internal/DB
+failures. Invalid login and refresh errors do not reveal account/token state.
+Authentication limits are process-local: 30 requests/IP/minute and 10
+registration/login attempts/canonical username/minute, with bounded memory.
 
 ## Operational Endpoints (Session 44)
 
@@ -195,7 +226,7 @@ the last session for a later attempt.
 
 ## Backend Authentication Integration
 
-When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connects registration, login, logout, and authenticated profile restoration to `BackendApiClient`.
+When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` connects registration, login, refresh, and authenticated profile restoration to `BackendApiClient`. Logout only clears local session storage.
 
 - Registration and login share the same `AuthResponseDto` completion pipeline.
 - A profile and Stoppy-issued `AuthSession` are mapped before the session is saved.
@@ -218,7 +249,7 @@ When `RepositoryRuntime.backend` is selected, `BackendAuthRepository` now connec
 
 ## Auth
 
-### POST /auth/register
+### POST /api/v1/auth/register
 
 Creates a new player account.
 
@@ -226,10 +257,10 @@ Server responsibilities:
 
 - validate username uniqueness
 - create player profile
-- initialize GP and competitive records
+- initialize profile GP to 5 (competitive record initialization remains deferred)
 - return authentication token/session
 
-### POST /auth/login
+### POST /api/v1/auth/login
 
 Authenticates an existing player.
 
@@ -241,7 +272,7 @@ Server responsibilities:
 
 ## Player
 
-### GET /player/profile
+### GET /api/v1/player/profile
 
 Returns the authenticated player's profile.
 
