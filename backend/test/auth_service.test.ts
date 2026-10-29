@@ -115,7 +115,8 @@ test('HTTP authentication uses the exact Flutter envelopes and leaves logout/com
     const refresh = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: newRefreshToken() } });
     assert.equal(refresh.statusCode, 200);
     assert.deepEqual(Object.keys(refresh.json().data), ['session']);
-    for (const url of ['/api/v1/auth/logout', '/api/v1/league/enter', '/api/v1/knockout/register', '/api/v1/runs/league']) {
+    for (const url of ['/api/v1/auth/logout', '/api/v1/league/enter', '/api/v1/knockout/register', '/api/v1/runs/league',
+      '/api/v1/gp/credit', '/api/v1/gp/debit']) {
       assert.equal((await app.inject({ method: 'POST', url })).statusCode, 404);
     }
   } finally { await app.close(); }

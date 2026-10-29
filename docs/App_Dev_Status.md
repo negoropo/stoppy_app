@@ -13760,3 +13760,821 @@ Future session policy:
 * Address production key management, remote logout, refresh integration and distributed rate limiting
 * Maintain comprehensive backend unit, PostgreSQL integration and Flutter regression tests
 * Do not introduce gameplay or economy redesigns without an explicitly approved scope
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 46 — Backend Player Profile + Game Points Persistence Foundation
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Implement the first persistent, auditable and transaction-safe Game Points (GP) economy foundation for the Stoppy backend, building on the PostgreSQL account and authentication infrastructure completed in Session 45.
+
+Introduce an immutable GP ledger, durable mutation idempotency, canonical request fingerprinting, atomic GP credit/debit primitives, concurrency-safe balance updates, opening-balance persistence and integration with new player registration.
+
+Ensure that existing accounts retain their balances, newly registered players retain exactly 5 initial GP, and all internal GP mutations preserve database consistency under concurrent operations, rejected business decisions, transaction failures and uncertain COMMIT outcomes.
+
+Preserve the existing Flutter player profile contracts, authentication security guarantees, mock runtime, gameplay, League, Knockout and GP economy rules.
+
+Server-authoritative run rewards, daily and warmup GP awarding, League and Knockout fee execution, purchases, ads integration, public GP mutation endpoints and production deployment remain outside this session.
+
+---
+
+### 📦 Deliverables
+
+* [x] Existing player profile and GP economy architecture reviewed
+* [x] Session 46 GP persistence architecture audit completed
+* [x] Existing GP earning and spending rules reviewed
+* [x] Existing PostgreSQL player balance persistence reviewed
+* [x] Flutter/backend player profile compatibility reviewed
+* [x] Existing GP ownership and mock repository responsibilities reviewed
+* [x] Server-authoritative GP persistence boundaries defined
+* [x] GP ledger persistence implemented
+* [x] Durable GP mutation persistence implemented
+* [x] Append-only migration `003_game_points_ledger.sql` created
+* [x] Migrations 001 and 002 preserved unchanged
+* [x] `stoppy_economy` PostgreSQL schema created
+* [x] `stoppy_economy.gp_ledger` table created
+* [x] `stoppy_economy.gp_mutations` table created
+* [x] Immutable GP ledger protections implemented
+* [x] Immutable mutation audit-record protections implemented
+* [x] GP balance arithmetic constraints implemented
+* [x] Nonnegative GP balance constraints preserved
+* [x] PostgreSQL integer overflow protection implemented
+* [x] Duplicate logical GP source protection implemented
+* [x] Cross-player mutation association protection implemented
+* [x] Ledger association with rejected mutations prevented
+* [x] Existing-player opening-balance backfill implemented
+* [x] Existing player balances preserved during migration
+* [x] Zero-delta opening snapshots implemented
+* [x] Opening snapshots for zero-GP accounts supported
+* [x] Duplicate opening snapshots prevented
+* [x] Transactional migration backfill and locking implemented
+* [x] Internal GP repository implemented
+* [x] Internal GP service implemented
+* [x] Atomic GP credit operations implemented
+* [x] Atomic GP debit operations implemented
+* [x] Insufficient-funds rejection implemented
+* [x] Balance overflow rejection implemented
+* [x] Transaction-bound GP repository operations implemented
+* [x] Player-level PostgreSQL row locking implemented
+* [x] Guarded GP balance updates implemented
+* [x] Concurrent credit and debit safety implemented
+* [x] Atomic balance, mutation and ledger persistence implemented
+* [x] GP transaction rollback guarantees preserved
+* [x] Durable GP mutation idempotency implemented
+* [x] Player-scoped idempotency keys implemented
+* [x] Operation name and version scoping implemented
+* [x] Versioned SHA-256 request fingerprints implemented
+* [x] Deterministic JSON intent canonicalization implemented
+* [x] Accepted mutation replay implemented
+* [x] Definitive rejection replay implemented
+* [x] Idempotency-key conflict detection implemented
+* [x] Duplicate-source rejection across different keys implemented
+* [x] Historical mutation outcomes separated from current balances
+* [x] Explicit same-key retry semantics preserved
+* [x] Uncertain COMMIT protection preserved
+* [x] No automatic retry after uncertain transactions
+* [x] Missing opening-snapshot fail-closed behavior implemented
+* [x] New-player opening-snapshot registration integration implemented
+* [x] Initial player balance of exactly 5 GP preserved
+* [x] Atomic player, opening snapshot and authentication session creation implemented
+* [x] Existing registration/login/refresh/profile contracts preserved
+* [x] Existing player sessions and balances preserved
+* [x] Flutter high-GP balance truncation defect identified
+* [x] Flutter `PlayerProfile.copyWith()` upper clamp removed
+* [x] Valid authoritative balances above 999,999 GP preserved
+* [x] Existing negative-GP copy behavior preserved
+* [x] Flutter player profile and Knockout regression tests added
+* [x] Final cross-component security and integration audit completed
+* [x] PostgreSQL least-privilege runtime tests implemented
+* [x] Separate restricted PostgreSQL login tested
+* [x] Audit-table UPDATE/DELETE/TRUNCATE protections tested
+* [x] Audit-trigger and protected-DDL restrictions tested
+* [x] Legitimate authentication operations tested with restricted credentials
+* [x] Legitimate economy operations tested with restricted credentials
+* [x] Migration and registration deployment ordering documented
+* [x] PostgreSQL runtime and migration role separation requirements documented
+* [x] Backend economy documentation updated
+* [x] Backend README corrected
+* [x] Project architecture documentation updated
+* [x] Persistence documentation updated
+* [x] Existing Flutter mock runtime preserved
+* [x] Existing gameplay and competitive rules preserved
+* [x] No public arbitrary-GP mutation endpoint introduced
+* [x] Session 46 implementation completed in incremental stages
+* [x] Final targeted compatibility correction completed
+* [x] Eight critical implementation and test files manually reviewed
+* [x] `npm run typecheck` passed
+* [x] `npm run build` passed
+* [x] `npm test` passed — 95 tests
+* [x] PostgreSQL integration tests passed — 66 tests
+* [x] Focused migration tests passed — 9 tests
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed — 648 tests
+* [x] `git diff --check` passed
+
+---
+
+### 🛠️ Work Done
+
+* Reviewed the existing Flutter GP economy architecture:
+  * `PlayerProfile`
+  * `PlayerProfileDto`
+  * `BackendAuthRepository`
+  * `MockAuthRepository`
+  * `GamePointRewardCalculator`
+  * `WarmupAvailabilityPolicy`
+  * `GameScreen`
+  * League entry and re-entry GP handling
+  * Knockout registration GP handling
+  * Mock purchase GP handling
+  * Existing backend API and idempotency contracts
+
+* Confirmed the existing GP economy rules:
+  * New players start with 5 GP
+  * Completed League and Knockout runs award 1 GP under the existing client economy rules
+  * Warmup completion awards 1 GP when reaching at least 10,000 PP
+  * The first completed run of a local calendar day awards 2 additional GP under the existing client rules
+  * Weekly League entry and re-entry cost 10 GP
+  * Monthly Knockout registration costs 25 GP
+  * Warmup availability is documented for players with fewer than 10 GP
+  * Existing GP purchase packs contain 10 GP and 25 GP
+  * No existing GP earning, spending or purchase rule was changed
+
+* Identified existing economy ownership limitations:
+  * GP rewards were previously calculated in Flutter gameplay
+  * League and Knockout screens handled existing client-side fee projections
+  * Mock repositories stored and returned local player profiles
+  * Backend player balances already existed in PostgreSQL
+  * No durable GP transaction history previously existed
+  * No server-side reward or fee evidence validation was available
+  * Client-provided balances and reward amounts must not be treated as authoritative
+
+* Created migration `003_game_points_ledger.sql`:
+  * Added PostgreSQL schema `stoppy_economy`
+  * Added immutable `gp_ledger` table
+  * Added durable `gp_mutations` table
+  * Added UUID primary keys and player foreign keys
+  * Added mutation status and fingerprint constraints
+  * Added player-scoped operation/idempotency uniqueness
+  * Added logical GP source uniqueness
+  * Added opening-snapshot constraints
+  * Added ledger movement arithmetic constraints
+  * Added nonnegative balance constraints
+  * Added accepted-mutation association constraints
+  * Added ledger and mutation audit indexes
+  * Preserved migrations 001 and 002 unchanged
+
+* Implemented GP ledger persistence:
+  * Signed GP movement deltas
+  * Balance before each movement
+  * Balance after each movement
+  * Credit, debit and opening-snapshot movement types
+  * Explicit movement reasons
+  * Stable logical source identifiers
+  * Associated accepted mutation identifiers
+  * Server-generated timestamps
+  * Database-enforced movement arithmetic
+  * Duplicate logical source protection
+  * Cross-player mutation reference protection
+  * Rejected mutation association prevention
+
+* Implemented append-only audit protections:
+  * PostgreSQL statement-level triggers
+  * UPDATE protection
+  * DELETE protection
+  * TRUNCATE protection
+  * Restricted schema and function privileges
+  * Ledger mutation restrictions
+  * Durable mutation-record rewrite restrictions
+  * Requirement for runtime credentials without ownership or protected DDL privileges
+
+* Implemented existing-player opening-balance backfill:
+  * One opening snapshot for each existing player
+  * Opening movement delta of zero
+  * Existing `game_points` preserved
+  * `balance_before` equal to the existing balance
+  * `balance_after` equal to the existing balance
+  * Canonical player-ID opening source
+  * No associated GP mutation
+  * No additional initial 5 GP credit
+  * Zero-GP account support
+  * Player-write locking during migration
+  * Transactional migration rollback guarantees
+
+* Implemented `GpRepository`:
+  * Transaction-bound database access
+  * Opening-snapshot insertion
+  * Player balance locking using `SELECT ... FOR UPDATE`
+  * Existing mutation lookup
+  * Opening-snapshot existence verification
+  * Logical movement source lookup
+  * Guarded GP balance updates
+  * Durable mutation outcome persistence
+  * GP ledger movement persistence
+  * No independent transaction ownership
+  * No separate connection acquisition
+  * No automatic transaction retry
+
+* Implemented `GpService`:
+  * Internal trusted credit primitive
+  * Internal trusted debit primitive
+  * Shared PostgreSQL transaction execution
+  * Player-first lock ordering
+  * Explicit READ COMMITTED transaction isolation
+  * Current authoritative balance retrieval
+  * Missing-player handling
+  * Missing-opening-snapshot fail-closed protection
+  * Existing mutation replay
+  * Idempotency conflict detection
+  * Duplicate logical source rejection
+  * Insufficient-funds rejection
+  * Balance overflow rejection
+  * Atomic balance and audit persistence
+  * Historical outcome and current balance separation
+  * Infrastructure failure handling
+  * Conservative uncertain-COMMIT handling
+
+* Implemented safe GP arithmetic:
+  * Strictly positive integer credit/debit amounts
+  * Maximum signed PostgreSQL integer balance of 2,147,483,647
+  * Widened `bigint` arithmetic during balance calculations
+  * Guarded SQL updates
+  * Expected previous-balance verification
+  * Negative resulting balances rejected
+  * Overflowing resulting balances rejected
+  * No undocumented 999,999 GP business cap introduced
+
+* Implemented durable idempotency:
+  * Authenticated-player scope expected from trusted future callers
+  * Operation name and version scope
+  * Existing compatible idempotency-key character rules
+  * Versioned SHA-256 fingerprints
+  * Deterministic canonical JSON representation
+  * Sorted object properties
+  * Preserved array ordering
+  * Distinct JSON value types
+  * Validated intent size and depth
+  * Immutable mutation outcomes
+  * Same-key/same-intent accepted replay
+  * Same-key/same-intent definitive rejection replay
+  * Same-key/different-intent conflict
+  * Duplicate source protection across different keys
+  * Historical balance snapshots preserved on replay
+  * Current authoritative balance returned separately
+  * Explicit same-key retry required after ambiguous failures
+
+* Implemented GP intent validation:
+  * Internal `GpCommand` contract
+  * Player identifier validation
+  * Operation identity validation
+  * Idempotency-key validation
+  * Positive integer amount validation
+  * Stable source type and identifier validation
+  * Reserved opening-snapshot identity protection
+  * Canonical business context representation
+  * Rejection of unsupported JSON values
+  * Canonical fingerprint generation
+  * Validated intent snapshot before asynchronous execution
+
+* Integrated opening snapshots into PostgreSQL registration:
+  * Existing player registration transaction reused
+  * Player inserted with database-default 5 GP
+  * One zero-delta opening snapshot inserted
+  * Opening source derived from the new player UUID
+  * Authentication session created in the same transaction
+  * Refresh-token credential created in the same transaction
+  * One final COMMIT
+  * No additional GP credit
+  * No secondary GP transaction
+  * No independent database connection
+  * Duplicate opening snapshots rejected rather than silently ignored
+  * Registration rollback preserves cross-component consistency
+
+* Preserved authentication compatibility:
+  * Existing registration request and response contracts
+  * Existing login behavior
+  * Existing refresh-token rotation and replay detection
+  * Existing authenticated profile retrieval
+  * Existing JWT verification requirements
+  * Existing password hashing and validation
+  * Existing canonical username uniqueness
+  * Existing session ownership and revocation guarantees
+  * Existing connection lifecycle protection
+  * Existing uncertain transaction handling
+  * Existing Flutter authentication DTO compatibility
+
+* Implemented economy and registration regression tests:
+  * GP ledger schema constraints
+  * Opening-snapshot backfill
+  * Migration rollback
+  * Duplicate source rejection
+  * Invalid arithmetic rejection
+  * Overflow handling
+  * Concurrent credits
+  * Concurrent debits
+  * Concurrent credit/debit interaction
+  * Insufficient funds
+  * Accepted replay
+  * Rejected replay
+  * Fingerprint conflicts
+  * Cross-player idempotency separation
+  * Duplicate logical source protection
+  * Transaction fault injection
+  * Uncertain COMMIT outcomes
+  * Ledger reconciliation
+  * Registration opening-snapshot creation
+  * Registration rollback
+  * Concurrent registration
+  * Existing-account compatibility
+  * Authenticated profile compatibility
+
+* Performed final cross-component integration and security audit:
+  * Economy transaction boundaries reviewed
+  * Registration atomicity reviewed
+  * PostgreSQL row locking reviewed
+  * Concurrency tests reviewed
+  * Fingerprint canonicalization reviewed
+  * Mutation replay and duplicate-source handling reviewed
+  * Ledger arithmetic and immutability reviewed
+  * Authentication compatibility reviewed
+  * Migration and deployment ordering reviewed
+  * Runtime database privileges reviewed
+  * Flutter high-balance handling reviewed
+  * One confirmed Flutter compatibility defect identified
+  * Deployment and least-privilege requirements documented
+
+* Identified and corrected the Flutter GP balance truncation defect:
+  * `PlayerProfile.copyWith()` previously limited balances to 999,999
+  * PostgreSQL supports valid balances above that value
+  * Existing authoritative balances could be silently reduced during profile copying
+  * Removed the upper clamp
+  * Preserved valid balances up to 2,147,483,647
+  * Preserved the existing negative-value guard
+  * Preserved existing player profile constructors and JSON contracts
+  * Added player-profile regression tests
+  * Added backend DTO high-balance regression tests
+  * Added Knockout backend-authoritative fallback regression tests
+
+* Implemented restricted PostgreSQL runtime-role integration tests:
+  * Dedicated temporary non-superuser role created
+  * Separate authenticated PostgreSQL runtime connection used
+  * Runtime role does not own protected economy tables
+  * Legitimate registration tested
+  * Opening snapshot persistence tested
+  * Login and refresh-token rotation tested
+  * Refresh-token replay revocation tested
+  * GP credit and debit tested
+  * Durable replay tested
+  * Insufficient-funds rejection tested
+  * Audit UPDATE/DELETE/TRUNCATE attempts rejected
+  * Trigger disabling attempts rejected
+  * Protected schema/table/function modification attempts rejected
+  * Unauthorized profile attribute changes rejected
+  * Unauthorized initial-balance selection rejected
+  * Temporary roles and connections cleaned up after testing
+
+* Documented production deployment requirements:
+  * Migration 003 must be applied before starting updated registration workers
+  * Old registration workers must be drained before the migration backfill
+  * Unrestricted mixed-version registration deployment is unsafe
+  * Opening-snapshot coverage must be verified before economy activation
+  * Migration and application database credentials must be separated
+  * Runtime database credentials must not own audit tables or disable their protections
+  * Production grants and rollout ordering remain subject to deployment verification
+  * Direct database updates to player balances remain a privilege/trust-boundary consideration
+
+* Updated backend and project documentation:
+  * `backend/README.md`
+  * `backend/src/economy/README.md`
+  * `docs/Architecture.md`
+  * `docs/Persistence_Map.md`
+  * GP persistence and transaction ownership
+  * Opening-balance behavior
+  * Internal economy service responsibilities
+  * Durable mutation/idempotency persistence
+  * Deployment sequencing
+  * PostgreSQL least-privilege requirements
+  * Explicitly deferred GP business integrations
+
+* Completed independent manual review of eight critical files:
+  * `backend/migrations/003_game_points_ledger.sql`
+  * `backend/src/economy/gp_service.ts`
+  * `backend/src/transaction.ts`
+  * `backend/src/economy/gp_repository.ts`
+  * `backend/src/economy/gp_intent.ts`
+  * `backend/src/auth/auth_repository.ts`
+  * `lib/features/auth/domain/models/player_profile.dart`
+  * `backend/test/integration/gp_runtime_role_cases.ts`
+
+* Preserved existing gameplay and competitive functionality:
+  * No gameplay changes
+  * No Precision Points scoring changes
+  * No GP reward or pricing rule changes
+  * No League business rule changes
+  * No Knockout business rule changes
+  * No public arbitrary-GP mutation route
+  * No server-authoritative run reward activation
+  * No backend League/Knockout fee execution
+  * No purchase or ads integration
+  * Flutter mock runtime remains the default
+  * Backend runtime remains opt-in
+
+---
+
+### 📁 Files Changed
+
+Backend migration:
+
+* `backend/migrations/003_game_points_ledger.sql`
+
+Backend GP economy production code:
+
+* `backend/src/economy/gp_intent.ts`
+* `backend/src/economy/gp_repository.ts`
+* `backend/src/economy/gp_service.ts`
+
+Backend authentication integration:
+
+* `backend/src/auth/auth_repository.ts`
+
+Backend unit tests:
+
+* `backend/test/gp_service.test.ts`
+* `backend/test/auth_registration_gp.test.ts`
+* `backend/test/auth_service.test.ts`
+* `backend/test/migrations.test.ts`
+
+Backend PostgreSQL integration tests:
+
+* `backend/test/integration/gp_schema_cases.ts`
+* `backend/test/integration/gp_service_cases.ts`
+* `backend/test/integration/registration_gp_cases.ts`
+* `backend/test/integration/gp_runtime_role_cases.ts`
+* `backend/test/integration/postgres.test.ts`
+
+Flutter production code:
+
+* `lib/features/auth/domain/models/player_profile.dart`
+
+Flutter tests:
+
+* `test/features/auth/domain/models/player_profile_test.dart`
+* `test/features/auth/data/dto/player_profile_dto_test.dart`
+* `test/features/knockout/presentation/screens/knockout_home_screen_test.dart`
+
+Backend documentation:
+
+* `backend/README.md`
+* `backend/src/economy/README.md`
+
+Project documentation:
+
+* `docs/Architecture.md`
+* `docs/Persistence_Map.md`
+
+Final status documentation:
+
+* `docs/App_Dev_Status.md`
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Session 46 establishes the first persistent server-side GP economy transaction foundation.
+* PostgreSQL `stoppy_auth.players.game_points` remains the authoritative current GP balance.
+* The GP ledger is an audit history, not a second competing balance store.
+* The existing player balance is represented by an opening snapshot.
+* Opening snapshots do not add GP to a player's balance.
+* Existing player GP balances were preserved during migration 003.
+* New registrations continue to begin with exactly 5 GP.
+* New registrations create the player, opening snapshot, authentication session and refresh-token credentials atomically.
+* The economy service requires an opening snapshot before executing GP balance mutations.
+* Accounts without an opening snapshot fail closed rather than receiving an invented credit.
+* The GP ledger contains immutable accounting movements.
+* GP mutation records contain immutable final semantic outcomes.
+* PostgreSQL constraints enforce valid movement arithmetic and nonnegative recorded balances.
+* Logical GP source uniqueness prevents repeated credits or charges for the same source.
+* Mutations and ledger entries are linked to the same player.
+* Ledger entries cannot reference definitively rejected mutations.
+* Accepted GP movements update the authoritative balance and record the mutation and ledger entry in one transaction.
+* Rejected GP operations do not change the balance.
+* Insufficient funds is a definitive business rejection.
+* Balance overflow is a definitive business rejection.
+* Duplicate logical sources are rejected.
+* Durable idempotency keys are scoped by player, operation name and operation version.
+* Request fingerprints are generated from canonical validated business intent.
+* JSON object property order does not affect the fingerprint.
+* JSON value types and array order remain significant.
+* Reusing the same key for a different intent results in an idempotency conflict.
+* Replaying the same committed intent returns its original semantic outcome.
+* Historical replay balance values are not authoritative current balances.
+* Concurrent GP operations on the same player are serialized using PostgreSQL row locking.
+* Database updates use guarded arithmetic with widened integer calculations.
+* The supported persisted GP balance range is defined by PostgreSQL's nonnegative signed integer domain.
+* No artificial upper limit of 999,999 GP was introduced.
+* Flutter `PlayerProfile.copyWith()` now preserves valid authoritative GP balances above 999,999.
+* The existing negative-value copy behavior remains unchanged.
+* PostgreSQL transactions preserve rollback and uncertain-COMMIT safeguards from Session 44.
+* No automatic retry occurs after uncertain COMMIT outcomes.
+* Explicit retries must reuse the same mutation identity and idempotency key.
+* Infrastructure failures are not converted into definitive business rejections.
+* The economy service is an internal trusted backend component.
+* Authentication and business eligibility must be enforced by future trusted callers.
+* Mobile clients must never choose arbitrary authoritative GP credits, debits or balances.
+* The server does not currently validate submitted competitive runs.
+* GP rewards for completed runs remain outside the current backend implementation.
+* Daily GP rewards remain outside the current backend implementation.
+* Warmup GP rewards remain outside the current backend implementation.
+* League entry and re-entry fees remain outside the current backend business implementation.
+* Knockout registration fees remain outside the current backend business implementation.
+* GP purchase verification and fulfillment remain unimplemented.
+* Rewarded ads and ads-removal business integrations remain deferred.
+* No public HTTP endpoint was added for arbitrary GP credits or debits.
+* Existing Flutter League and Knockout backend client contracts remain unchanged.
+* Real server-side competitive endpoints remain future work.
+* Weekly League and monthly Knockout settlement remain future server responsibilities.
+* Server-authoritative run scoring and anti-cheat remain pending.
+* The existing mock runtime remains the default.
+* The real backend runtime remains opt-in.
+* Session 46 does not establish complete end-to-end gameplay against the real backend.
+* The migration runner must apply migration 003 before the updated registration code is deployed.
+* Old registration workers must stop accepting registrations before migration 003 runs.
+* Mixed old/new registration workers can create accounts without opening snapshots if deployment ordering is not controlled.
+* Existing players must be checked for missing opening snapshots before activating economy business flows.
+* Production runtime database credentials must be separate from privileged migration credentials.
+* Runtime credentials must not own audit tables or possess protected DDL/trigger-disabling privileges.
+* Restricted-role integration tests demonstrate the intended permission model in a disposable PostgreSQL environment.
+* Local restricted-role tests do not verify actual production database credentials or grants.
+* Production permissions and rollout procedures remain mandatory deployment checks.
+* Runtime access to `UPDATE (game_points)` is necessary for the current internal service implementation.
+* PostgreSQL ledger constraints do not independently enforce that every possible direct balance update has a matching ledger movement.
+* Avoiding unauthorized direct balance updates remains dependent on trusted application code, database access control and future security review.
+* Stronger database-level coupling between balance updates and ledger movements may be considered before production if the threat model requires it.
+* The final independent review found no approval-blocking defect in the eight inspected critical files.
+* One initial observation about conservative COMMIT error classification was resolved by reviewing `transaction.ts`.
+* The original Flutter high-balance compatibility defect was corrected and regression-tested.
+* Automated test results were reported by Codex.
+* Local PostgreSQL tests used a disposable database and restricted test credentials where applicable.
+* The production database was not deployed or validated.
+* No real mobile-to-backend GP economy integration test was performed.
+* No production GP rewards, fees or purchases were activated.
+* No commit or push was performed during the reported implementation and review.
+
+---
+
+### 🧪 Validation
+
+* [x] GP persistence architecture audit completed
+* [x] Existing economy and profile rules reviewed
+* [x] PostgreSQL player balance schema reviewed
+* [x] Migration 003 implemented
+* [x] Existing migration checksums preserved
+* [x] Opening-balance backfill tested
+* [x] Existing balances preserved during backfill
+* [x] Zero-GP opening snapshots tested
+* [x] Duplicate opening snapshots rejected
+* [x] Ledger arithmetic constraints tested
+* [x] Ledger overflow protection tested
+* [x] Duplicate logical source constraints tested
+* [x] Cross-player mutation association constraints tested
+* [x] Audit record immutability tested
+* [x] Migration rollback behavior tested
+* [x] Atomic GP credit tested
+* [x] Atomic GP debit tested
+* [x] Insufficient-funds handling tested
+* [x] GP balance overflow handling tested
+* [x] Concurrent credits tested
+* [x] Concurrent debits tested
+* [x] Concurrent credit/debit interaction tested
+* [x] PostgreSQL lock contention verified
+* [x] Accepted idempotency replay tested
+* [x] Definitive rejection replay tested
+* [x] Idempotency fingerprint conflicts tested
+* [x] Duplicate logical source behavior tested
+* [x] Cross-player idempotency separation tested
+* [x] Transaction failure rollback tested
+* [x] Uncertain COMMIT outcomes tested
+* [x] Durable mutation replay tested
+* [x] GP ledger reconciliation tested
+* [x] New registration opening-snapshot creation tested
+* [x] Initial 5 GP balance preserved
+* [x] Registration rollback behavior tested
+* [x] Concurrent registration tested
+* [x] Duplicate username behavior tested
+* [x] Existing account compatibility tested
+* [x] Authentication/profile compatibility tested
+* [x] Login and refresh-token lifecycle regression tested
+* [x] Internal GP service availability after registration tested
+* [x] Final cross-component integration audit completed
+* [x] Flutter high-balance defect identified and corrected
+* [x] Flutter high-balance model regression tests passed
+* [x] High-balance DTO decoding tested
+* [x] Knockout authoritative balance projection tested
+* [x] Restricted PostgreSQL runtime identity tested
+* [x] Restricted-role authentication operations tested
+* [x] Restricted-role economy operations tested
+* [x] Restricted-role ledger rewrite denial tested
+* [x] Restricted-role trigger disabling denied
+* [x] Restricted-role protected DDL denied
+* [x] Temporary PostgreSQL role cleanup verified
+* [x] Deployment sequencing documented
+* [x] Runtime/migration privilege separation requirements documented
+* [x] `003_game_points_ledger.sql` manually reviewed
+* [x] `gp_service.ts` manually reviewed
+* [x] `transaction.ts` manually reviewed
+* [x] `gp_repository.ts` manually reviewed
+* [x] `gp_intent.ts` manually reviewed
+* [x] `auth_repository.ts` manually reviewed
+* [x] `player_profile.dart` manually reviewed
+* [x] `gp_runtime_role_cases.ts` manually reviewed
+* [x] Backend typecheck passed
+* [x] Backend build passed
+* [x] Backend unit tests passed — 95 tests
+* [x] PostgreSQL integration tests passed — 66 tests
+* [x] Focused migration tests passed — 9 tests
+* [x] `flutter analyze` passed
+* [x] Full Flutter test suite passed — 648 tests
+* [x] `git diff --check` passed
+
+Final automated validation commands reported by Codex:
+
+```bash
+cd backend
+npm run typecheck
+npm run build
+npm test
+env NODE_ENV=test TEST_DATABASE_URL=postgresql://stoppy@127.0.0.1:55446/stoppy_gp_test npm run test:integration
+node --import tsx --test test/migrations.test.ts
+```
+
+Flutter and repository validation:
+
+```bash
+flutter analyze
+flutter test --reporter compact
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `npm run typecheck` — passed
+* `npm run build` — passed
+* `npm test` — **95 tests passed**
+* PostgreSQL integration — **66 tests passed**
+* Focused migration tests — **9 tests passed**
+* `flutter analyze` — no issues
+* `flutter test` — **648 tests passed**
+* `git diff --check` — passed
+* Total primary automated test suites — **809 passed, 0 failed**
+* Focused migration tests were executed separately and are not added again to the primary total
+
+Manual validation:
+
+* Eight critical Session 46 files reviewed individually.
+* GP ledger migration and constraints reviewed.
+* GP transaction, locking and balance update logic reviewed.
+* Durable mutation idempotency and replay logic reviewed.
+* Transaction BEGIN/COMMIT/ROLLBACK safeguards reviewed.
+* GP intent canonicalization and fingerprinting reviewed.
+* Atomic new-player registration and opening-snapshot creation reviewed.
+* Flutter high-balance compatibility correction reviewed.
+* Restricted PostgreSQL role and audit-protection tests reviewed.
+* No additional approval-blocking defect identified in the inspected implementation.
+* Production deployment credentials, grants and rollout gates remain unverified.
+* No real mobile-to-backend GP business flow was executed.
+* Session 46 accepted as technically complete within its agreed scope.
+
+---
+
+### 📌 Next Session
+
+**Proposed:** Session 47 — Backend GP Business Integration Readiness + Authoritative Run Validation Planning
+
+Planned focus (to confirm when opening the next session):
+
+* [ ] Review the completed Session 46 GP repository and service contracts
+* [ ] Review existing Flutter run completion and GP reward workflows
+* [ ] Review existing League and Knockout backend client mutation contracts
+* [ ] Identify trusted server-side sources for GP earning and spending
+* [ ] Define the authoritative player identity requirements for GP business operations
+* [ ] Define the server-side run identity and validation requirements
+* [ ] Review the existing anti-cheat architecture and untrusted client run claims
+* [ ] Determine how validated run completion will authorize GP rewards
+* [ ] Define the durable source identity for each future GP reward
+* [ ] Define daily GP uniqueness and reward eligibility
+* [ ] Review Europe/Lisbon calendar-day and DST requirements
+* [ ] Define warmup run eligibility and reward validation
+* [ ] Define League entry fee validation and transaction requirements
+* [ ] Define Knockout registration fee validation and transaction requirements
+* [ ] Determine which first business integration can be implemented safely without trusting client balances or scores
+* [ ] Define atomic relationships between future business records and GP mutations
+* [ ] Define retry and idempotency requirements for client-facing business operations
+* [ ] Identify necessary backend persistence and API contract changes
+* [ ] Identify Flutter/backend integration boundaries
+* [ ] Prepare deterministic backend unit and PostgreSQL integration tests
+* [ ] Preserve existing Flutter gameplay and economy rules
+* [ ] Preserve the default Flutter mock runtime
+
+Session boundary:
+
+* The exact Session 47 scope is proposed and must be approved before implementation.
+* Do not activate GP rewards from unverified client run submissions.
+* Do not allow clients to choose authoritative GP amounts or balances.
+* Do not trust client-supplied player identities or competitive scores.
+* Do not introduce arbitrary GP credit/debit endpoints.
+* Reuse Session 46 transactions, ledger and durable idempotency infrastructure.
+* Preserve all existing GP earning, spending and pricing rules.
+* Keep League and Knockout lifecycle business decisions server-authoritative.
+* Resolve calendar-day and timezone semantics before implementing daily rewards.
+* Preserve append-only PostgreSQL migrations.
+* Keep development incremental, independently testable and reviewable.
+
+---
+
+### 📊 Progress Update
+
+* ✅ Sessions 1–45 — Completed, including intermediate refinement sessions and superseded functionality
+* ✅ Session 46 — Backend Player Profile + Game Points Persistence Foundation
+* ⏳ Session 47 — Backend GP Business Integration Readiness + Authoritative Run Validation Planning (proposed)
+
+---
+
+### 🧭 Current State
+
+Last completed session: **Session 46 — Backend Player Profile + Game Points Persistence Foundation**
+
+Status: **Completed ✅**
+
+Next proposed session: **Session 47 — Backend GP Business Integration Readiness + Authoritative Run Validation Planning**
+
+Current backend state:
+
+* Node.js 24, TypeScript and Fastify application server foundation implemented
+* PostgreSQL connectivity and transactional migration infrastructure implemented
+* Health and readiness endpoints implemented
+* PostgreSQL player account and authentication session persistence implemented
+* Registration, login, refresh and authenticated profile endpoints implemented
+* Argon2id password hashing implemented
+* EdDSA JWT signing and verification implemented
+* PostgreSQL session validation and refresh-token replay revocation implemented
+* Server-authoritative authenticated player identity infrastructure implemented
+* PostgreSQL transaction and connection lifecycle protections implemented
+* PostgreSQL economy schema introduced through migration 003
+* Immutable GP ledger and durable mutation records implemented
+* Existing GP balances documented through opening snapshots
+* New registrations atomically create opening snapshots
+* Initial GP balance remains exactly 5
+* Internal atomic GP credit/debit service implemented
+* Concurrency-safe GP balance updates implemented
+* Durable idempotency, fingerprinting and replay implemented
+* GP ledger reconciliation supported through opening balances and committed movements
+* Flutter high-balance profile compatibility corrected
+* PostgreSQL restricted-role economy/authentication integration tests implemented
+* Backend unit and PostgreSQL integration tests passing
+* Flutter mock runtime remains the default
+* Existing Flutter authentication REST contracts preserved
+* Existing Flutter League and Knockout backend client contracts preserved
+* GP business reward and fee endpoints remain unimplemented
+* Server-authoritative run validation remains unimplemented
+* Real backend League and Knockout business endpoints remain unimplemented
+* Server-authoritative Precision Points and anti-cheat remain pending
+* GP purchase and ads business integrations remain pending
+* Mobile-to-backend end-to-end gameplay validation remains pending
+* Production PostgreSQL roles, grants and deployment ordering remain unverified
+* Controlled migration deployment and opening-snapshot verification remain required
+* Direct SQL balance updates remain a database trust-boundary consideration
+* Production deployment remains pending
+
+Future session policy:
+
+* Keep implementation sessions narrowly scoped and independently testable
+* Continue reviewing Codex changes before marking sessions completed
+* Preserve Flutter gameplay and existing competitive rules
+* Keep authenticated identity and competitive state server-authoritative
+* Preserve mock repositories as the default until real backend integration is ready
+* Reuse the completed Session 45 authentication infrastructure
+* Reuse the completed Session 46 GP ledger and internal transaction service
+* Never trust client-supplied player identities, GP balances or authoritative scores
+* Require trusted business evidence before awarding or charging GP
+* Require atomic mutation idempotency and request fingerprint verification
+* Treat submitted runs as untrusted claims until complete server validation exists
+* Preserve explicit retry semantics without unsafe automatic retries
+* Keep League and Knockout settlement and authoritative calculations on the server
+* Address Europe/Lisbon timezone and DST correctness before production scheduling
+* Introduce real Simulator end-to-end tests when compatible backend endpoints are available
+* Keep PostgreSQL migrations append-only and checksum-protected
+* Preserve PostgreSQL transaction and connection lifecycle safeguards
+* Keep production runtime database privileges separate from migration privileges
+* Verify ledger integrity, opening-snapshot coverage and deployment safety before production
+* Preserve authentication security, JWT verification and refresh-token replay protection
+* Maintain comprehensive backend unit, PostgreSQL integration and Flutter regression tests
+* Do not introduce gameplay or economy redesigns without an explicitly approved scope

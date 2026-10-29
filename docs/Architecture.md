@@ -1,5 +1,17 @@
 # Architecture — Stoppy 🧠
 
+## Session 46 Registration Opening Snapshot (Step 3)
+
+`PostgresAuthRepository.register` now creates the player's GP opening snapshot
+through the transaction-bound `GpRepository`, between account and session/token
+insertion on the existing connection. The authoritative database default stays
+5 GP; the snapshot observes it with zero delta and no credit/debit mutation.
+All registration rows commit or roll back together. Duplicate opening identities
+abort rather than being silently ignored; uncertain COMMITs are not retried.
+Existing accounts retain migration 003's backfill unchanged. Auth/profile payloads
+and Flutter mock-default runtime are unchanged. No GP business reward, fee or
+mutation HTTP route is activated; this does not complete Session 46.
+
 ## Session 45 Server Authentication (Pending Review)
 
 Four existing Flutter auth contracts now have PostgreSQL-backed server handlers:

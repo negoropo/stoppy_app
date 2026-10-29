@@ -62,11 +62,13 @@ class PlayerProfile {
     bool? hasWeeklyLeagueEntry,
     bool? reservedLeagueSlot,
   }) {
+    final updatedGamePoints = gamePoints ?? this.gamePoints;
     return PlayerProfile(
       id: id ?? this.id,
       username: username ?? this.username,
       createdAt: createdAt ?? this.createdAt,
-      gamePoints: (gamePoints ?? this.gamePoints).clamp(0, 999999),
+      // Preserve authoritative balances; only retain the existing negative guard.
+      gamePoints: updatedGamePoints < 0 ? 0 : updatedGamePoints,
       lastDailyGpAwardedAt: identical(lastDailyGpAwardedAt, _sentinel)
           ? this.lastDailyGpAwardedAt
           : lastDailyGpAwardedAt as DateTime?,

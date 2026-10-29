@@ -4,6 +4,26 @@ import 'package:stoppy_app/features/auth/data/dto/player_profile_dto.dart';
 import 'package:stoppy_app/features/auth/domain/models/player_profile.dart';
 
 void main() {
+  for (final balance in [999999, 1000000, 2147483647]) {
+    test(
+      'PlayerProfileDto preserves $balance GP through decoding and copying',
+      () {
+        final decoded = PlayerProfileDto.fromJson({
+          'id': 'player-id',
+          'username': 'Tester',
+          'createdAt': '2026-06-03T12:00:00Z',
+          'gamePoints': balance,
+        }).toDomain();
+        expect(decoded.gamePoints, balance);
+        expect(decoded.copyWith(adsRemoved: true).gamePoints, balance);
+        expect(
+          PlayerProfileDto.fromDomain(decoded).toJson()['gamePoints'],
+          balance,
+        );
+      },
+    );
+  }
+
   test('PlayerProfileDto round-trips domain profile JSON', () {
     final profile = PlayerProfile(
       id: 'player-id',

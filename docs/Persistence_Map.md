@@ -1,5 +1,16 @@
 # Persistence Map
 
+## Session 46 Registration Opening Snapshot (Step 3)
+
+New account registration inserts one `stoppy_economy.gp_ledger` opening snapshot
+on its existing transaction connection, alongside `stoppy_auth.players`, session
+and refresh-token rows. The default balance is 5 GP; the snapshot has delta 0,
+before/after 5, source type `opening_snapshot`, canonical player UUID source ID,
+and no mutation reference. The source uniqueness constraint prevents duplicates.
+Any write failure rolls back the registration; COMMIT uncertainty remains explicit
+and is never automatically retried. Existing migration 003 snapshots and balances
+are not rewritten. GP business producers and mutation endpoints remain deferred.
+
 ## Session 45 Account and Session Persistence (Pending Review)
 
 | Entity | Server owner | PostgreSQL table | Integrity boundary |

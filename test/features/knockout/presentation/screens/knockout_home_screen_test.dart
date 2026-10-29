@@ -210,6 +210,52 @@ void main() {
     expect(find.text('Registered'), findsOneWidget);
   });
 
+  for (final balance in [1000000, 2147483647]) {
+    testWidgets('backend fallback preserves authoritative $balance GP', (
+      WidgetTester tester,
+    ) async {
+      PlayerProfile? updatedProfile;
+      final playerProfile = PlayerProfile(
+        id: 'player-id',
+        username: 'Tester',
+        createdAt: DateTime(2026),
+        gamePoints: 100,
+      );
+      final repository = _ServerAuthoritativeKnockoutScreenRepository(
+        initialTournament: _registrationTournament(),
+        registrationOutcomes: [
+          _registrationSuccess(
+            tournament: _registrationTournamentWithEntry(),
+            playerProfile: null,
+            remainingGamePoints: balance,
+          ),
+        ],
+      );
+      final authRepository = _UpdatingAuthRepository(playerProfile);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: KnockoutHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: authRepository,
+            knockoutRepository: repository,
+            onPlayerProfileUpdated: (profile) => updatedProfile = profile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Register for Knockout'));
+      await tester.pumpAndSettle();
+      expect(updatedProfile?.gamePoints, balance);
+      expect(authRepository.updateCalls, 0);
+      expect(repository.registrationKeys, hasLength(1));
+      expect(find.text('Your GP: $balance'), findsOneWidget);
+      expect(
+        find.text('You are registered for this monthly Knockout.'),
+        findsOneWidget,
+      );
+    });
+  }
+
   testWidgets('ambiguous backend registration retry reuses same key', (
     WidgetTester tester,
   ) async {

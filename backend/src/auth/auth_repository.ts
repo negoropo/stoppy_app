@@ -2,6 +2,7 @@ import type { Database, QueryConnection } from '../database.js';
 import { inTransaction } from '../transaction.js';
 import { ApiError } from '../api_error.js';
 import type { SessionPayload } from './token_service.js';
+import { GpRepository } from '../economy/gp_repository.js';
 
 export interface PlayerProfile {
   id: string; username: string; createdAt: string; gamePoints: number; adsRemoved: boolean;
@@ -46,6 +47,7 @@ export class PostgresAuthRepository implements AuthRepository {
       return await inTransaction(this.database, async (connection) => {
         const result = await connection.query(`INSERT INTO stoppy_auth.players (id, username, password_hash, created_at)
           VALUES ($1, $2, $3, $4) RETURNING *`, [id, username, passwordHash, session.createdAt]);
+        await new GpRepository(connection).createOpeningSnapshot(id);
         await insertSession(connection, session);
         return profile(result.rows[0]!);
       });

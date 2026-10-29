@@ -2,8 +2,9 @@
 
 Session 44 adds an isolated Node.js 24 / TypeScript / Fastify application with
 PostgreSQL connectivity. Session 45 adds PostgreSQL-backed authentication
-(pending review). Flutter still defaults to mocks. League, Knockout and economy
-server endpoints remain unimplemented.
+and Session 46 adds the internal GP ledger/idempotency foundation and atomic
+registration opening snapshots. Flutter still defaults to mocks. League,
+Knockout and public GP earning/spending endpoints remain unimplemented.
 
 ## Local setup
 
@@ -173,11 +174,104 @@ Migration 001 creates only `stoppy_runtime`, an empty infrastructure namespace.
 Migration 002 creates `stoppy_auth.players`, `auth_sessions`, and
 `auth_refresh_tokens`, with canonical username uniqueness, FK/check constraints,
 same-family refresh replacement and one unconsumed credential per family.
-There are no competitive or mutation-idempotency tables. Feature transactions
+Migration 003 creates `stoppy_economy.gp_ledger` and durable `gp_mutations` with
+source/idempotency uniqueness and append-only guards. It backfills existing
+balances as zero-delta observations, not earned credits. New registration inserts
+the account (default 5 GP), one matching opening snapshot, session and refresh
+credential in the same transaction. Internal GP credit/debit execution and durable
+accepted/rejected replay exist; no live reward, League/Knockout fee, purchase or
+ad producer is connected. No competitive tables are implemented. Feature transactions
 retain the migration runner's uncertain-BEGIN/COMMIT and failed-rollback
 discard policy; expensive password hashing occurs outside transactions.
 Down migrations, nontransactional SQL and zero-downtime schema evolution are
 outside this foundation. Use reviewed forward migrations and backups instead.
+
+## Session 46 deployment gate
+
+An unrestricted rolling upgrade from Session 45 is **not safe**. An old worker
+can register an account after migration 003's one-time backfill, leaving no opening
+snapshot. The new economy service deliberately fails closed for that account.
+
+1. Block new registrations at ingress before migration 003. Drain in-flight
+   registrations and stop old backend workers; do not rely on the migration's
+   temporary table lock to prevent later old-worker writes.
+2. Keep registrations and economy producers disabled. With separate migration
+   credentials, run the checksum-protected migration command and confirm success
+   through version 003. Never edit or rerun approved SQL outside its ledger.
+3. Deploy/start only workers containing the registration opening-snapshot change,
+   using restricted runtime credentials. Migration 003 must exist before these
+   workers accept registrations. Never restore old registration workers as an
+   availability fallback after the backfill; retain the gate if deployment fails.
+4. Check schema compatibility, runtime privileges and the query below. It must
+   return zero before reopening registration or enabling future economy producers.
+   Investigate any missing baseline; do not silently grant GP or fabricate history.
+5. Reopen registration only to the updated worker set. Keep all GP business
+   producers disabled until their separate server-authoritative implementations
+   are approved. Recheck the baseline gate before enabling them in a future release.
+
+Read-only baseline verification (returns a count, not identities or balances):
+
+```sql
+SELECT count(*) AS players_without_opening_snapshot
+FROM stoppy_auth.players AS p
+WHERE NOT EXISTS (
+  SELECT 1 FROM stoppy_economy.gp_ledger AS l
+  WHERE l.player_id = p.id AND l.movement_type = 'opening_snapshot'
+);
+```
+
+The existing `/ready` endpoint checks connectivity only. It does not implement
+these deployment gates, schema verification or role checks. The deployment
+environment must enforce them; this document does not configure an orchestrator.
+
+## PostgreSQL runtime-role boundary
+
+Use separate credentials for the schema-owning **migration role** and the
+**application runtime role**. Both commands currently read `DATABASE_URL`; supply
+the appropriate secret separately to each process. Do not pass migration
+credentials to `npm start`. Compose's bootstrap user and the privileged integration
+test provisioner are development tools, not safe production application accounts.
+
+The runtime role must be a non-owner, non-superuser with no CREATEDB, CREATEROLE,
+REPLICATION or BYPASSRLS rights and no membership/SET ROLE path to a privileged
+role. It must not own the database, schemas, tables or audit function, have CREATE
+on protected schemas, change trigger/function definitions, or set replication
+parameters that suppress triggers. Audit PUBLIC grants and role memberships too;
+NOINHERIT alone does not prevent explicit SET ROLE escalation. Do not grant blanket
+ALL privileges, audit UPDATE/DELETE/TRUNCATE, or migration-ledger writes.
+
+The currently implemented SQL needs only the following runtime privileges:
+
+| Object | Required privileges |
+| --- | --- |
+| Target database | CONNECT |
+| `stoppy_auth`, `stoppy_economy` | USAGE, not CREATE |
+| `players` | SELECT; INSERT (`id`, `username`, `password_hash`, `created_at`); UPDATE (`game_points`) |
+| `auth_sessions` | SELECT; INSERT (`id`, `player_id`, `created_at`, `expires_at`); UPDATE (`revoked_at`) |
+| `auth_refresh_tokens` | SELECT; INSERT (`id`, `session_id`, `token_digest`, `created_at`, `expires_at`); UPDATE (`consumed_at`, `replaced_by`) |
+| `gp_mutations` | SELECT; INSERT (`id`, `player_id`, `operation_name`, `operation_version`, `idempotency_key`, `fingerprint_version`, `request_fingerprint`, `outcome_status`, `semantic_outcome`, `resolved_context`) |
+| `gp_ledger` | SELECT; INSERT (`id`, `player_id`, `mutation_id`, `movement_type`, `reason`, `source_type`, `source_id`, `delta`, `balance_before`, `balance_after`) |
+
+SELECT covers the existing auth `SELECT *`/`RETURNING *` statements. Defaults and
+generated fields do not require INSERT grants. There are no application sequences
+or cleanup DELETE operations requiring additional grants. Trigger execution does
+not require granting runtime ownership or direct invocation of the audit function.
+
+TLS/configuration validation, parameterized queries, constraints, append-only DML
+guards and transaction discipline are implemented. Actual role creation, grants,
+PUBLIC privileges, ownership and credential separation are deployment obligations;
+startup does not certify them. Least privilege prevents protected-object DDL and
+audit rewrites but cannot prove every SQL statement using the permitted wallet
+UPDATE/ledger INSERT grants is paired correctly. That coupling remains the trusted
+economy service's transaction boundary; no arbitrary SQL or GP HTTP API is exposed.
+
+The restricted-role integration cases provision a temporary login with these
+column-specific grants, then use a separate authenticated pool to execute real
+registration, auth lifecycle, credit/debit and replay. They check denied audit
+rewrites, trigger disabling, schema/function changes and role escalation. The
+privileged provisioner creates/removes only the disposable fixture role/grants;
+it is not the identity performing those application operations. Passing these
+local tests does not prove that production credentials have been provisioned safely.
 
 ## Verification
 
@@ -205,6 +299,9 @@ registration/refresh, restart persistence and revocation, then remove their
 namespaces and ledger. Do not point them at a shared or production database.
 The integration suite also uses an ephemeral loopback HTTP socket to verify
 that Fastify drains an in-flight request before closing the database pool.
+Restricted-role cases require the disposable-database provisioner to create/drop
+temporary roles and grant privileges on its test-owned objects. Fixture passwords
+are generated in memory; pools are closed and roles/grants removed afterward.
 
 ## Operations and boundaries
 
@@ -220,6 +317,8 @@ PostgreSQL certificate before production exposure. There is no TLS termination
 or competitive endpoint in this service yet. Authentication does not establish
 client score validity or implement anti-cheat enforcement.
 
-GP mutation validation, transactionally stored mutation idempotency,
-run validation/anti-cheat, League/Knockout persistence and settlement remain
-future work. No automatic mutation retries or client PP acceptance are added.
+Internal GP validation, atomic balance/ledger changes and durable mutation
+idempotency are implemented; see `src/economy/README.md`. Server-authoritative run
+rewards/anti-cheat, daily/warmup GP, League/Knockout fees, purchases, competitive
+persistence and settlement remain deferred. No automatic mutation retries,
+public GP mutation endpoints or client PP acceptance are added.
