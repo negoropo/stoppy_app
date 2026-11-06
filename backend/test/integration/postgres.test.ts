@@ -16,6 +16,8 @@ import { prepareGpBackfill, readAuthState, testGpSchema } from './gp_schema_case
 import { testGpService } from './gp_service_cases.js';
 import { testRegistrationGp } from './registration_gp_cases.js';
 import { testGpRuntimeRole } from './gp_runtime_role_cases.js';
+import { testKnockoutSchema } from './knockout_schema_cases.js';
+import { testKnockoutRegistration } from './knockout_registration_cases.js';
 
 test('real PostgreSQL connectivity, migrations and account/session persistence', async (t) => {
   const url = process.env.TEST_DATABASE_URL;
@@ -39,13 +41,25 @@ test('real PostgreSQL connectivity, migrations and account/session persistence',
       to_regclass('public.stoppy_schema_migrations') AS ledger,
       to_regnamespace('stoppy_runtime') AS runtime,
       to_regnamespace('stoppy_auth') AS auth,
-      to_regnamespace('stoppy_economy') AS economy`);
+      to_regnamespace('stoppy_economy') AS economy,
+      to_regnamespace('stoppy_knockout') AS knockout`);
     assert.equal(existing.rows[0]!.ledger, null, 'Test database already has migration state; refusing to alter it.');
     assert.equal(existing.rows[0]!.runtime, null, 'Test database already has runtime schema; refusing to alter it.');
     assert.equal(existing.rows[0]!.auth, null, 'Test database already has auth schema; refusing to alter it.');
     assert.equal(existing.rows[0]!.economy, null, 'Test database already has economy schema; refusing to alter it.');
+    assert.equal(existing.rows[0]!.knockout, null, 'Test database already has knockout schema; refusing to alter it.');
     ownsFixtures = true;
     const migrations = await readMigrations();
+    await t.test('fresh install applies 001 through 004 without provisioning tournaments or financial movements', async () => {
+      assert.equal(await runMigrations(database, migrations), 4);
+      assert.equal((await database.query('SELECT id FROM stoppy_knockout.tournaments')).rows.length, 0);
+      assert.equal((await database.query('SELECT id FROM stoppy_economy.gp_ledger')).rows.length, 0);
+      await database.query('DROP SCHEMA stoppy_knockout CASCADE');
+      await database.query('DROP SCHEMA stoppy_economy CASCADE');
+      await database.query('DROP SCHEMA stoppy_auth CASCADE');
+      await database.query('DROP SCHEMA stoppy_runtime CASCADE');
+      await database.query('DROP TABLE public.stoppy_schema_migrations');
+    });
     const authenticationMigrations = migrations.slice(0, 2);
     const initialResults = await Promise.all([
       runMigrations(database, authenticationMigrations), runMigrations(database, authenticationMigrations),
@@ -62,8 +76,19 @@ test('real PostgreSQL connectivity, migrations and account/session persistence',
       assert.equal((await database.query('SELECT version FROM public.stoppy_schema_migrations')).rows.length, 2);
       assert.deepEqual(await readAuthState(database), gpFixtures.before);
     });
+    assert.equal(await runMigrations(database, migrations.slice(0, 3)), 1);
+    await t.test('failed 004 upgrade rolls back its schema and additive ledger reference key', async () => {
+      const sql = 'SELECT 1 / 0;';
+      await assert.rejects(runMigrations(database, [...migrations, {
+        version: '005_upgrade_failure.sql', sql, checksum: createHash('sha256').update(sql).digest('hex'),
+      }]), (error: unknown) => error instanceof Error && 'code' in error && error.code === '22012');
+      assert.equal((await database.query("SELECT to_regnamespace('stoppy_knockout') AS schema")).rows[0]!.schema, null);
+      assert.equal((await database.query("SELECT conname FROM pg_constraint WHERE conname = 'gp_ledger_registration_reference'")).rows.length, 0);
+      assert.equal((await database.query('SELECT version FROM public.stoppy_schema_migrations')).rows.length, 3);
+      assert.deepEqual(await readAuthState(database), gpFixtures.before);
+    });
     const results = await Promise.all([runMigrations(database, migrations), runMigrations(database, migrations)]);
-    assert.deepEqual(results.sort((a, b) => a - b), [0, migrations.length - authenticationMigrations.length]);
+    assert.deepEqual(results.sort((a, b) => a - b), [0, 1]);
     assert.equal(await runMigrations(database, migrations), 0);
     assert.equal((await app.inject('/api/v1/ready')).statusCode, 200);
     const failingSql = 'CREATE TABLE stoppy_runtime.rollback_probe (id integer); SELECT 1 / 0;';
@@ -81,6 +106,8 @@ test('real PostgreSQL connectivity, migrations and account/session persistence',
     const ledger = await database.query('SELECT version FROM public.stoppy_schema_migrations');
     assert.equal(ledger.rows.length, migrations.length);
     await testGpSchema(t, database, gpFixtures);
+    await testKnockoutSchema(t, database);
+    await testKnockoutRegistration(t, database);
     await testGpService(t, database);
 
     let time = new Date('2026-10-26T12:00:00.000Z');
@@ -394,6 +421,7 @@ test('real PostgreSQL connectivity, migrations and account/session persistence',
     try {
       // Only these fixtures are owned by this test, in an explicit disposable DB.
       if (ownsFixtures) {
+        await database.query('DROP SCHEMA IF EXISTS stoppy_knockout CASCADE');
         await database.query('DROP SCHEMA IF EXISTS stoppy_economy CASCADE');
         await database.query('DROP SCHEMA IF EXISTS stoppy_auth CASCADE');
         await database.query('DROP SCHEMA IF EXISTS stoppy_runtime CASCADE');

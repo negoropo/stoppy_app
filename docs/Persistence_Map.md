@@ -1,5 +1,101 @@
 # Persistence Map
 
+## Session 47 Part 4 Internal Registration Execution
+
+The internal `KnockoutRegistrationService` and transaction-bound repository now
+exercise migration 004 atomically with `GpExecutor`; no migration/schema change
+was required. Part 3's inventory below is historical. There is still no HTTP
+handler, tournament provisioning/lifecycle implementation, or Flutter end-to-end
+Knockout registration against this server.
+
+One READ COMMITTED transaction acquires a shared catalog advisory lock then the
+player row lock, reads the scoped business outcome, checks fresh database-time
+eligibility and duplicates, executes the fixed 25 GP debit, inserts the registration
+using the exact executor ledger/mutation IDs, and inserts the final outcome.
+Failures roll back all writes; uncertain COMMIT is explicitly classified and
+never automatically retried. Existing migration checksum/transaction guarantees
+remain unchanged. Timestamp inserts require the explicit column grants documented
+in `backend/README.md`, not elevated runtime privileges. Registration and outcome
+creation reuse the precise admission instant; completion is clamped to creation
+if the database clock moves backward. Replays retain all historical timestamps.
+
+Business fingerprint V1 includes trusted player and explicit tournament targeting.
+The registration UUIDv8 is deterministically derived from that fingerprint and
+logical key; GP scope is `knockout_registration_fee` V1 with the same key and
+player. Source is `knockout_registration` / `<tournament UUID>:<registration UUID>`.
+Resolved GP context contains the business scope/version and both IDs. These are
+stable across explicit recovery, even if a prior COMMIT did not persist. Business
+replay returns the original semantic outcome before new eligibility checks,
+without re-evaluating historical balances or modifying current GP.
+
+Unknown catalog targets persist as `tournamentUnavailable` with null tournament FK;
+their fingerprint still includes the requested trusted UUID. Insufficient funds
+persist a rejected GP mutation plus business rejection and no movement. Admission
+rejections otherwise create no GP mutation. Missing players, key conflicts and
+infrastructure failures do not create business outcome rows.
+
+Lifecycle writers must acquire the exclusive form of the catalog advisory lock
+before changing state and before locking any player. See `Backend_Plan.md` for
+the exact protocol and admission-time convention. Future HTTP resolution must
+recover the original target for a key, never infer a different month on retry.
+Historical remaining GP is not a current profile projection; HTTP mapping remains
+deferred alongside provisioning, run validation, League and gameplay GP producers.
+
+## Session 47 Part 3 Knockout Registration Schema
+
+Migration `004_knockout_registration.sql` adds persistence only. There is no
+registration business service/repository, HTTP handler, automatic tournament
+provisioning, scheduler or bracket implementation. Flutter and mocks are unchanged.
+Earlier session inventories below describe their historical implementation state.
+
+| Table | Responsibility and integrity |
+| --- | --- |
+| `stoppy_knockout.tournaments` | Trusted server-provisioned UUID, unique first-of-month `date` label, name, explicit absolute opening/closing/start instants and availability state; no catalog seed |
+| `stoppy_knockout.registrations` | UUID, player/tournament FKs, unique player per tournament, immutable registration time and mandatory unique financial evidence |
+| `stoppy_knockout.registration_operations` | Append-only final accepted/rejected business outcomes; player/operation/version/key uniqueness, fingerprint/version, resolved tournament, registration reference, rejection reason and semantic JSON object |
+
+The month label represents the trusted Portugal calendar month, independent of
+device or PostgreSQL session timezone. `timestamptz` stores absolute instants;
+registration uses `opens <= now < closes`, with `opens < closes < starts`.
+This represents supplied boundaries, not a new monthly scheduling policy. The
+previous tournament's end, following opening and exact calendar boundaries still
+require an explicit decision in the future provisioning/business-service phase.
+
+A composite FK requires registration evidence to reference an existing **same-player,
+same-mutation 25 GP debit**, with `source_type = 'knockout_registration'` and
+`source_id = '<tournament UUID>:<registration UUID>'` (canonical UUID text).
+The registration derives both source fields with generated columns; unrelated
+debits or fees for other registrations/tournaments cannot satisfy this FK.
+Migration 004 adds only the necessary composite UNIQUE
+reference key to the existing ledger; migrations 001-003 and their checksums are
+untouched. The ledger's existing accepted-mutation FK remains authoritative.
+One ledger row cannot fund multiple registrations. No GP balance or complete GP
+mutation snapshot is duplicated in the business tables.
+
+Accepted operations reference a registration for the same player and tournament;
+rejected operations have no registration and carry a semantic reason. A missing
+catalog identity is representable only as rejected `tournamentUnavailable`.
+`semantic_outcome` can preserve the original business projection after the wallet
+changes. Future code must validate its shape, compare fingerprints on replay and
+commit GP, registration and final outcome in one transaction using `GpExecutor`.
+Preallocate the server registration UUID before the debit, then insert the
+registration and operation: there is no circular FK or deferred insert requirement.
+The operation's registration FK provides its sole authoritative financial path
+through `registrations.gp_mutation_id`; no second mutation ID in JSON is authoritative.
+Part 4 must bind the GP command's operation scope/key and resolved context to the
+locked logical business operation, consume the exact accepted executor result,
+and persist that result's ledger/mutation IDs on the registration in the same
+transaction. The schema does not compare independent GP/business fingerprints
+or infer that relationship from opaque operation names or keys.
+Transport failures, idempotency conflicts and uncertain COMMIT are not automatically
+durable business rejections; there are no automatic retries.
+
+Registrations and final outcomes reject UPDATE/DELETE/TRUNCATE. PUBLIC has no
+schema/table access. Restricted-role tests grant only catalog SELECT and necessary
+registration/outcome SELECT/column INSERT privileges; catalog writes and schema
+changes remain trusted deployment/provisioning operations. Financial linkage is
+exercised only by controlled persistence test fixtures, not an operational service.
+
 ## Session 46 Registration Opening Snapshot (Step 3)
 
 New account registration inserts one `stoppy_economy.gp_ledger` opening snapshot

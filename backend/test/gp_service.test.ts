@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { canonicalIntent, gpIntegerMax, InvalidGpIntent, prepareGpIntent, type GpCommand } from '../src/economy/gp_intent.js';
 import { GpExecutionFailure, GpService } from '../src/economy/gp_service.js';
 import { GpRepository, type GpOutcome } from '../src/economy/gp_repository.js';
+import { GpExecutor } from '../src/economy/gp_executor.js';
 import { FakeDatabase } from './fakes.js';
 
 const command = (overrides: Partial<GpCommand> = {}): GpCommand => ({
@@ -35,6 +36,23 @@ const failure = (code: GpExecutionFailure['code']) => (error: unknown) => {
   assert.ok(!String(error).includes('PRIVATE'));
   return true;
 };
+
+test('executor uses only the supplied connection and never controls its transaction', async () => {
+  const db = new GpDatabase();
+  const result = await new GpExecutor({ query: (sql, values) => db.query(sql, values) }).credit(command());
+  assert.equal(result.status, 'completed');
+  assert.equal(db.connections, 0);
+  assert.deepEqual(db.released, []);
+  assert.ok(!db.calls.some((c) => /^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|SET )/.test(c.sql)));
+});
+
+test('executor propagates persistence failures to its outer owner without retry or success', async () => {
+  const db = new GpDatabase();
+  db.failWhen = (sql) => sql.startsWith('INSERT INTO stoppy_economy.gp_ledger');
+  await assert.rejects(new GpExecutor(db).credit(command()), /PRIVATE_DATABASE_DIAGNOSTIC/);
+  assert.equal(db.calls.filter((c) => c.sql.startsWith('INSERT INTO stoppy_economy.gp_ledger')).length, 1);
+  assert.ok(!db.calls.some((c) => /^(COMMIT|ROLLBACK|SAVEPOINT)/.test(c.sql)));
+});
 
 test('canonical V1 intent ignores object property order, but preserves JSON types and array order', () => {
   const original = command({ context: { b: [1, '2', null], a: { z: true, c: 7 } } });

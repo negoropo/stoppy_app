@@ -6,6 +6,8 @@ import type { Database, TransactionConnection } from '../../src/database.js';
 import { ArgonPasswordHasher } from '../../src/auth/password_hasher.js';
 import { gpIntegerMax, type GpCommand } from '../../src/economy/gp_intent.js';
 import { GpService, GpExecutionFailure, type GpExecutionResult } from '../../src/economy/gp_service.js';
+import { GpExecutor } from '../../src/economy/gp_executor.js';
+import { inTransaction } from '../../src/transaction.js';
 
 function completed(result: GpExecutionResult) {
   assert.equal(result.status, 'completed');
@@ -86,6 +88,75 @@ export async function testGpService(t: TestContext, database: Database) {
     mutations: (await database.query('SELECT * FROM stoppy_economy.gp_mutations WHERE player_id = $1 ORDER BY id', [id])).rows,
   });
   const service = new GpService(database);
+
+  await t.test('two executor operations share one outer transaction and remain invisible until commit', async () => {
+    const id = await player();
+    const before = await state(id);
+    let connects = 0;
+    const sql: string[] = [];
+    const db = intercepted(database, (connection) => {
+      connects++;
+      return { release: (discard) => connection.release(discard), query: (query, values) => {
+        sql.push(query); return connection.query(query, values);
+      } };
+    });
+    await inTransaction(db, async (connection) => {
+      await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+      // A caller may perform trusted business reads/locks before GP execution.
+      await connection.query('SELECT 1');
+      const executor = new GpExecutor(connection);
+      assert.equal(completed(await executor.credit(command(id))).currentBalance, 8);
+      assert.equal(completed(await executor.debit(command(id, { amount: 2 }))).currentBalance, 6);
+      assert.deepEqual(await state(id), before, 'Executor must not independently commit.');
+      assert.ok(!sql.includes('COMMIT'));
+    });
+    assert.equal(connects, 1);
+    assert.equal(sql.filter((s) => s === 'BEGIN').length, 1);
+    assert.equal(sql.filter((s) => s === 'COMMIT').length, 1);
+    const after = await state(id);
+    assert.equal(after.balance, 6);
+    assert.equal(after.ledger.length, 3);
+    assert.equal(after.mutations.length, 2);
+  });
+
+  for (const sqlFailure of [false, true]) {
+    await t.test(`outer ${sqlFailure ? 'SQL' : 'business'} failure rolls back both GP operations and allows same-key recovery`, async () => {
+      const id = await player();
+      const input = command(id);
+      const before = await state(id);
+      await assert.rejects(inTransaction(database, async (connection) => {
+        await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        const executor = new GpExecutor(connection);
+        await executor.credit(input);
+        await executor.debit(command(id, { amount: 2 }));
+        if (sqlFailure) await connection.query('SELECT 1 / 0');
+        throw new Error('Business persistence failed after GP execution.');
+      }));
+      assert.deepEqual(await state(id), before);
+      assert.equal(completed(await service.credit(input)).replayed, false);
+    });
+  }
+
+  await t.test('direct executor preserves accepted/rejected replay and conflicts within an outer transaction', async () => {
+    const id = await player();
+    await inTransaction(database, async (connection) => {
+      await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+      const executor = new GpExecutor(connection);
+      const input = command(id);
+      const accepted = completed(await executor.credit(input));
+      const replay = completed(await executor.credit(input));
+      assert.equal(replay.replayed, true);
+      assert.deepEqual(replay.outcome, accepted.outcome);
+      assert.equal((await executor.credit({ ...input, amount: 4 })).status, 'idempotencyConflict');
+      const rejectedInput = command(id, { amount: 9 });
+      const rejected = completed(await executor.debit(rejectedInput));
+      assert.equal(rejected.outcome.status, 'rejected');
+      const rejectedReplay = completed(await executor.debit(rejectedInput));
+      assert.equal(rejectedReplay.replayed, true);
+      assert.deepEqual(rejectedReplay.outcome, rejected.outcome);
+    });
+    assert.equal((await state(id)).ledger.length, 2);
+  });
 
   await t.test('internal credit/debit persist signed movements, linked outcomes and authoritative wallet only', async () => {
     const id = await player();

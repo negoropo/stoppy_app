@@ -1,9 +1,10 @@
 # Internal GP execution (Session 46, Steps 2-3)
 
 `GpService.credit/debit` accept a trusted, stable `GpCommand`, not an HTTP DTO.
-Only future authenticated business services may choose the player, amount,
-reason and source after eligibility/validation. There is no route or live
-producer. Rewards, fees, purchases and ads remain disconnected.
+Only trusted authenticated business services may choose the player, amount,
+reason and source after eligibility/validation. Part 4 adds the internal Knockout
+registration fee consumer of `GpExecutor`; no route or external producer is active.
+Gameplay rewards, League fees, purchases and ads remain disconnected.
 Accounts need an existing opening snapshot; missing baselines fail closed.
 Registration now calls `GpRepository.createOpeningSnapshot` on the same connection
 after inserting the player and before inserting the session/refresh credential.
@@ -13,6 +14,21 @@ reference. It is an observation, not an additional +5 credit. A baseline conflic
 or any later registration write failure aborts the entire transaction; uncertain
 COMMITs are never automatically retried. Migration 003's existing-account backfill
 is unchanged. No other production player-creation path exists currently.
+
+`GpService` still owns standalone `inTransaction` calls and classifies uncertain
+COMMIT failures. `GpExecutor(connection).credit/debit(command)` instead requires
+an already active READ COMMITTED transaction and never begins, commits, rolls
+back, releases, changes isolation, creates savepoints or acquires a connection.
+The outer owner sets isolation before any queries, may acquire trusted catalog
+locks first, then calls the executor sequentially. The executor owns the player
+lock, idempotency/source lookup and wallet/mutation/ledger writes. For multiple
+players, callers must also establish a consistent player lock order.
+Executor results are provisional until the outer commit. Propagate execution
+errors to the outer rollback; never catch a failure and commit remaining writes.
+Only the transaction owner can classify its COMMIT uncertainty and recover
+explicitly using the same logical command/key. Knockout registration now follows
+this boundary, with a shared catalog advisory lock before the player row lock;
+its replay/rejection lookup also locks the player before invoking the executor.
 
 One `inTransaction` call owns one connection. The transaction explicitly uses
 READ COMMITTED and locks the player row before reading mutation/source identity

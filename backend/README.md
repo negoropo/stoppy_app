@@ -180,7 +180,8 @@ balances as zero-delta observations, not earned credits. New registration insert
 the account (default 5 GP), one matching opening snapshot, session and refresh
 credential in the same transaction. Internal GP credit/debit execution and durable
 accepted/rejected replay exist; no live reward, League/Knockout fee, purchase or
-ad producer is connected. No competitive tables are implemented. Feature transactions
+ad producer is connected. Migration 004 adds only Knockout registration persistence
+tables and financial reference constraints, not competitive runtime logic. Feature transactions
 retain the migration runner's uncertain-BEGIN/COMMIT and failed-rollback
 discard policy; expensive password hashing occurs outside transactions.
 Down migrations, nontransactional SQL and zero-downtime schema evolution are
@@ -240,7 +241,9 @@ parameters that suppress triggers. Audit PUBLIC grants and role memberships too;
 NOINHERIT alone does not prevent explicit SET ROLE escalation. Do not grant blanket
 ALL privileges, audit UPDATE/DELETE/TRUNCATE, or migration-ledger writes.
 
-The currently implemented SQL needs only the following runtime privileges:
+The currently implemented SQL needs the following runtime privileges, including
+the internal Knockout registration service. Migration 004 provisions no
+roles/grants and no registration HTTP endpoint is active.
 
 | Object | Required privileges |
 | --- | --- |
@@ -251,6 +254,10 @@ The currently implemented SQL needs only the following runtime privileges:
 | `auth_refresh_tokens` | SELECT; INSERT (`id`, `session_id`, `token_digest`, `created_at`, `expires_at`); UPDATE (`consumed_at`, `replaced_by`) |
 | `gp_mutations` | SELECT; INSERT (`id`, `player_id`, `operation_name`, `operation_version`, `idempotency_key`, `fingerprint_version`, `request_fingerprint`, `outcome_status`, `semantic_outcome`, `resolved_context`) |
 | `gp_ledger` | SELECT; INSERT (`id`, `player_id`, `mutation_id`, `movement_type`, `reason`, `source_type`, `source_id`, `delta`, `balance_before`, `balance_after`) |
+| `stoppy_knockout` | USAGE, not CREATE |
+| `stoppy_knockout.tournaments` | SELECT only; provisioning uses separate trusted credentials |
+| `stoppy_knockout.registrations` | SELECT; INSERT (`id`, `player_id`, `tournament_id`, `gp_ledger_id`, `gp_mutation_id`, `registered_at`) |
+| `stoppy_knockout.registration_operations` | SELECT; INSERT (`player_id`, `operation_name`, `operation_version`, `idempotency_key`, `fingerprint_version`, `request_fingerprint`, `tournament_id`, `outcome_status`, `registration_id`, `rejection_reason`, `semantic_outcome`, `created_at`, `completed_at`) |
 
 SELECT covers the existing auth `SELECT *`/`RETURNING *` statements. Defaults and
 generated fields do not require INSERT grants. There are no application sequences
@@ -272,6 +279,38 @@ rewrites, trigger disabling, schema/function changes and role escalation. The
 privileged provisioner creates/removes only the disposable fixture role/grants;
 it is not the identity performing those application operations. Passing these
 local tests does not prove that production credentials have been provisioned safely.
+
+Migration 004 adds only the Knockout catalog, immutable paid-registration evidence
+and immutable business outcomes, plus the composite ledger reference key required
+to enforce a same-player accepted 25 GP debit. It changes no applied migrations or
+financial semantics and seeds no tournaments. Owner/migration credentials apply
+004 before any future registration producer is enabled; grant the new table/column
+permissions separately. The restricted role cannot write the catalog, rewrite
+evidence, disable triggers or create schema objects. Part 4's internal service now
+executes atomic debit/registration/outcome persistence using these same grants.
+Monthly provisioning and HTTP integration remain deferred. The financial FK requires source
+type `knockout_registration` and source ID `<tournament UUID>:<registration UUID>`.
+Trusted code preallocates the registration UUID before the debit; INSERT `id`
+permission allows that sequence without allowing identity rewrites. The business
+outcome obtains financial identity only through its referenced registration;
+the internal transaction binds that exact executor result and GP intent to
+the logical business operation (see `../docs/Persistence_Map.md`).
+
+`KnockoutRegistrationService.register` accepts only trusted player/tournament IDs
+and a logical key. It owns READ COMMITTED/COMMIT, invokes `GpExecutor` on the same
+connection, and returns historical accepted/rejected outcomes or distinct missing
+player/key-conflict results. Failures are sanitized; uncertain COMMIT requires an
+explicit same-intent/key retry. No automatic retry, current-tournament resolution
+or HTTP mapping is implemented. Database time determines admission after waits.
+Lifecycle writers must acquire an exclusive transaction advisory lock on
+`hashtextextended('stoppy.knockout.tournament:' || id::text, 0)` before catalog
+changes and before player locks; admission holds its shared counterpart through
+COMMIT. The captured admission instant is reused at full PostgreSQL precision for
+`registered_at` and outcome `created_at`; `completed_at` is the finalization clock
+clamped to that instant against backward clock steps. These explicit INSERTs need
+the three timestamp column grants listed above, not UPDATE or ownership rights.
+Migration defaults and checksums are unchanged; replay retains historical values.
+See `../docs/Backend_Plan.md` for boundary and replay semantics.
 
 ## Verification
 

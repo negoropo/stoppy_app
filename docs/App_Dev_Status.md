@@ -14578,3 +14578,994 @@ Future session policy:
 * Preserve authentication security, JWT verification and refresh-token replay protection
 * Maintain comprehensive backend unit, PostgreSQL integration and Flutter regression tests
 * Do not introduce gameplay or economy redesigns without an explicitly approved scope
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 47 — Backend GP Business Integration Readiness + Authoritative Run Validation Planning
+
+### Status:
+
+✅ Completed
+
+---
+
+### 🎯 Objective
+
+Extend the persistent and transaction-safe Game Points (GP) economy foundation completed in Session 46 by preparing authoritative GP business integrations and implementing the first internal server-side business operation using the existing financial infrastructure.
+
+Review the current Flutter gameplay reward mechanisms, League and Knockout participation fees, daily and warmup GP rewards, purchase and advertising boundaries, and existing competitive run submission contracts.
+
+Identify which operations can safely authorize GP movements without relying on unverified client-side scores, balances, eligibility claims or timestamps.
+
+Introduce reusable transaction-bound GP execution, allowing future business services to combine domain persistence and financial movements within a single PostgreSQL transaction.
+
+Implement the first authoritative GP business integration through internal Knockout tournament registration, including trusted tournament eligibility, a fixed 25 GP registration fee, durable registration persistence, exact financial source attribution, business-level idempotency, concurrency protection and recovery from uncertain COMMIT outcomes.
+
+Define the evidence and validation requirements for future server-authoritative gameplay runs and GP rewards without prematurely implementing an incomplete anti-cheat or scoring system.
+
+Preserve the existing Flutter mock runtime, gameplay mechanics, Precision Points calculations, League and Knockout business rules, authentication infrastructure, GP economy invariants and existing backend API contracts.
+
+Public Knockout registration endpoints, tournament lifecycle automation, server-authoritative run validation, League fee execution, gameplay GP rewards, purchases, advertising integration and production deployment remain outside this session.
+
+---
+
+### 📦 Deliverables
+
+* [x] Session 46 GP economy foundation reviewed
+* [x] Existing GP earning and spending mechanisms inventoried
+* [x] Existing Flutter reward calculation responsibilities reviewed
+* [x] League and Knockout participation fee workflows reviewed
+* [x] Daily and warmup GP reward eligibility reviewed
+* [x] Purchase and rewarded-ad economy boundaries reviewed
+* [x] Existing backend competitive run submission contracts reviewed
+* [x] Trusted server-side GP business evidence requirements identified
+* [x] Server-authoritative run validation requirements documented
+* [x] Existing client-submitted run evidence limitations identified
+* [x] Future run identity, event validation and PP recalculation requirements defined
+* [x] Future daily GP uniqueness and timezone requirements reviewed
+* [x] Future League fee transaction requirements reviewed
+* [x] Knockout registration selected as the first safe GP business integration
+* [x] Session 47 implementation scope divided into independently reviewable stages
+* [x] Transaction-bound GP executor implemented
+* [x] `GpExecutor` introduced as a reusable internal economy component
+* [x] Existing `GpService` refactored to reuse `GpExecutor`
+* [x] Standalone GP service behavior preserved
+* [x] Existing GP request validation and fingerprinting preserved
+* [x] Existing GP idempotency and replay behavior preserved
+* [x] Existing GP ledger and balance arithmetic protections preserved
+* [x] Outer-transaction GP execution supported
+* [x] Multiple GP operations within one transaction supported
+* [x] Outer-transaction rollback guarantees tested
+* [x] Existing uncertain-COMMIT handling preserved
+* [x] No nested financial transactions introduced
+* [x] Append-only migration `004_knockout_registration.sql` created
+* [x] Migrations 001–003 preserved unchanged
+* [x] PostgreSQL schema `stoppy_knockout` created
+* [x] Trusted tournament catalog persistence implemented
+* [x] `stoppy_knockout.tournaments` table created
+* [x] `stoppy_knockout.registrations` table created
+* [x] `stoppy_knockout.registration_operations` table created
+* [x] Unique monthly tournament identity implemented
+* [x] Authoritative registration window persistence implemented
+* [x] Unique player/tournament registration constraint implemented
+* [x] Durable registration business outcomes implemented
+* [x] Registration business idempotency persistence implemented
+* [x] Immutable registration and operation audit protections implemented
+* [x] Successful registration financial evidence requirements implemented
+* [x] Same-player GP debit reference integrity implemented
+* [x] Exact 25 GP registration fee reference integrity implemented
+* [x] Accepted financial mutation association enforced
+* [x] Registration fee movement reuse prevented
+* [x] Cross-purpose financial attribution defect identified and corrected
+* [x] Exact Knockout registration financial source attribution enforced
+* [x] Existing GP ledger migration checksum preserved
+* [x] Fresh PostgreSQL installation and upgrade compatibility tested
+* [x] Internal `KnockoutRegistrationService` implemented
+* [x] Transaction-bound `KnockoutRegistrationRepository` implemented
+* [x] Fixed server-authoritative Knockout registration fee implemented
+* [x] Trusted player and tournament identities required
+* [x] Existing tournament eligibility validation implemented
+* [x] Registration admission window validation implemented
+* [x] Registration duplicate prevention implemented
+* [x] Atomic 25 GP debit and registration persistence implemented
+* [x] Atomic business outcome persistence implemented
+* [x] Catalog-before-player locking protocol implemented
+* [x] Deterministic registration identity implemented
+* [x] Stable financial intent reconstruction implemented
+* [x] Business-level accepted outcome replay implemented
+* [x] Business-level rejected outcome replay implemented
+* [x] Idempotency-key conflict detection implemented
+* [x] Explicit uncertain-COMMIT recovery implemented
+* [x] No automatic retry after uncertain transactions
+* [x] Missing opening-snapshot fail-closed behavior preserved
+* [x] Financial source conflicts handled safely
+* [x] Registration timestamp consistency defect identified and corrected
+* [x] PostgreSQL microsecond-precision admission validation preserved
+* [x] Opening-inclusive and closing-exclusive registration boundaries enforced
+* [x] Consistent registration and business outcome timestamps implemented
+* [x] Historical timestamps preserved during replay
+* [x] Backward database clock changes handled for completion timestamps
+* [x] Concurrent same-player registration safety tested
+* [x] Concurrent different-player registration safety tested
+* [x] Concurrent tournament closure protection tested
+* [x] Concurrent GP spending protection tested
+* [x] Transaction failure injection and rollback tested
+* [x] Restricted PostgreSQL runtime-role tests extended
+* [x] Knockout financial evidence rewrite protections tested
+* [x] Restricted runtime tournament provisioning denial tested
+* [x] Timestamp column-specific INSERT privilege requirements documented
+* [x] Final financial security and transaction-integrity audit completed
+* [x] Final business idempotency and recovery audit completed
+* [x] Final concurrency and locking audit completed
+* [x] Final timestamp and registration-window audit completed
+* [x] Final PostgreSQL migration and permission audit completed
+* [x] Five critical Session 47 implementation and test files manually reviewed
+* [x] Existing transaction utility manually reviewed
+* [x] Relevant backend documentation updated
+* [x] Existing Flutter mock runtime preserved
+* [x] Existing gameplay and competitive rules preserved
+* [x] No public Knockout registration endpoint activated
+* [x] No arbitrary GP credit/debit endpoint introduced
+* [x] No Flutter production changes introduced
+* [x] No tournament lifecycle jobs introduced
+* [x] `npm run typecheck` passed
+* [x] `npm run build` passed
+* [x] `npm test` passed — 105 tests
+* [x] PostgreSQL integration tests passed — 118 tests
+* [x] Focused migration tests passed — 9 tests
+* [x] `flutter analyze` passed
+* [x] `flutter test` passed — 648 tests
+* [x] `git diff --check` passed
+* [x] Final Session 47 audit verdict: PASS
+
+---
+
+### 🛠️ Work Done
+
+* Completed the initial GP business integration architecture review:
+  * Reviewed the existing Session 46 GP service and repository contracts
+  * Reviewed Flutter gameplay completion and GP reward calculations
+  * Reviewed existing League entry and re-entry behavior
+  * Reviewed existing Knockout registration behavior
+  * Reviewed GP purchase packs and ads-removal behavior
+  * Reviewed rewarded advertising continuation behavior
+  * Reviewed existing backend League and Knockout run submission contracts
+  * Identified server-authoritative eligibility and ownership requirements
+  * Distinguished implemented backend functionality from mock-only economy behavior
+
+* Confirmed the existing GP earning and spending rules:
+  * Newly registered players start with 5 GP
+  * Completed League and Knockout runs award 1 GP under existing client-side rules
+  * Warmup completion awards 1 GP when reaching at least 10,000 PP
+  * The first completed run of a calendar day awards 2 additional GP under existing client rules
+  * Weekly League entry and re-entry cost 10 GP
+  * Monthly Knockout registration costs 25 GP
+  * Existing GP purchase packs contain 10 GP and 25 GP
+  * Rewarded advertisements currently authorize gameplay continuation rather than GP credits
+  * No existing GP earning or pricing rule was changed
+
+* Identified the limitations of existing client-authoritative run completion:
+  * Flutter currently controls gameplay progression and collision outcomes
+  * Flutter calculates Precision Points locally
+  * Client-side run submissions do not contain enough independently verifiable evidence
+  * Submitted scores cannot currently authorize trusted backend GP rewards
+  * Client-controlled timestamps cannot independently establish reward eligibility
+  * Run identity and competitive ownership must be issued and verified by the server
+  * Future run validation requires versioned gameplay configurations and authoritative progression checks
+  * Future validation must reconstruct collision, timing and score outcomes
+  * Future validation must account for continuation, retries and duplicate submissions
+  * Replaying client-generated event data alone does not prove legitimate human interaction
+  * Server-authoritative run validation remains a separate future implementation
+
+* Identified future reward integration requirements:
+  * Completed-run rewards require trusted terminal run evidence
+  * Warmup rewards require validated PP and authoritative eligibility
+  * Daily rewards require durable player/day uniqueness
+  * Daily reward calendar policy must be approved before implementation
+  * Europe/Lisbon timezone and DST transitions require explicit handling
+  * Server-side run completion instants must be defined independently of delayed client submission
+  * Cross-midnight and cross-season run ownership require additional contract decisions
+  * All reward sources require stable server-authoritative identifiers
+  * No reward endpoint based solely on client assertions was introduced
+
+* Selected internal Knockout registration as the first GP business integration:
+  * Registration fee is a fixed server rule
+  * The business operation does not require competitive score validation
+  * Existing PostgreSQL authentication identifies players authoritatively
+  * Existing GP executor can perform the financial debit
+  * Tournament eligibility can be based on trusted persisted catalog records
+  * League entry requires additional division placement and reservation logic
+  * Purchases require external payment verification
+  * Gameplay rewards require authoritative run evidence
+  * Internal Knockout registration was selected as the smallest defensible atomic business operation
+
+* Implemented transaction-bound `GpExecutor`:
+  * Added reusable transaction-bound GP credit and debit operations
+  * Preserved existing GP command validation
+  * Preserved deterministic fingerprint generation
+  * Preserved accepted and rejected mutation replay
+  * Preserved idempotency conflict detection
+  * Preserved duplicate financial source protection
+  * Preserved missing opening-snapshot safeguards
+  * Preserved player row locking
+  * Preserved nonnegative GP balance requirements
+  * Preserved PostgreSQL integer overflow protections
+  * Preserved atomic balance, mutation and ledger updates
+  * Reused the caller-provided database connection
+  * Introduced no independent connection acquisition
+  * Introduced no transaction-control SQL inside the executor
+  * Introduced no automatic retries
+
+* Refactored the existing standalone `GpService`:
+  * Delegated financial execution to the new `GpExecutor`
+  * Retained standalone transaction ownership
+  * Retained READ COMMITTED transaction isolation
+  * Retained pre-acquisition command validation and snapshotting
+  * Retained existing service interfaces
+  * Retained infrastructure failure classification
+  * Retained conservative uncertain-COMMIT classification
+  * Preserved historical outcome and current balance separation
+  * Preserved existing Session 46 compatibility
+
+* Verified transaction composition:
+  * Multiple GP operations can execute within one outer transaction
+  * Provisional GP changes remain invisible to external connections before commit
+  * Outer-transaction rollback removes associated financial changes
+  * Business services can combine financial and business persistence atomically
+  * The caller remains responsible for transaction ownership
+  * The caller must propagate execution failures for rollback
+  * Catalog locking must precede player locking when required by business operations
+
+* Created migration `004_knockout_registration.sql`:
+  * Added schema `stoppy_knockout`
+  * Added trusted tournament catalog persistence
+  * Added player tournament registration persistence
+  * Added durable business registration operation outcomes
+  * Added UUID primary keys
+  * Added foreign key relationships to existing authenticated players
+  * Added unique monthly tournament identity
+  * Added unique player/tournament registration constraints
+  * Added operation-scoped idempotency uniqueness
+  * Added versioned request fingerprint persistence
+  * Added business rejection reason constraints
+  * Added accepted/rejected outcome consistency constraints
+  * Added immutable audit protections
+  * Preserved migrations 001–003 unchanged
+
+* Implemented trusted tournament catalog persistence:
+  * Server-owned tournament UUID
+  * Unique first-of-month Portugal-calendar label
+  * Tournament name
+  * Authoritative registration opening and closing instants
+  * Authoritative tournament start instant
+  * Controlled tournament status values
+  * Database constraints for invalid date intervals
+  * No automatic tournament creation
+  * No public tournament provisioning endpoint
+  * No tournament lifecycle or scheduling jobs
+
+* Implemented durable registration persistence:
+  * Server-generated registration UUID
+  * Foreign keys to trusted tournament and player records
+  * Maximum one registration per player per tournament
+  * Persistent registration timestamp
+  * Reference to the associated GP ledger movement
+  * Reference to the associated GP mutation
+  * Unique registration fee movement association
+  * Database-enforced financial attribution constraints
+  * Append-only registration audit protection
+
+* Identified and corrected a financial attribution defect:
+  * Original migration 004 required a same-player accepted debit of 25 GP
+  * Original constraints did not establish the debit's precise business purpose
+  * A PostgreSQL regression reproduced the cross-purpose attribution vulnerability
+  * Financial references were strengthened to require the correct source type
+  * Required financial `source_type` is `knockout_registration`
+  * Required `source_id` identifies the exact tournament UUID and registration UUID
+  * Generated columns enforce the expected financial source identity
+  * Different-purpose debit movements cannot finance Knockout registrations
+  * A fee movement cannot be reused for multiple registrations
+  * The migration correction was made while migration 004 remained confined to disposable environments
+  * Migrations 001–003 and their checksums remained unchanged
+
+* Implemented durable business registration operations:
+  * Player-scoped operation identity
+  * Operation name and version
+  * Idempotency key
+  * Request fingerprint and fingerprint version
+  * Trusted resolved tournament reference
+  * Accepted and rejected outcome statuses
+  * Registration reference for accepted outcomes
+  * Semantic rejection reason for rejected outcomes
+  * Historical semantic outcome JSON
+  * Creation and completion timestamps
+  * Durable business replay support
+  * Append-only operation audit protection
+
+* Implemented `KnockoutRegistrationRepository`:
+  * Transaction-bound PostgreSQL persistence
+  * Shared tournament catalog advisory locking
+  * Trusted tournament status retrieval
+  * Existing business operation lookup
+  * Existing registration detection
+  * Authoritative registration window evaluation
+  * Registration insertion
+  * Business outcome persistence
+  * Parameterized SQL queries
+  * No independent transaction or commit ownership
+  * No tournament provisioning responsibility
+
+* Implemented `KnockoutRegistrationService`:
+  * Internal `register({ playerId, tournamentId, idempotencyKey })` interface
+  * Trusted server-side player identity requirement
+  * Trusted existing tournament identity requirement
+  * Fixed authoritative 25 GP registration fee
+  * Explicit READ COMMITTED transaction
+  * Tournament advisory lock acquired before player lock
+  * Existing business operation replay checked under the player lock
+  * Registration window and tournament state validated
+  * Existing player registration checked
+  * Insufficient-funds handling implemented
+  * Atomic GP debit through `GpExecutor`
+  * Successful registration created only after an accepted debit
+  * Business outcome persisted inside the same transaction
+  * Idempotency conflicts returned without a second debit
+  * Missing-player handling implemented
+  * Infrastructure errors sanitized
+  * Uncertain COMMIT outcomes classified conservatively
+  * No automatic retries
+  * No HTTP route activation
+
+* Implemented exact Knockout financial identity:
+  * Financial operation name `knockout_registration_fee`
+  * Financial operation version 1
+  * Same business idempotency key used by the financial operation
+  * Fixed debit amount of 25 GP
+  * Financial reason `knockout_registration`
+  * Financial source type `knockout_registration`
+  * Financial source ID formed from tournament UUID and registration UUID
+  * Business context records tournament and registration identities
+  * Accepted financial mutation and ledger identities retained
+  * Registration references the exact accepted financial evidence
+  * Independent financial mutations cannot be substituted for the intended operation
+
+* Implemented deterministic registration identity and recovery:
+  * Domain-separated SHA-256 derivation
+  * Deterministic UUIDv8 registration identity
+  * Identity derived from the validated logical intent and idempotency key
+  * Identical explicit retries reconstruct the same registration identity
+  * Financial intent remains stable when recovering from uncertain COMMIT
+  * Changed tournament targeting produces a business idempotency conflict
+  * Accepted replay does not debit GP again
+  * Rejected replay does not repeat the original financial operation
+  * Historical business outcome remains unchanged after balance changes
+  * Historical business outcome remains unchanged after tournament closure
+  * A genuinely new attempt requires a new idempotency key
+  * No automatic replay was introduced
+
+* Implemented concurrency protection:
+  * Shared advisory lock acquired for tournament admission
+  * Player row lock acquired before GP and business operations
+  * Same-player registration attempts serialized
+  * Concurrent same-key requests recover the original outcome
+  * Concurrent different-key duplicate registrations cannot charge twice
+  * Different players can register independently under shared tournament locks
+  * Financial spending against the same player balance remains serialized
+  * Future tournament closure writers must acquire the matching exclusive advisory lock
+  * Tournament admission and closure races tested
+  * Lock timeout behavior tested
+  * No unsafe alternative lock ordering introduced
+
+* Implemented authoritative registration time handling:
+  * Opening boundary is inclusive
+  * Closing boundary is exclusive
+  * Registration eligibility uses PostgreSQL time
+  * Eligibility is evaluated after relevant lock waits
+  * PostgreSQL microsecond precision preserved
+  * JavaScript Date truncation is not used for eligibility decisions
+  * Tournament month identity remains a Portugal-calendar label
+  * Registration and business outcome timestamps use authoritative database instants
+  * Historical timestamps remain stable during replay
+
+* Identified and corrected the registration timestamp defect:
+  * Migration 004 initially used `CURRENT_TIMESTAMP` defaults
+  * PostgreSQL `CURRENT_TIMESTAMP` represents transaction start time
+  * A transaction waiting for locks could be admitted after opening but record an earlier timestamp
+  * Admission now captures a fresh authoritative PostgreSQL instant
+  * `registered_at` uses the exact admission instant
+  * Business `created_at` uses the same admission instant
+  * Business `completed_at` uses the finalization clock
+  * Completion timestamp is clamped against backward clock changes
+  * `completed_at >= created_at` remains guaranteed
+  * Replays retain original persisted timestamps
+  * Existing response contracts preserved
+  * Migration checksums remained unchanged
+
+* Implemented transaction and recovery regression tests:
+  * Failure before GP debit
+  * Failure after GP debit
+  * Failure while inserting the registration
+  * Failure while persisting the business outcome
+  * Complete rollback of provisional GP and business writes
+  * COMMIT acknowledgement lost after persistence
+  * COMMIT failure before persistence
+  * Explicit same-key recovery
+  * Stable financial fingerprint reconstruction
+  * Stable financial source and context reconstruction
+  * No automatic retry after uncertain COMMIT
+  * Transaction setup failures
+  * Catalog lock timeout and rollback
+  * Missing GP opening-snapshot failures
+  * Conflicting financial source identity failures
+
+* Implemented real PostgreSQL concurrency tests:
+  * Same-key overlapping registrations
+  * Different-key overlapping registrations
+  * Different players sharing a tournament
+  * Competing GP debit and Knockout registration
+  * Tournament closure acquiring the exclusive catalog lock first
+  * Registration holding the shared lock before tournament closure
+  * PostgreSQL blocking behavior verified through `pg_blocking_pids()`
+  * No duplicate registration
+  * No double charging
+  * No overspending
+  * No admission after a completed authoritative closure
+
+* Implemented registration boundary and timestamp tests:
+  * Registration before opening rejected
+  * Exact opening boundary accepted
+  * Exact closing boundary rejected
+  * Registration after tournament start rejected
+  * Unavailable tournament rejected
+  * Closed tournament rejected
+  * Microsecond opening and closing boundaries tested
+  * Admission after waiting across opening tested
+  * Rejection after waiting across closing tested
+  * Actual registration timestamp checked against the admission instant
+  * Business timestamp consistency verified
+  * Backward and forward database clock changes tested
+  * Historical timestamp preservation during replay tested
+
+* Extended restricted PostgreSQL runtime-role tests:
+  * Legitimate internal Knockout registration tested
+  * Existing financial mutation and ledger permissions preserved
+  * Runtime role prevented from provisioning arbitrary tournaments
+  * Protected audit rewrite attempts rejected
+  * Protected schema and privilege escalation attempts rejected
+  * No elevated runtime ownership required
+  * Column-specific timestamp INSERT grants validated
+  * Eight restricted-role integration cases passed in the final audit
+  * Production role provisioning remains an operator responsibility
+
+* Completed final Session 47 audit:
+  * Reviewed the GP executor and standalone service compatibility
+  * Reviewed transaction ownership and rollback
+  * Reviewed business and financial idempotency relationships
+  * Reviewed registration UUID and financial source derivation
+  * Reviewed player and tournament trust boundaries
+  * Reviewed registration uniqueness and financial attribution constraints
+  * Reviewed concurrent registration behavior
+  * Reviewed catalog locking requirements
+  * Reviewed registration window semantics
+  * Reviewed PostgreSQL clock and timestamp consistency
+  * Reviewed migration ordering and compatibility
+  * Reviewed audit immutability protections
+  * Reviewed restricted runtime permissions
+  * Reviewed production deployment assumptions
+  * Added missing adversarial regression coverage
+  * Corrected a low-severity documentation inconsistency regarding timestamp grants
+  * No unresolved Critical or High defects identified
+  * Final audit verdict: PASS
+
+* Performed additional independent manual code review:
+  * `backend/src/economy/gp_executor.ts`
+  * `backend/src/economy/gp_service.ts`
+  * `backend/migrations/004_knockout_registration.sql`
+  * `backend/src/knockout/knockout_registration_service.ts`
+  * `backend/src/knockout/knockout_registration_repository.ts`
+  * `backend/test/integration/knockout_registration_cases.ts`
+  * `backend/src/transaction.ts`
+  * Financial attribution correction reviewed
+  * Timestamp correction reviewed
+  * Transaction and concurrency tests reviewed
+  * No further approval-blocking defect identified in the inspected files
+
+* Updated backend and project documentation:
+  * `backend/README.md`
+  * `backend/src/economy/README.md`
+  * `docs/Backend_Plan.md`
+  * `docs/Persistence_Map.md`
+  * Internal GP transaction ownership clarified
+  * Knockout registration persistence documented
+  * Registration fee financial attribution documented
+  * Business idempotency and replay responsibilities documented
+  * Tournament advisory lock protocol documented
+  * Registration timestamp semantics documented
+  * Restricted runtime permission requirements documented
+  * Deferred HTTP integration and deployment boundaries clarified
+
+* Preserved existing functionality:
+  * No Flutter production changes
+  * No Flutter gameplay changes
+  * No Precision Points scoring changes
+  * No GP pricing rule changes
+  * No League implementation changes
+  * No Knockout UI changes
+  * No public registration route activated
+  * No public arbitrary-GP mutation route introduced
+  * No tournament scheduling or lifecycle jobs implemented
+  * No bracket generation implemented
+  * No gameplay run-validation activation
+  * No gameplay, daily or warmup GP reward activation
+  * No purchase or advertising provider verification implemented
+  * Flutter mock runtime remains the default
+  * Backend runtime remains opt-in
+
+---
+
+### 📁 Files Changed
+
+Backend migration:
+
+* `backend/migrations/004_knockout_registration.sql`
+
+Backend GP economy production code:
+
+* `backend/src/economy/gp_executor.ts`
+* `backend/src/economy/gp_service.ts`
+
+Backend Knockout production code:
+
+* `backend/src/knockout/knockout_registration_service.ts`
+* `backend/src/knockout/knockout_registration_repository.ts`
+
+Backend unit tests:
+
+* `backend/test/gp_service.test.ts`
+* `backend/test/knockout_registration.test.ts`
+* `backend/test/migrations.test.ts`
+
+Backend PostgreSQL integration tests:
+
+* `backend/test/integration/gp_service_cases.ts`
+* `backend/test/integration/gp_runtime_role_cases.ts`
+* `backend/test/integration/knockout_schema_cases.ts`
+* `backend/test/integration/knockout_registration_cases.ts`
+* `backend/test/integration/postgres.test.ts`
+
+Backend documentation:
+
+* `backend/README.md`
+* `backend/src/economy/README.md`
+
+Project documentation:
+
+* `docs/Backend_Plan.md`
+* `docs/Persistence_Map.md`
+
+Final status documentation:
+
+* `docs/App_Dev_Status.md`
+
+No Flutter production or test files were changed during Session 47.
+
+Migrations 001, 002 and 003 remained unchanged.
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Session 47 completes the first server-authoritative GP business operation using the persistent economy introduced in Session 46.
+* The new Knockout registration service is internal only.
+* It is not yet available through a public REST endpoint.
+* Flutter Knockout registration remains unchanged.
+* End-to-end real-backend Knockout registration is not yet operational.
+* The existing Flutter mock runtime remains the default.
+* The backend runtime remains opt-in.
+* Knockout registration costs exactly 25 GP.
+* The fee is defined on the server and cannot be selected by a client.
+* Player identity must come from verified server authentication.
+* Tournament identity must come from trusted server-side resolution.
+* Tournament metadata must already exist in the trusted PostgreSQL catalog.
+* No automatic tournament provisioning was implemented.
+* A tournament registration is only accepted when the persisted window and authoritative state permit it.
+* Registration opening is inclusive.
+* Registration closing is exclusive.
+* Registration eligibility uses the authoritative PostgreSQL clock after lock waits.
+* Tournament month identity represents a trusted Portugal-calendar month.
+* Exact registration window scheduling relative to the previous tournament's end remains a future lifecycle decision.
+* `GpExecutor` is a reusable transaction-bound internal GP component.
+* `GpExecutor` does not begin, commit or roll back transactions independently.
+* The outer business service owns the financial transaction boundary.
+* Standalone `GpService` retains its existing Session 46 behavior.
+* The caller must provide a valid active transaction to `GpExecutor`.
+* The caller must propagate execution failures rather than committing partial results.
+* Accepted Knockout registration effects belong to one READ COMMITTED transaction.
+* A successful Knockout registration and its 25 GP debit commit together or roll back together.
+* The registration cannot reference another player's financial movement.
+* The registration cannot reference a credit or an incorrect fee amount.
+* The registration cannot reference a financial movement for an unrelated purpose.
+* The registration financial source is identified by the exact tournament and registration UUIDs.
+* The same fee movement cannot finance two registrations.
+* A different idempotency key cannot create a second successful registration for the same player/tournament.
+* The GP ledger remains the authoritative audit history, while the player table retains the authoritative current GP balance.
+* The registration operation stores an immutable historical business outcome.
+* Historical outcome balances must not be interpreted as current profile balances.
+* Business and financial idempotency are separate but coordinated by the registration service.
+* The business operation and financial mutation share the original idempotency key.
+* The financial operation has its own operation name and version.
+* The registration UUID is deterministically derived from the validated intent and key.
+* Identical explicit retries preserve the intended registration identity.
+* Replaying an accepted registration does not charge GP again.
+* Replaying a rejected registration does not re-evaluate and replace the historical rejection.
+* A new legitimate attempt after a definitive rejection requires a new idempotency key.
+* Changing the tournament target while reusing the same business key produces an idempotency conflict.
+* A future HTTP adapter must preserve original tournament targeting across retries.
+* An empty-body registration request must not silently resolve to a different tournament during retry.
+* A future HTTP response must distinguish historical registration outcomes from the current player balance.
+* Concurrent same-player registrations are serialized through player row locking.
+* Tournament catalog locks are acquired before player locks.
+* Registration uses a shared tournament advisory lock.
+* Future tournament lifecycle writers must acquire the matching exclusive advisory lock before changing catalog state.
+* This locking protocol must be respected by all future lifecycle services.
+* The existing database uniqueness constraints provide additional protection against concurrent duplicates.
+* Infrastructure failures are not recorded as successful business operations.
+* Uncertain COMMIT outcomes are classified conservatively.
+* An uncertain COMMIT must not be interpreted as a confirmed rollback.
+* No automatic retry is performed after an uncertain COMMIT.
+* Explicit recovery must reuse the same logical intent and idempotency key.
+* `registered_at` and business `created_at` reuse the authoritative admission instant.
+* Business `completed_at` is recorded at finalization and clamped against backward clock changes.
+* Replay preserves original registration and business timestamps.
+* PostgreSQL microsecond precision is preserved for admission decisions.
+* Migration 004 introduces the new Knockout persistence schema.
+* Migrations 001–003 and their checksums remain unchanged.
+* Migration 004 was corrected while confined to disposable development and test databases.
+* Production rollout of migration 004 has not been performed.
+* The runtime database role must have narrowly scoped permissions for legitimate Knockout registration operations.
+* Timestamp columns require appropriate column-specific INSERT grants.
+* Restricted-role tests verify the intended permission model in disposable PostgreSQL environments.
+* Actual production database roles, grants and credentials remain unverified.
+* Tournament catalog provisioning requires privileged, trusted server-side functionality.
+* Direct database access by privileged identities remains an operational trust boundary.
+* A committed financial debit without its corresponding registration is prevented by the implemented service transaction, not by a general reverse foreign-key constraint.
+* Future business services must preserve this transaction-level guarantee.
+* No client can currently trigger the internal Knockout registration service through a public HTTP route.
+* Existing client-submitted competitive runs remain untrusted claims.
+* Server-authoritative run identity, evidence validation and scoring remain unimplemented.
+* GP rewards for completed runs remain unimplemented in the real backend.
+* Daily GP reward uniqueness and Europe/Lisbon calendar semantics remain pending.
+* Warmup eligibility and reward validation remain pending.
+* Weekly League entry and re-entry business fee execution remain pending.
+* GP purchase receipt verification and fulfillment remain pending.
+* Rewarded advertisement verification and continuation integration remain pending.
+* Knockout read APIs and tournament lifecycle endpoints remain pending.
+* Monthly tournament scheduling, bracket generation and settlement remain pending.
+* Production deployment and mobile-to-backend end-to-end validation remain pending.
+* The final Codex audit found no unresolved Critical or High defects.
+* No production-code or migration correction was required during Part 5.
+* One low-severity documentation inconsistency was corrected during Part 5.
+* Automated test results were reported by Codex.
+* Additional independent manual review found no approval-blocking defect in the inspected implementation.
+* No production database or live payment/provider integration was tested.
+* No commit or push was performed during the reported Session 47 implementation and review.
+
+---
+
+### 🧪 Validation
+
+* [x] GP business integration architecture reviewed
+* [x] Existing Flutter GP reward mechanisms reviewed
+* [x] League and Knockout fee responsibilities reviewed
+* [x] Future run validation evidence requirements defined
+* [x] Future daily and warmup reward requirements reviewed
+* [x] First safe business integration selected
+* [x] Transaction-bound GP executor implemented
+* [x] Standalone GP service compatibility preserved
+* [x] Outer-transaction GP execution tested
+* [x] Outer-transaction rollback tested
+* [x] Multiple GP mutations in one transaction tested
+* [x] Accepted and rejected GP mutation replay tested
+* [x] GP idempotency fingerprint conflicts tested
+* [x] Existing GP ledger integrity preserved
+* [x] Missing opening-snapshot failure tested
+* [x] Duplicate financial source protection tested
+* [x] Migration 004 created
+* [x] Fresh migration installation tested
+* [x] Upgrade from migration 003 tested
+* [x] Migration ordering and checksums tested
+* [x] Tournament monthly identity uniqueness tested
+* [x] Invalid registration windows rejected
+* [x] Duplicate player/tournament registrations rejected
+* [x] Business idempotency uniqueness tested
+* [x] Accepted and rejected business outcome constraints tested
+* [x] Registration financial foreign-key integrity tested
+* [x] Cross-purpose financial attribution regression reproduced and corrected
+* [x] Exact Knockout fee source attribution tested
+* [x] Same-player fee attribution tested
+* [x] Exact 25 GP debit reference tested
+* [x] Wrong financial purpose rejected
+* [x] Wrong tournament/registration source rejected
+* [x] Fee movement reuse rejected
+* [x] Append-only registration and business outcome protections tested
+* [x] Internal Knockout registration service implemented
+* [x] Successful registration and debit tested
+* [x] Insufficient GP rejection tested
+* [x] Duplicate registration rejection tested
+* [x] Unknown tournament rejection tested
+* [x] Unavailable tournament rejection tested
+* [x] Registration-closed rejection tested
+* [x] Tournament-already-started rejection tested
+* [x] Missing-player behavior tested
+* [x] Same-key accepted replay tested
+* [x] Same-key rejected replay tested
+* [x] Changed tournament intent conflict tested
+* [x] Different-key duplicate registration protection tested
+* [x] Accepted replay after balance changes tested
+* [x] Accepted replay after tournament closure tested
+* [x] Rejected replay after eligibility changes tested
+* [x] Rejected replay after additional GP funding tested
+* [x] Deterministic registration financial identity tested
+* [x] Atomic transaction rollback before debit tested
+* [x] Atomic transaction rollback after debit tested
+* [x] Registration insertion failure rollback tested
+* [x] Business outcome persistence failure rollback tested
+* [x] Uncertain COMMIT before persistence tested
+* [x] Uncertain COMMIT after persistence tested
+* [x] Explicit same-key recovery tested
+* [x] No automatic retry confirmed
+* [x] Concurrent same-key registration tested
+* [x] Concurrent different-key registration tested
+* [x] Independent different-player registration tested
+* [x] Concurrent GP spending tested
+* [x] Tournament closure before admission tested
+* [x] Tournament closure after admission locking tested
+* [x] Catalog advisory lock timeout tested
+* [x] PostgreSQL actual lock blocking verified
+* [x] Inclusive registration opening tested
+* [x] Exclusive registration closing tested
+* [x] Microsecond registration boundaries tested
+* [x] Admission after a lock wait across opening tested
+* [x] Rejection after a lock wait across closing tested
+* [x] Registration timestamp consistency tested
+* [x] Business completion timestamp ordering tested
+* [x] Backward/forward database clock changes tested
+* [x] Historical timestamp replay tested
+* [x] Restricted-role legitimate registration tested
+* [x] Restricted-role tournament provisioning denial tested
+* [x] Restricted-role audit rewrite denial tested
+* [x] Restricted-role protected DDL denial tested
+* [x] Timestamp INSERT permissions tested
+* [x] Final security and financial-integrity audit completed
+* [x] Final transaction and uncertain-COMMIT audit completed
+* [x] Final business idempotency audit completed
+* [x] Final concurrency and locking audit completed
+* [x] Final timestamp and registration-window audit completed
+* [x] Final migration and permission audit completed
+* [x] Critical GP executor code manually reviewed
+* [x] Standalone GP service compatibility manually reviewed
+* [x] Knockout migration 004 manually reviewed
+* [x] Knockout registration service manually reviewed
+* [x] Knockout registration repository manually reviewed
+* [x] Knockout PostgreSQL integration tests manually reviewed
+* [x] Transaction utility manually reviewed
+* [x] Backend typecheck passed
+* [x] Backend build passed
+* [x] Backend unit tests passed — 105 tests
+* [x] PostgreSQL integration tests passed — 118 tests
+* [x] Focused migration tests passed — 9 tests
+* [x] `flutter analyze` passed
+* [x] Full Flutter test suite passed — 648 tests
+* [x] `git diff --check` passed
+
+Final automated validation commands reported by Codex:
+
+```bash
+cd backend
+npm run typecheck
+npm run build
+npm test
+node --import tsx --test test/migrations.test.ts
+env NODE_ENV=test TEST_DATABASE_URL=postgresql://stoppy@127.0.0.1:55447/stoppy_executor_test npm run test:integration
+```
+
+Flutter and repository validation:
+
+```bash
+flutter analyze
+flutter test --reporter compact
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `npm run typecheck` — passed
+* `npm run build` — passed
+* `npm test` — **105 tests passed**
+* PostgreSQL integration — **118 tests passed**
+* Focused migration tests — **9 tests passed**
+* `flutter analyze` — no issues
+* `flutter test` — **648 tests passed**
+* `git diff --check` — passed
+* Total primary automated test suites — **871 passed, 0 failed**
+* Focused migration tests were executed separately and are not added again to the primary total
+* Restricted PostgreSQL runtime-role coverage included 8 passing cases
+* No tests were reported as skipped
+* PostgreSQL validation used a disposable local database cluster
+* The disposable PostgreSQL cluster was stopped after verification
+
+Manual validation:
+
+* Seven critical Session 47 implementation, migration and test files reviewed individually.
+* GP transaction ownership and standalone-service compatibility reviewed.
+* Knockout registration database constraints reviewed.
+* Financial purpose attribution reviewed and corrected.
+* Registration business and financial idempotency reviewed.
+* Tournament and player locking reviewed.
+* PostgreSQL concurrency tests reviewed.
+* Transaction rollback and uncertain-COMMIT safeguards reviewed.
+* Authoritative registration time and timestamp behavior reviewed.
+* No additional approval-blocking defect identified in the inspected implementation.
+* Production database privileges and rollout remain unverified.
+* No real HTTP registration workflow was activated or tested.
+* Session 47 accepted as technically complete within its agreed internal-service scope.
+
+---
+
+### 📌 Next Session
+
+**Proposed:** Session 48 — Backend Knockout Tournament Lifecycle and Registration API Readiness
+
+Planned focus (to confirm when opening the next session):
+
+* [ ] Review the completed Session 47 internal Knockout registration service
+* [ ] Review the existing Flutter Knockout registration API contract
+* [ ] Review existing Knockout tournament, status and registration read contracts
+* [ ] Define trusted tournament provisioning and monthly lifecycle ownership
+* [ ] Define the authoritative tournament month and registration-window selection policy
+* [ ] Resolve registration scheduling relative to the previous tournament's completion
+* [ ] Define server-side tournament resolution for empty-body registration requests
+* [ ] Preserve tournament identity across retries and uncertain COMMIT recovery
+* [ ] Define authenticated player identity requirements for the registration HTTP boundary
+* [ ] Define HTTP responses for accepted registration, rejection, replay and idempotency conflict
+* [ ] Define historical financial outcome versus current profile projection behavior
+* [ ] Ensure tournament lifecycle writers follow the exclusive advisory-lock protocol
+* [ ] Review production PostgreSQL role and timestamp INSERT grant requirements
+* [ ] Define which Knockout read endpoints are required for a usable backend registration flow
+* [ ] Identify the smallest safe end-to-end integration scope
+* [ ] Define migration, service and API sequencing requirements
+* [ ] Prepare deterministic backend and PostgreSQL integration tests
+* [ ] Preserve existing Flutter mock runtime and gameplay rules
+* [ ] Keep future backend activation incremental and independently reviewable
+
+Session boundary:
+
+* The Session 48 scope is proposed and must be confirmed before implementation.
+* Do not activate a registration route that trusts a client-provided player ID.
+* Do not accept client-provided GP balances, registration fee amounts or authoritative tournament status.
+* Do not silently retarget an existing idempotency key to a different tournament.
+* Do not bypass the Session 47 atomic debit and registration service.
+* Do not create tournament catalog records from untrusted registration requests.
+* Do not implement tournament lifecycle writers without the agreed catalog-lock protocol.
+* Do not expose incomplete Knockout functionality as a production-ready end-to-end experience.
+* Preserve the Session 46 GP ledger and mutation invariants.
+* Preserve the Session 47 registration financial attribution guarantees.
+* Preserve explicit recovery after uncertain COMMIT.
+* Keep PostgreSQL migrations append-only and checksum-protected.
+* Preserve the existing authentication and session security model.
+* Keep the Flutter mock runtime as the default until the real backend flow is ready.
+
+---
+
+### 📊 Progress Update
+
+* ✅ Sessions 1–45 — Completed, including intermediate refinement sessions and superseded functionality
+* ✅ Session 46 — Backend Player Profile + Game Points Persistence Foundation
+* ✅ Session 47 — Backend GP Business Integration Readiness + Authoritative Run Validation Planning
+* ⏳ Session 48 — Backend Knockout Tournament Lifecycle and Registration API Readiness (proposed)
+
+---
+
+### 🧭 Current State
+
+Last completed session: **Session 47 — Backend GP Business Integration Readiness + Authoritative Run Validation Planning**
+
+Status: **Completed ✅**
+
+Next proposed session: **Session 48 — Backend Knockout Tournament Lifecycle and Registration API Readiness**
+
+Current backend state:
+
+* Node.js 24, TypeScript and Fastify application server foundation implemented
+* PostgreSQL connectivity and transactional migration infrastructure implemented
+* Health and readiness endpoints implemented
+* PostgreSQL player account and authentication session persistence implemented
+* Registration, login, refresh and authenticated profile endpoints implemented
+* Argon2id password hashing implemented
+* EdDSA JWT signing and verification implemented
+* PostgreSQL session validation and refresh-token replay revocation implemented
+* Server-authoritative authenticated player identity infrastructure implemented
+* PostgreSQL transaction and connection lifecycle protections implemented
+* PostgreSQL economy schema introduced through migration 003
+* Immutable GP ledger and durable mutation records implemented
+* Existing GP balances documented through opening snapshots
+* New registrations atomically create opening snapshots
+* Initial GP balance remains exactly 5
+* Internal atomic GP credit/debit service implemented
+* Transaction-bound GP executor implemented
+* Standalone GP service behavior preserved
+* GP operations can participate in larger business transactions
+* Concurrency-safe GP balance updates implemented
+* Durable GP mutation idempotency, fingerprinting and replay implemented
+* GP ledger reconciliation supported through opening balances and committed movements
+* PostgreSQL Knockout schema introduced through migration 004
+* Trusted Knockout tournament catalog persistence implemented
+* Knockout registration persistence implemented
+* Durable Knockout business operation persistence implemented
+* Unique player/tournament registration constraints implemented
+* Exact-purpose financial evidence required for paid Knockout registration
+* Internal server-authoritative Knockout registration service implemented
+* Atomic Knockout registration and 25 GP debit implemented
+* Business-level registration idempotency and replay implemented
+* Deterministic registration and financial source identity implemented
+* Tournament catalog advisory locking and player row locking implemented
+* Concurrency protection against duplicate registrations and charges implemented
+* Explicit uncertain-COMMIT recovery supported
+* PostgreSQL-authoritative admission window comparisons implemented
+* Registration timestamp consistency and historical replay implemented
+* Restricted-role PostgreSQL registration and economy integration tests implemented
+* Final Session 47 security and integration audit passed
+* Backend unit and PostgreSQL integration tests passing
+* Flutter mock runtime remains the default
+* Existing Flutter authentication REST contracts preserved
+* Existing Flutter League and Knockout backend client contracts preserved
+* Knockout registration service remains internal and has no public HTTP route
+* Trusted tournament provisioning and lifecycle automation remain unimplemented
+* Knockout read endpoints remain unimplemented in the real backend
+* League entry and re-entry fee execution remains unimplemented in the real backend
+* Server-authoritative gameplay run validation remains unimplemented
+* Real backend gameplay GP rewards remain unimplemented
+* Daily and warmup GP reward integration remains unimplemented
+* Server-authoritative Precision Points and anti-cheat remain pending
+* GP purchase verification and fulfillment remain pending
+* Rewarded-ad verification and ads-removal business integration remain pending
+* Monthly Knockout scheduling, brackets and settlement remain pending
+* Mobile-to-backend end-to-end Knockout registration validation remains pending
+* Production PostgreSQL roles, grants and deployment ordering remain unverified
+* Timestamp column-specific INSERT grants require production provisioning
+* Controlled migration deployment and opening-snapshot verification remain required
+* Direct SQL balance updates remain a database trust-boundary consideration
+* Production deployment remains pending
+
+Future session policy:
+
+* Keep implementation sessions narrowly scoped and independently testable
+* Continue reviewing Codex changes before marking sessions completed
+* Preserve Flutter gameplay and existing competitive rules
+* Keep authenticated identity and competitive state server-authoritative
+* Preserve mock repositories as the default until real backend integration is ready
+* Reuse the completed Session 45 authentication infrastructure
+* Reuse the completed Session 46 GP ledger and persistence infrastructure
+* Reuse the completed Session 47 transaction-bound GP executor
+* Reuse the completed Session 47 internal Knockout registration service
+* Never trust client-supplied player identities, GP balances, fees or authoritative scores
+* Require trusted server-side business evidence before awarding or charging GP
+* Preserve atomic financial movements and associated business persistence
+* Require durable business and financial idempotency
+* Preserve stable operation targeting across retries
+* Preserve explicit uncertain-COMMIT recovery without automatic retries
+* Keep tournament lifecycle and admission decisions server-authoritative
+* Require exclusive catalog locking for future tournament lifecycle mutations
+* Treat submitted runs as untrusted claims until complete server validation exists
+* Define Europe/Lisbon calendar and DST policies before implementing daily rewards or tournament scheduling
+* Keep League and Knockout settlement and authoritative calculations on the server
+* Introduce real Simulator end-to-end tests when compatible backend endpoints are available
+* Keep PostgreSQL migrations append-only and checksum-protected
+* Preserve PostgreSQL transaction and connection lifecycle safeguards
+* Keep production runtime database privileges separate from migration privileges
+* Verify restricted-role grants, ledger integrity and opening-snapshot coverage before production
+* Preserve authentication security, JWT verification and refresh-token replay protection
+* Maintain comprehensive backend unit, PostgreSQL integration and Flutter regression tests
+* Do not introduce gameplay, pricing or economy redesigns without an explicitly approved scope
