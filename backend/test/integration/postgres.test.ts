@@ -18,6 +18,9 @@ import { testRegistrationGp } from './registration_gp_cases.js';
 import { testGpRuntimeRole } from './gp_runtime_role_cases.js';
 import { testKnockoutSchema } from './knockout_schema_cases.js';
 import { testKnockoutRegistration } from './knockout_registration_cases.js';
+import { testKnockoutTournamentCatalog } from './knockout_tournament_catalog_cases.js';
+import { testKnockoutRegistrationHttp } from './knockout_registration_http_cases.js';
+import { testKnockoutReads } from './knockout_read_cases.js';
 
 test('real PostgreSQL connectivity, migrations and account/session persistence', async (t) => {
   const url = process.env.TEST_DATABASE_URL;
@@ -106,8 +109,11 @@ test('real PostgreSQL connectivity, migrations and account/session persistence',
     const ledger = await database.query('SELECT version FROM public.stoppy_schema_migrations');
     assert.equal(ledger.rows.length, migrations.length);
     await testGpSchema(t, database, gpFixtures);
+    await testKnockoutReads(t, database, config);
     await testKnockoutSchema(t, database);
+    await testKnockoutTournamentCatalog(t, database);
     await testKnockoutRegistration(t, database);
+    await testKnockoutRegistrationHttp(t, database, config);
     await testGpService(t, database);
 
     let time = new Date('2026-10-26T12:00:00.000Z');

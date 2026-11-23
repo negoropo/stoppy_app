@@ -266,6 +266,7 @@ class KnockoutTournamentDto {
     required this.rounds,
     required this.eliminatedPlayerIds,
     this.championPlayerId,
+    this.registrationWindowOpen,
   });
 
   final String id;
@@ -280,6 +281,7 @@ class KnockoutTournamentDto {
   final List<KnockoutRoundDto> rounds;
   final List<String> eliminatedPlayerIds;
   final String? championPlayerId;
+  final bool? registrationWindowOpen;
 
   factory KnockoutTournamentDto.fromDomain(KnockoutTournament tournament) {
     return KnockoutTournamentDto(
@@ -300,30 +302,82 @@ class KnockoutTournamentDto {
     );
   }
 
-  factory KnockoutTournamentDto.fromJson(Object? json) {
+  factory KnockoutTournamentDto.fromJson(Object? json) =>
+      KnockoutTournamentDto._decode(json);
+
+  /// Registration receipts carry catalog metadata only. Their domain model
+  /// must not replace a competition snapshot in the Knockout screen.
+  factory KnockoutTournamentDto.fromRegistrationCatalog(Object? json) =>
+      KnockoutTournamentDto._decode(json, registrationOnly: true);
+
+  factory KnockoutTournamentDto.fromReadCatalog(Object? json) =>
+      KnockoutTournamentDto._decode(
+        json,
+        registrationOnly: true,
+        requireWindow: true,
+      );
+
+  factory KnockoutTournamentDto._decode(
+    Object? json, {
+    bool registrationOnly = false,
+    bool requireWindow = false,
+  }) {
     final reader = JsonReader.fromObject(
       json,
       context: 'KnockoutTournamentDto',
     );
+    final status = _tournamentStatusFromName(reader.requiredString('status'));
+    final windowOpen = requireWindow
+        ? reader.requiredBool('registrationWindowOpen')
+        : null;
+    if (windowOpen == true &&
+        status != KnockoutTournamentStatus.registrationOpen) {
+      throw const FormatException(
+        'An open Knockout window requires an open catalog state.',
+      );
+    }
+    final DateTime tournamentMonth;
+    if (requireWindow) {
+      final label = reader.requiredString('tournamentMonth');
+      final month = DateTime.tryParse('${label}T00:00:00Z');
+      if (label.length != 10 ||
+          !label.endsWith('-01') ||
+          month == null ||
+          month.toIso8601String().substring(0, 10) != label) {
+        throw const FormatException('Invalid Knockout tournament month label.');
+      }
+      tournamentMonth = month;
+    } else {
+      tournamentMonth = reader.requiredDateTime('tournamentMonth');
+    }
     return KnockoutTournamentDto(
       id: reader.requiredString('id'),
       name: reader.requiredString('name'),
       entryCostGamePoints: reader.requiredNonNegativeInt('entryCostGamePoints'),
-      tournamentMonth: reader.requiredDateTime('tournamentMonth'),
+      tournamentMonth: tournamentMonth,
       registrationOpensAt: reader.requiredDateTime('registrationOpensAt'),
       registrationClosesAt: reader.requiredDateTime('registrationClosesAt'),
       startsAt: reader.requiredDateTime('startsAt'),
-      status: _tournamentStatusFromName(reader.requiredString('status')),
-      entries: reader
-          .requiredObjectList('entries')
-          .map((item) => KnockoutPlayerEntryDto.fromJson(item.toMap()))
-          .toList(growable: false),
-      rounds: reader
-          .requiredObjectList('rounds')
-          .map((item) => KnockoutRoundDto.fromJson(item.toMap()))
-          .toList(growable: false),
-      eliminatedPlayerIds: reader.optionalStringList('eliminatedPlayerIds'),
-      championPlayerId: reader.optionalString('championPlayerId'),
+      status: status,
+      registrationWindowOpen: windowOpen,
+      entries: registrationOnly
+          ? const []
+          : reader
+                .requiredObjectList('entries')
+                .map((item) => KnockoutPlayerEntryDto.fromJson(item.toMap()))
+                .toList(growable: false),
+      rounds: registrationOnly
+          ? const []
+          : reader
+                .requiredObjectList('rounds')
+                .map((item) => KnockoutRoundDto.fromJson(item.toMap()))
+                .toList(growable: false),
+      eliminatedPlayerIds: registrationOnly
+          ? const []
+          : reader.optionalStringList('eliminatedPlayerIds'),
+      championPlayerId: registrationOnly
+          ? null
+          : reader.optionalString('championPlayerId'),
     );
   }
 
@@ -336,11 +390,23 @@ class KnockoutTournamentDto {
     registrationClosesAt: registrationClosesAt,
     startsAt: startsAt,
     status: status,
+    registrationWindowOpen: registrationWindowOpen,
     entries: entries.map((entry) => entry.toDomain()).toList(),
     rounds: rounds.map((round) => round.toDomain()).toList(),
     eliminatedPlayerIds: eliminatedPlayerIds,
     championPlayerId: championPlayerId,
   );
+
+  Map<String, Object?> toRegistrationCatalogJson() => {
+    'id': id,
+    'name': name,
+    'entryCostGamePoints': entryCostGamePoints,
+    'tournamentMonth': tournamentMonth.toIso8601String().substring(0, 10),
+    'registrationOpensAt': registrationOpensAt.toIso8601String(),
+    'registrationClosesAt': registrationClosesAt.toIso8601String(),
+    'startsAt': startsAt.toIso8601String(),
+    'status': status.name,
+  };
 
   Map<String, Object?> toJson() => {
     'id': id,

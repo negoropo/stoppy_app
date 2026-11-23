@@ -8,7 +8,7 @@ import { KnockoutRegistrationRepository, registrationFingerprintVersion, registr
   type RegistrationIntent, type RegistrationOutcome, type RegistrationRejection } from './knockout_registration_repository.js';
 
 // Monthly entry is a fixed server rule, never a caller-supplied amount/balance.
-const registrationFee = 25;
+export const knockoutRegistrationFee = 25;
 
 export type KnockoutRegistrationResult =
   | { readonly status: 'completed'; readonly replayed: boolean; readonly outcome: RegistrationOutcome }
@@ -87,7 +87,7 @@ export class KnockoutRegistrationService {
             } else {
               const financial = await new GpExecutor(connection).debit({ playerId: command.playerId,
                 operationName: 'knockout_registration_fee', operationVersion: registrationVersion,
-                idempotencyKey: command.idempotencyKey, amount: registrationFee, reason: 'knockout_registration',
+                idempotencyKey: command.idempotencyKey, amount: knockoutRegistrationFee, reason: 'knockout_registration',
                 sourceType: 'knockout_registration', sourceId: `${command.tournamentId}:${registrationId}`,
                 context: { businessOperation: registrationOperation, businessVersion: registrationVersion,
                   tournamentId: command.tournamentId, registrationId } });

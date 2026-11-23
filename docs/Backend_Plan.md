@@ -5,9 +5,9 @@
 `KnockoutRegistrationService.register({playerId, tournamentId, idempotencyKey})`
 atomically admits a trusted authenticated player to an existing trusted tournament
 and debits exactly 25 GP through the transaction-bound `GpExecutor`. The repository
-uses migration 004 unchanged. No HTTP registration handler is active; Flutter
-backend registration is not end-to-end operational against this server.
-Provisioning, lifecycle jobs, brackets, run validation, League integration and
+uses migration 004 unchanged. The HTTP adapter is limited to explicitly gated
+test injection. Flutter paid registration is unavailable.
+Operator provisioning exists. Lifecycle jobs, brackets, run validation, League integration and
 gameplay/daily/warmup GP rewards remain deferred. Earlier inventories are historical.
 
 Lock order is shared tournament advisory lock, player row lock, business replay /
@@ -17,8 +17,8 @@ catalog updates/deletes: `hashtextextended('stoppy.knockout.tournament:' || id::
 They must not acquire player locks first. Shared advisory locking needs no catalog
 UPDATE grant. The timestamp correction needs column-specific INSERT grants for
 `registered_at`, `created_at` and `completed_at` (see `backend/README.md`); it adds
-no UPDATE, ownership or schema privileges. No lifecycle
-writer is implemented here. Direct privileged SQL bypassing this protocol is not
+no UPDATE, ownership or schema privileges. The operator catalog uses the
+exclusive lock for its supported transitions. Direct privileged SQL bypassing this protocol is not
 covered by the concurrency guarantee.
 
 Admission is linearized at a fresh `clock_timestamp()` sample after lock waits,
@@ -48,12 +48,23 @@ both GP and business rejections without a movement; a new attempt needs a new ke
 Missing players and key conflicts are distinct non-persisted results. Success is
 provisional until outer COMMIT succeeds.
 
-The future empty-body HTTP boundary must retain the first resolved tournament
-for a logical key before resolving a new current month, or replay the stored
-operation directly; it must never silently retarget retries. An explicit changed
-target conflicts here. HTTP mapping must distinguish historical outcome balances
-from a separately fetched current profile and respect existing DTO consistency
-constraints. Monthly scheduling policy and HTTP-boundary resolution remain deferred.
+The test HTTP boundary receives an explicit catalog UUID alongside the
+caller-owned key and derives player identity from the verified persisted
+session. Flutter retains the UUID and key before its first submission and
+reuses them on retry. A committed outcome conflicts with a different UUID for
+the same player and key. A rolled-back transaction leaves no business outcome,
+so the explicit original target carries retry identity and is checked afresh.
+The adapter maps an accepted outcome to a catalog-only receipt and reads the
+authenticated profile after the service returns. Historical outcome GP is
+preserved separately. Session validity is checked at request authorization and
+again for the accepted profile read. Authorization and registration are separate
+steps, so revocation does not cancel a transaction already authorized. A receipt
+read failure leaves the durable operation available for explicit replay.
+Authenticated display reads use separate competition and registration slots.
+The discovery policy and catalog window flag use one PostgreSQL clock sample
+and the Lisbon month label. Entry and status remain keyed to the explicitly
+requested tournament and verified player. Reads use existing SELECT grants.
+Authoritative competitive projections and production activation remain deferred.
 
 ## Session 47 Part 3 Persistence Foundation
 

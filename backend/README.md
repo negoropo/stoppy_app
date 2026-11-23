@@ -4,7 +4,7 @@ Session 44 adds an isolated Node.js 24 / TypeScript / Fastify application with
 PostgreSQL connectivity. Session 45 adds PostgreSQL-backed authentication
 and Session 46 adds the internal GP ledger/idempotency foundation and atomic
 registration opening snapshots. Flutter still defaults to mocks. League,
-Knockout and public GP earning/spending endpoints remain unimplemented.
+Public Knockout and GP earning/spending endpoints remain unavailable.
 
 ## Local setup
 
@@ -243,7 +243,7 @@ ALL privileges, audit UPDATE/DELETE/TRUNCATE, or migration-ledger writes.
 
 The currently implemented SQL needs the following runtime privileges, including
 the internal Knockout registration service. Migration 004 provisions no
-roles/grants and no registration HTTP endpoint is active.
+roles or grants. Registration HTTP is limited to isolated test injection.
 
 | Object | Required privileges |
 | --- | --- |
@@ -288,7 +288,7 @@ financial semantics and seeds no tournaments. Owner/migration credentials apply
 permissions separately. The restricted role cannot write the catalog, rewrite
 evidence, disable triggers or create schema objects. Part 4's internal service now
 executes atomic debit/registration/outcome persistence using these same grants.
-Monthly provisioning and HTTP integration remain deferred. The financial FK requires source
+Monthly provisioning uses a separate operator interface. The financial FK requires source
 type `knockout_registration` and source ID `<tournament UUID>:<registration UUID>`.
 Trusted code preallocates the registration UUID before the debit; INSERT `id`
 permission allows that sequence without allowing identity rewrites. The business
@@ -300,8 +300,8 @@ the logical business operation (see `../docs/Persistence_Map.md`).
 and a logical key. It owns READ COMMITTED/COMMIT, invokes `GpExecutor` on the same
 connection, and returns historical accepted/rejected outcomes or distinct missing
 player/key-conflict results. Failures are sanitized; uncertain COMMIT requires an
-explicit same-intent/key retry. No automatic retry, current-tournament resolution
-or HTTP mapping is implemented. Database time determines admission after waits.
+explicit same-intent/key retry. The adapter keeps the explicit target across
+retries. Database time determines admission after waits.
 Lifecycle writers must acquire an exclusive transaction advisory lock on
 `hashtextextended('stoppy.knockout.tournament:' || id::text, 0)` before catalog
 changes and before player locks; admission holds its shared counterpart through
@@ -311,6 +311,123 @@ clamped to that instant against backward clock steps. These explicit INSERTs nee
 the three timestamp column grants listed above, not UPDATE or ownership rights.
 Migration defaults and checksums are unchanged; replay retains historical values.
 See `../docs/Backend_Plan.md` for boundary and replay semantics.
+
+### Registration HTTP test gate
+
+`KNOCKOUT_REGISTRATION_HTTP` accepts `disabled` (default) or `enabled`.
+Configuration accepts `enabled` only with `NODE_ENV=test` and a loopback
+`DATABASE_URL` for a disposable `*_test` database. Test code can then inject
+requests into `buildApp`. The enabled instance uses a custom Fastify HTTP
+server that refuses direct `app.listen()` before binding. Normal application
+startup rejects the enabled configuration before connecting or listening.
+A disabled app returns 404.
+
+The POST accepts only `{ "tournamentId": "<catalog UUID>" }`
+with the caller-owned `Idempotency-Key`. Flutter stores the original UUID and
+key before sending, then uses the same tuple for explicit recovery. The
+authenticated persisted session supplies the player. A committed operation
+replays historically, with changed target rejected as a key conflict. A rolled-back
+operation is evaluated afresh against the original target. Rejections include
+the correlated IDs and code. An accepted receipt includes persisted catalog
+and entry data, historical GP, and a separately sampled post-commit profile.
+A 409 conflict and a 503 verification or unknown-COMMIT failure retain the
+client's pending attempt. See [the API contract](../docs/API_Plan.md#post-apiv1knockoutregister)
+for exact fields and error codes.
+
+Production activation requires an approved authoritative read and selection
+flow, a supported lifecycle through competition execution, verified runtime
+grants and a separate activation review. The test gate cannot authorize
+production activation.
+
+### Authenticated Knockout reads
+
+Catalog discovery and scoped registration reads are available independently of
+the paid POST gate. Discovery returns separate competition and registration
+slots using PostgreSQL time and Lisbon month labels. Explicit UUID reads use
+the stored catalog and the verified player's paid entry without changing the
+selected target. Extra query fields are rejected. The existing runtime read
+grants are sufficient, and GET handlers perform no writes.
+
+Active duel, records, history and Hall of Fame return `501 notImplemented`
+for valid authenticated requests. The Flutter backend screen reports those
+projections and League achievements as unavailable, while the default mock
+keeps its existing behavior. Competition execution and settlement persistence
+are still prerequisites for a complete competitive experience and paid
+activation. See [the read contract](../docs/API_Plan.md#knockout-read-authentication-and-scope).
+
+### Operator-controlled Knockout catalog
+
+After applying migration 004 with the migration role, use the internal
+`KnockoutTournamentCatalog` from a trusted operator process. Build with
+`npm run build` and import from `dist/knockout/`. The example below is a
+programmatic invocation from the backend directory. Supply the operator
+credentials as `DATABASE_URL` with the usual database TLS configuration in that
+process. The example timestamps illustrate the interface. Operators must supply
+an approved schedule for the intended month.
+
+```js
+import { loadConfig } from './dist/config.js';
+import { createDatabase } from './dist/database.js';
+import { KnockoutTournamentCatalog } from './dist/knockout/knockout_tournament_catalog.js';
+import { lisbonDayStart } from './dist/knockout/knockout_tournament_calendar.js';
+
+const database = createDatabase(loadConfig(process.env), () => {
+  console.error('Idle database connection failed.');
+});
+try {
+  const catalog = new KnockoutTournamentCatalog(database);
+  const tournament = await catalog.provision({
+    tournamentMonth: '2030-07-01',
+    name: 'July Knockout',
+    registrationOpensAt: lisbonDayStart('2030-06-20'),
+    registrationClosesAt: new Date('2030-06-30T23:59:00+01:00'),
+    startsAt: lisbonDayStart('2030-07-01'),
+  });
+  console.info(tournament);
+  // In a separately authorized operation, use the returned ID:
+  // await catalog.transition(tournament.id, 'registrationOpen');
+  // await catalog.transition(tournament.id, 'registrationClosed');
+} finally {
+  await database.close();
+}
+```
+
+- Provisioning creates an `unavailable` row. The canonical month is the Lisbon
+  civil date label `YYYY-MM-01`. The start must fall in that Lisbon month.
+  Inputs use valid `Date` instants with millisecond precision, so use explicit
+  offsets or the Lisbon calendar helper. The name is trimmed. Repeating the same
+  month, name and instants returns the existing UUID and current status.
+  Conflicting metadata fails with `provisioningConflict`. The unique month
+  constraint makes concurrent attempts converge on one row.
+- The operator can move `unavailable` to `registrationOpen` when PostgreSQL
+  time is within `[registrationOpensAt, registrationClosesAt)`, and
+  `registrationOpen` to `registrationClosed` explicitly, including early
+  closure. Repeating the current supported target is a no-op. Other transitions
+  fail. Opening and closing take the exclusive Session 47 tournament advisory
+  lock before checking state, hold it through COMMIT, and take no player locks.
+  Provisioning an unavailable row uses the unique month constraint and does
+  not change admission eligibility.
+- Use separate non-owner operator credentials with database `CONNECT`, schema
+  `USAGE` on `stoppy_knockout`, and these catalog table privileges:
+  `SELECT (id, tournament_month, name, registration_opens_at, registration_closes_at, starts_at, status)`,
+  `INSERT (tournament_month, name, registration_opens_at, registration_closes_at, starts_at, status)`
+  and `UPDATE (status)`. The operator needs no player, registration, GP or
+  migration-ledger write privileges. Apply grants separately and verify them on
+  the target deployment. The API runtime retains catalog SELECT only.
+- Catalog errors expose sanitized codes. For `commitOutcomeUnknown`, inspect
+  the row through a fresh connection and explicitly reconcile the same month
+  and parameters or the same UUID and target. There is no automatic replay.
+- Game Rules ties opening to the day after the previous tournament ends.
+  Migration 004 has no trusted completion timestamp and requires
+  `registrationOpensAt < registrationClosesAt < startsAt`. The operator supplies
+  those instants. The precise close/start convention, first and delayed
+  tournaments, and cross-tournament handoff remain policy decisions. The calendar
+  helper advances civil dates independently of elapsed hours and rejects
+  ambiguous or nonexistent Lisbon midnights.
+- The catalog interface is available only to trusted code. Fastify, startup
+  and background scheduling do not invoke it. Opening a catalog row does not
+  enable HTTP registrations or charge GP. Competition start and completion
+  require future trusted execution and settlement.
 
 ## Verification
 

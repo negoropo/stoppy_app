@@ -4,9 +4,9 @@
 
 The internal `KnockoutRegistrationService` and transaction-bound repository now
 exercise migration 004 atomically with `GpExecutor`; no migration/schema change
-was required. Part 3's inventory below is historical. There is still no HTTP
-handler, tournament provisioning/lifecycle implementation, or Flutter end-to-end
-Knockout registration against this server.
+was required. Part 3's inventory below is historical. The operator catalog can
+provision tournaments and manage registration state. Fastify registration
+supports isolated test injection. Flutter end-to-end paid registration remains unavailable.
 
 One READ COMMITTED transaction acquires a shared catalog advisory lock then the
 player row lock, reads the scoped business outcome, checks fresh database-time
@@ -36,10 +36,22 @@ infrastructure failures do not create business outcome rows.
 
 Lifecycle writers must acquire the exclusive form of the catalog advisory lock
 before changing state and before locking any player. See `Backend_Plan.md` for
-the exact protocol and admission-time convention. Future HTTP resolution must
-recover the original target for a key, never infer a different month on retry.
-Historical remaining GP is not a current profile projection; HTTP mapping remains
-deferred alongside provisioning, run validation, League and gameplay GP producers.
+the exact protocol and admission-time convention. Pending Flutter registrations
+use a separate versioned secure-storage record per backend and player. It
+stores only the explicit target UUID and caller-owned key. Unreadable records
+block new attempts for that scope until storage can be recovered.
+The HTTP receipt reads catalog and registration evidence using the exact
+persisted registration UUID, player and tournament. The immutable historical
+balance remains in the original business outcome. A post-commit authenticated
+profile read samples current wallet GP independently. Migration 004 and the
+existing runtime grants cover these reads. Run validation, League and gameplay
+GP producers remain deferred.
+
+Knockout discovery reads only the trusted catalog. Scoped entry and status
+left-join the paid registration for the requested tournament and authenticated
+player. A paid row certifies registration alone. Current window eligibility is
+sampled from PostgreSQL on each read. Migration 004 supplies all persistence
+used by these endpoints, and GETs write no state.
 
 ## Session 47 Part 3 Knockout Registration Schema
 

@@ -13,8 +13,9 @@ class KnockoutRegistrationResult {
   const KnockoutRegistrationResult._({
     required this.isSuccess,
     required this.tournament,
+    required this.tournamentId,
     this.playerEntry,
-    this.remainingGamePoints,
+    this.historicalRemainingGamePoints,
     this.playerProfile,
     this.failureReason,
     this.message,
@@ -23,27 +24,30 @@ class KnockoutRegistrationResult {
   factory KnockoutRegistrationResult.success({
     required KnockoutTournament tournament,
     required KnockoutPlayerEntry playerEntry,
-    int? remainingGamePoints,
+    int? historicalRemainingGamePoints,
     PlayerProfile? playerProfile,
   }) {
     return KnockoutRegistrationResult._(
       isSuccess: true,
       tournament: tournament,
+      tournamentId: tournament.id,
       playerEntry: playerEntry,
-      remainingGamePoints: remainingGamePoints,
+      historicalRemainingGamePoints: historicalRemainingGamePoints,
       playerProfile: playerProfile,
       message: 'Knockout registration confirmed.',
     );
   }
 
   factory KnockoutRegistrationResult.failure({
-    required KnockoutTournament tournament,
+    KnockoutTournament? tournament,
+    String? tournamentId,
     required KnockoutRegistrationFailureReason failureReason,
     required String message,
   }) {
     return KnockoutRegistrationResult._(
       isSuccess: false,
       tournament: tournament,
+      tournamentId: tournamentId ?? tournament!.id,
       failureReason: failureReason,
       message: message,
     );
@@ -51,11 +55,12 @@ class KnockoutRegistrationResult {
 
   final bool isSuccess;
 
-  final KnockoutTournament tournament;
+  final KnockoutTournament? tournament;
+  final String tournamentId;
 
   final KnockoutPlayerEntry? playerEntry;
 
-  final int? remainingGamePoints;
+  final int? historicalRemainingGamePoints;
 
   final PlayerProfile? playerProfile;
 

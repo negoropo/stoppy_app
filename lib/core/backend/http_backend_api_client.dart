@@ -19,7 +19,7 @@ message: message,
 );
 }
 
-final class HttpBackendApiClient implements BackendApiClient {
+final class HttpBackendApiClient implements PlayerBoundBackendApiClient {
 HttpBackendApiClient({
 required BackendConfig config,
 required HttpTransport transport,
@@ -73,6 +73,25 @@ headers: headers,
 );
 }
 
+/// Keep a recovered mutation tied to the account whose bearer is being sent.
+/// This local check is not authentication. The server still verifies the
+/// token and its persisted session.
+@override
+Future<ApiResponse<Map<String, Object?>>> postForPlayer(
+  String path, {
+  required String playerId,
+  required Map<String, Object?> body,
+  required Map<String, String> headers,
+}) {
+  return _request(
+    HttpMethod.post,
+    path,
+    body: body,
+    headers: headers,
+    expectedPlayerId: playerId,
+  );
+}
+
 @override
 Future<ApiResponse<Map<String, Object?>>> put(
 String path, {
@@ -121,6 +140,7 @@ String path, {
 Map<String, String> queryParameters = const {},
 Map<String, Object?>? body,
 Map<String, String> headers = const {},
+String? expectedPlayerId,
 }) async {
 final uri = _resolveUri(
 path,
@@ -145,6 +165,16 @@ details: <String, Object?>{
 },
 ),
 );
+}
+
+if (expectedPlayerId != null &&
+    !_bearerMatchesPlayer(requestHeaders, expectedPlayerId)) {
+  return const ApiResponse.failure(
+    ApiError(
+      code: ApiErrorCode.unauthenticated,
+      message: 'Sign in to the account that started this registration.',
+    ),
+  );
 }
 
 final String? encodedBody;
@@ -197,6 +227,20 @@ message: 'Unable to reach the backend service.',
 }
 
 return _decodeResponse(response);
+}
+
+bool _bearerMatchesPlayer(Map<String, String> headers, String playerId) {
+  final bearer = headers[ApiContract.authorizationHeader];
+  final parts = bearer?.split('.');
+  if (parts == null || parts.length != 3) return false;
+  try {
+    final payload = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+    );
+    return payload is Map && payload['sub'] == playerId;
+  } on FormatException {
+    return false;
+  }
 }
 
 Uri _resolveUri(

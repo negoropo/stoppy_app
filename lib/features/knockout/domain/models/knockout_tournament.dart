@@ -6,6 +6,7 @@ import 'knockout_round.dart';
 const Object _unset = Object();
 
 enum KnockoutTournamentStatus {
+  unavailable,
   registrationOpen,
   registrationClosed,
   inProgress,
@@ -22,6 +23,7 @@ class KnockoutTournament {
     required this.registrationClosesAt,
     required this.startsAt,
     this.status = KnockoutTournamentStatus.registrationOpen,
+    this.registrationWindowOpen,
     List<KnockoutPlayerEntry> entries = const [],
     List<KnockoutRound> rounds = const [],
     List<String> eliminatedPlayerIds = const [],
@@ -65,13 +67,15 @@ class KnockoutTournament {
   final DateTime startsAt;
 
   final KnockoutTournamentStatus status;
+  final bool? registrationWindowOpen;
   final List<KnockoutPlayerEntry> entries;
   final List<KnockoutRound> rounds;
   final List<String> eliminatedPlayerIds;
   final String? championPlayerId;
 
   bool get isRegistrationOpen {
-    return status == KnockoutTournamentStatus.registrationOpen;
+    return status == KnockoutTournamentStatus.registrationOpen &&
+        registrationWindowOpen != false;
   }
 
   bool get isInProgress => status == KnockoutTournamentStatus.inProgress;
@@ -104,6 +108,7 @@ class KnockoutTournament {
     DateTime? registrationClosesAt,
     DateTime? startsAt,
     KnockoutTournamentStatus? status,
+    bool? registrationWindowOpen,
     List<KnockoutPlayerEntry>? entries,
     List<KnockoutRound>? rounds,
     List<String>? eliminatedPlayerIds,
@@ -118,6 +123,8 @@ class KnockoutTournament {
       registrationClosesAt: registrationClosesAt ?? this.registrationClosesAt,
       startsAt: startsAt ?? this.startsAt,
       status: status ?? this.status,
+      registrationWindowOpen:
+          registrationWindowOpen ?? this.registrationWindowOpen,
       entries: entries ?? this.entries,
       rounds: rounds ?? this.rounds,
       eliminatedPlayerIds: eliminatedPlayerIds ?? this.eliminatedPlayerIds,
@@ -131,6 +138,7 @@ class KnockoutTournament {
 extension KnockoutTournamentStatusLabel on KnockoutTournamentStatus {
   String get label {
     return switch (this) {
+      KnockoutTournamentStatus.unavailable => 'Unavailable',
       KnockoutTournamentStatus.registrationOpen => 'Registration open',
       KnockoutTournamentStatus.registrationClosed => 'Registration closed',
       KnockoutTournamentStatus.inProgress => 'In progress',

@@ -11,106 +11,119 @@ import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.d
 
 void main() {
   group('KnockoutRegistrationRequestDto', () {
-    test('uses an empty body so backend authentication owns identity', () {
-      const dto = KnockoutRegistrationRequestDto();
-
-      expect(dto.toJson(), isEmpty);
-      expect(KnockoutRegistrationRequestDto.fromJson({}).toJson(), isEmpty);
+    const target = 'cd30c422-9ea3-4b11-b621-93a9ffcd10b8';
+    test('round-trips only the explicit catalog UUID', () {
+      const payload = {'tournamentId': target};
+      expect(
+        KnockoutRegistrationRequestDto.fromJson(payload).toJson(),
+        payload,
+      );
     });
 
-    test('rejects client-supplied registration authority fields', () {
-      expect(
-        () => KnockoutRegistrationRequestDto.fromJson({'playerId': 'player-1'}),
-        throwsFormatException,
-      );
+    test('rejects missing or invalid targets and client authority fields', () {
+      for (final payload in [
+        {},
+        {'tournamentId': null},
+        {'tournamentId': '2026-06'},
+        {'tournamentId': target.toUpperCase()},
+        {'tournamentId': '$target\n'},
+        {'tournamentId': target, 'playerId': 'player-1'},
+        {'tournamentId': target, 'gamePoints': 100},
+      ]) {
+        expect(
+          () => KnockoutRegistrationRequestDto.fromJson(payload),
+          throwsFormatException,
+        );
+      }
     });
   });
 
   group('KnockoutRegistrationResponseDto', () {
-    test('maps accepted registration response and idempotent replay', () {
-      final tournament = _tournamentWithEntry();
-      final entry = KnockoutPlayerEntryDto.fromDomain(
-        tournament.entries.single,
-      );
+    final tournament = _tournamentWithEntry();
+    final entry = KnockoutPlayerEntryDto.fromDomain(tournament.entries.single);
+    final accepted = {
+      'status': 'accepted',
+      'newlyPersisted': true,
+      'replayed': false,
+      'playerId': entry.playerId,
+      'tournamentId': tournament.id,
+      'tournament': KnockoutTournamentDto.fromDomain(
+        tournament,
+      ).toRegistrationCatalogJson(),
+      'playerEntry': entry.toJson(),
+      'historicalRemainingGamePoints': 75,
+      'playerProfile': _profilePayload(gamePoints: 75),
+    };
+    final rejected = {
+      'status': 'rejected',
+      'newlyPersisted': false,
+      'replayed': true,
+      'playerId': entry.playerId,
+      'tournamentId': tournament.id,
+      'rejectionCode': 'insufficientGp',
+    };
 
-      final accepted = KnockoutRegistrationResponseDto.fromJson({
-        'status': 'accepted',
-        'newlyPersisted': true,
-        'tournament': KnockoutTournamentDto.fromDomain(tournament).toJson(),
-        'playerEntry': entry.toJson(),
-        'remainingGamePoints': 75,
-        'playerProfile': _profilePayload(gamePoints: 75),
-      });
-      final replay = KnockoutRegistrationResponseDto.fromJson({
-        'status': 'idempotentReplay',
-        'newlyPersisted': false,
-        'tournament': KnockoutTournamentDto.fromDomain(tournament).toJson(),
-        'playerEntry': entry.toJson(),
-        'remainingGamePoints': 75,
-      });
-
-      expect(accepted.toDomain().isSuccess, isTrue);
-      expect(accepted.toDomain().playerEntry?.playerId, 'player-1');
-      expect(accepted.playerProfile?.gamePoints, 75);
-      expect(replay.toDomain().isSuccess, isTrue);
-    });
-
-    test('maps rejected registration response', () {
-      final tournament = _registrationTournament();
-
-      final rejected = KnockoutRegistrationResponseDto.fromJson({
-        'status': 'rejected',
-        'newlyPersisted': false,
-        'tournament': KnockoutTournamentDto.fromDomain(tournament).toJson(),
-        'rejectionCode': 'insufficientGp',
-      }).toDomain();
-
-      expect(rejected.isFailure, isTrue);
-      expect(rejected.message, 'You need 25 GP to register.');
-    });
-
-    test('rejects contradictory registration response payloads', () {
-      final tournament = _registrationTournament();
-
-      expect(
-        () => KnockoutRegistrationResponseDto.fromJson({
-          'status': 'accepted',
+    test(
+      'maps accepted and replayed receipts with distinct historical and current balances',
+      () {
+        final initial = KnockoutRegistrationResponseDto.fromJson(accepted);
+        final replay = KnockoutRegistrationResponseDto.fromJson({
+          ...accepted,
+          'status': 'idempotentReplay',
           'newlyPersisted': false,
-          'tournament': KnockoutTournamentDto.fromDomain(tournament).toJson(),
-          'remainingGamePoints': 75,
-        }),
-        throwsFormatException,
-      );
+          'replayed': true,
+          'playerProfile': _profilePayload(gamePoints: 84),
+        });
 
-      expect(
-        () => KnockoutRegistrationResponseDto.fromJson({
-          'status': 'rejected',
-          'newlyPersisted': true,
-          'tournament': KnockoutTournamentDto.fromDomain(tournament).toJson(),
-          'rejectionCode': 'registrationClosed',
-        }),
-        throwsFormatException,
-      );
-    });
+        expect(initial.toDomain().isSuccess, isTrue);
+        expect(initial.toDomain().playerEntry?.playerId, entry.playerId);
+        expect(replay.toDomain().historicalRemainingGamePoints, 75);
+        expect(replay.toDomain().playerProfile?.gamePoints, 84);
+        expect(replay.toJson()['remainingGamePoints'], isNull);
+      },
+    );
 
-    test('rejects profile GP that differs from remaining GP', () {
-      final tournament = _tournamentWithEntry();
-      final entry = KnockoutPlayerEntryDto.fromDomain(
-        tournament.entries.single,
-      );
+    test(
+      'maps correlated rejected replay and unavailable target without catalog fields',
+      () {
+        final failure = KnockoutRegistrationResponseDto.fromJson(
+          rejected,
+        ).toDomain();
+        expect(failure.isFailure, isTrue);
+        expect(failure.message, 'You need 25 GP to register.');
+        expect(failure.tournamentId, tournament.id);
+        expect(failure.tournament, isNull);
+        final unavailable = KnockoutRegistrationResponseDto.fromJson({
+          ...rejected,
+          'rejectionCode': 'tournamentUnavailable',
+          'replayed': false,
+        });
+        expect(unavailable.toDomain().isFailure, isTrue);
+        expect(unavailable.toJson().keys, isNot(contains('playerProfile')));
+      },
+    );
 
-      expect(
-        () => KnockoutRegistrationResponseDto.fromJson({
-          'status': 'accepted',
-          'newlyPersisted': true,
-          'tournament': KnockoutTournamentDto.fromDomain(tournament).toJson(),
-          'playerEntry': entry.toJson(),
-          'remainingGamePoints': 75,
-          'playerProfile': _profilePayload(gamePoints: 74),
-        }),
-        throwsFormatException,
-      );
-    });
+    test(
+      'rejects contradictory registration responses and historical-only balances',
+      () {
+        for (final payload in [
+          {...accepted, 'newlyPersisted': false},
+          {...accepted, 'replayed': true},
+          {...accepted, 'playerProfile': null},
+          {...accepted, 'playerId': 'other'},
+          {...accepted, 'tournamentId': 'other'},
+          {...accepted, 'remainingGamePoints': 75},
+          {...rejected, 'newlyPersisted': true},
+          {...rejected, 'playerEntry': entry.toJson()},
+          {...rejected, 'historicalRemainingGamePoints': 75},
+        ]) {
+          expect(
+            () => KnockoutRegistrationResponseDto.fromJson(payload),
+            throwsFormatException,
+          );
+        }
+      },
+    );
   });
 
   group('KnockoutRunSubmissionRequestDto', () {

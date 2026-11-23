@@ -10,6 +10,10 @@ export async function startApplication(
     await app.listen({ host: config.host, port: config.port });
   },
 ): Promise<FastifyInstance> {
+  if (config.knockoutRegistrationHttp) {
+    await database.close();
+    throw new Error('Knockout registration HTTP is available only through test injection.');
+  }
   const app = buildApp(config, database);
   try {
     // Fail fast before binding if PostgreSQL is unavailable. Once started,

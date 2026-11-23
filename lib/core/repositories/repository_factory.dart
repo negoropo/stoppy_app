@@ -2,6 +2,7 @@ import '../../features/ads/data/mock_ad_repository.dart';
 import '../../features/auth/data/backend/backend_auth_repository.dart';
 import '../../features/auth/data/mock_auth_repository.dart';
 import '../../features/knockout/data/backend/backend_knockout_repository.dart';
+import '../../features/knockout/data/backend/knockout_registration_attempt_store.dart';
 import '../../features/knockout/data/mock_knockout_repository.dart';
 import '../../features/league/data/backend/backend_league_repository.dart';
 import '../../features/league/data/mock_league_repository.dart';
@@ -48,12 +49,13 @@ knockoutRepository: MockKnockoutRepository(),
 AppRepositories _createBackendRepositories() {
 _validateBackendDependencies();
 
-// Backend runtime persists only the server-issued session in platform
-// secure storage. Mock runtime never constructs or touches this adapter.
+// Backend runtime uses secure storage for auth and separately scoped recovery.
+// Mock runtime never constructs or touches this adapter.
+final secureStorage = FlutterSecureKeyValueStore();
 final sessionStore =
 authSessionStore ??
 SecureAuthSessionStore(
-secureStorage: FlutterSecureKeyValueStore(),
+secureStorage: secureStorage,
 );
 
 // A generated HTTP client and the authentication repository must share
@@ -83,6 +85,10 @@ apiClient: client,
 ),
 knockoutRepository: BackendKnockoutRepository(
 apiClient: client,
+registrationAttemptStore: KnockoutRegistrationAttemptStore(
+storage: secureStorage,
+backendScope: environment.apiBaseUrl,
+),
 ),
 );
 }

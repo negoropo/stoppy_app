@@ -15569,3 +15569,905 @@ Future session policy:
 * Preserve authentication security, JWT verification and refresh-token replay protection
 * Maintain comprehensive backend unit, PostgreSQL integration and Flutter regression tests
 * Do not introduce gameplay, pricing or economy redesigns without an explicitly approved scope
+
+---
+
+## 🔄 Session Update
+
+### Session: Session 48 — Backend Knockout Tournament Lifecycle and Registration API Readiness
+
+### Status:
+
+✅ Completed — PASS WITH FOLLOW-UPS
+
+---
+
+### 🎯 Objective
+
+Extend the server-authoritative Knockout registration foundation completed in Session 47 by introducing trusted tournament provisioning, controlled registration lifecycle transitions, durable client retry identity, an authenticated registration HTTP adapter and authoritative tournament discovery and registration reads.
+
+Establish a safe distinction between the current competition tournament and the upcoming registration tournament, using trusted PostgreSQL state, authoritative timestamps and Europe/Lisbon calendar semantics.
+
+Preserve the existing atomic 25 GP registration fee, immutable financial outcomes, business-level idempotency, advisory-lock ordering, explicit uncertain-COMMIT recovery and restricted PostgreSQL runtime permissions.
+
+Implement a stable registration request contract that explicitly identifies the tournament and prevents ordinary Flutter retries from silently targeting another tournament after navigation, network failures, application restart or month rollover.
+
+Separate historical registration financial outcomes from the current authenticated player profile to prevent stale GP balances from replacing the authoritative wallet state.
+
+Provide tournament metadata, confirmed player registration and registration-status reads without inventing brackets, active duels, competitive results, achievements, champions or historical records.
+
+Keep public paid Knockout registration disabled by default and restrict the implemented paid HTTP adapter to controlled test injection until the authoritative competition lifecycle and production activation requirements are completed.
+
+Preserve the existing Flutter mock runtime, gameplay mechanics, League functionality, Precision Points calculations, economy rules and previous backend security guarantees.
+
+Complete a final security and integration audit, correct confirmed blocking defects and document all remaining requirements before future paid-registration activation.
+
+---
+
+### 📦 Deliverables
+
+* [x] Session 47 internal Knockout registration foundation reviewed
+* [x] Existing backend and Flutter Knockout contracts audited
+* [x] Tournament lifecycle and registration prerequisites identified
+* [x] Historical GP versus current player profile contract reviewed
+* [x] Existing registration retry and idempotency risks identified
+* [x] Authoritative tournament selection requirements defined
+* [x] Europe/Lisbon calendar and monthly identity requirements reviewed
+* [x] Existing PostgreSQL schema and transaction guarantees reviewed
+* [x] Existing authentication and persisted-session infrastructure reviewed
+* [x] Session 48 divided into five independently reviewable implementation steps
+
+* [x] Trusted operator-only Knockout tournament catalog implemented
+* [x] Canonical Europe/Lisbon monthly tournament identity implemented
+* [x] Monthly tournament provisioning implemented
+* [x] Idempotent provisioning of existing tournament months supported
+* [x] Conflicting provisioning parameters rejected
+* [x] Concurrent duplicate tournament provisioning prevented
+* [x] Explicit `unavailable` tournament creation implemented
+* [x] Controlled `unavailable → registrationOpen` transition implemented
+* [x] Controlled `registrationOpen → registrationClosed` transition implemented
+* [x] Unsupported lifecycle transitions rejected
+* [x] PostgreSQL-authoritative registration window checks preserved
+* [x] Existing exclusive tournament advisory-lock protocol reused
+* [x] Registration-versus-closure concurrency behavior tested
+* [x] Operator catalog permissions separated from runtime permissions
+* [x] No automatic tournament scheduler introduced
+* [x] No new PostgreSQL migration required
+
+* [x] Explicit tournament UUID added to registration request contract
+* [x] Original tournament UUID preserved across retries
+* [x] Caller-owned `Idempotency-Key` preserved across retries
+* [x] Secure-storage-backed pending registration attempts implemented
+* [x] Pending attempts scoped to backend and authenticated player
+* [x] Pending attempts persisted before HTTP submission
+* [x] Pending registration recovery supported across navigation
+* [x] Pending registration recovery supported across screen refreshes
+* [x] Pending registration recovery supported across tournament changes
+* [x] Repository recreation recovery tested with retained storage
+* [x] Concurrent submissions within the same application scope prevented
+* [x] New registrations blocked when an unresolved attempt exists
+* [x] Unreadable recovery storage prevents unsafe new attempts
+* [x] Unknown COMMIT and infrastructure failures preserve pending attempts
+* [x] Original registration target retained after month rollover
+
+* [x] Authenticated Knockout registration HTTP adapter implemented
+* [x] Explicit `POST /api/v1/knockout/register` contract implemented
+* [x] Existing Session 47 registration service reused
+* [x] Verified bearer authentication required
+* [x] Persisted authenticated session validation required
+* [x] Player identity derived from authenticated server state
+* [x] Canonical tournament UUID validation implemented
+* [x] Idempotency-key validation implemented
+* [x] Unexpected request fields and query overrides rejected
+* [x] Duplicate and ambiguous authority headers rejected
+* [x] Duplicate JSON request fields rejected
+* [x] Request body and content-type validation implemented
+* [x] Independent IP and player registration rate limiting implemented
+* [x] Accepted registration response mapping implemented
+* [x] Accepted idempotent replay mapping implemented
+* [x] Rejected registration and rejected replay mapping implemented
+* [x] Idempotency conflict response implemented
+* [x] Infrastructure and unknown-COMMIT response mapping implemented
+* [x] Historical registration GP separated from current profile GP
+* [x] Post-transaction authenticated profile retrieval implemented
+* [x] Failed post-commit receipt retrieval handled conservatively
+* [x] Paid registration feature gate disabled by default
+* [x] Paid registration restricted to disposable test environments
+* [x] Normal application startup prevents listening with paid registration enabled
+
+* [x] Authoritative Knockout tournament discovery implemented
+* [x] Independent competition and registration tournament slots introduced
+* [x] PostgreSQL clock sampled consistently for tournament discovery
+* [x] Europe/Lisbon current-month calculation implemented
+* [x] Tournament selection priorities implemented
+* [x] Ambiguous tournament selection rejected
+* [x] Explicit historical tournament UUID lookup implemented
+* [x] Authenticated tournament metadata reads implemented
+* [x] Authenticated player registration reads implemented
+* [x] Authenticated tournament-scoped player status reads implemented
+* [x] Missing tournament and unavailable-state handling implemented
+* [x] Unsupported competitive projections return explicit `501` responses
+* [x] Read endpoints restricted to trusted player and tournament context
+* [x] No database mutations introduced in GET handlers
+* [x] Flutter tournament selection model introduced
+* [x] Flutter competition and registration slot selection implemented
+* [x] Flutter entry/status correlation checks implemented
+* [x] Flutter backend mode handles unavailable competitive projections
+* [x] Flutter backend mode prevents new paid registration actions
+* [x] Flutter backend mode prevents unsupported duel actions
+* [x] Existing Flutter mock behavior preserved
+
+* [x] Final Session 48 architecture audit completed
+* [x] Final registration financial-integrity audit completed
+* [x] Final HTTP authentication and authorization audit completed
+* [x] Final tournament discovery and read consistency audit completed
+* [x] Final Flutter persistence and compatibility audit completed
+* [x] One confirmed HIGH-severity test-route isolation defect identified
+* [x] Fastify instance-level injection-only isolation implemented
+* [x] Direct `app.listen()` prohibited for paid-registration test instances
+* [x] Network socket binding prevented before the underlying Node.js listen call
+* [x] `app.inject()` remains functional for paid-registration tests
+* [x] Normal backend listening and graceful shutdown preserved
+* [x] Three non-blocking MEDIUM findings documented
+* [x] Relevant implementation files independently reviewed
+* [x] Applied PostgreSQL migrations 001–004 preserved unchanged
+* [x] Backend technical documentation updated
+* [x] Flutter mock runtime remains the default
+* [x] No public paid registration activation performed
+* [x] No authoritative competitive execution introduced
+* [x] Backend typecheck and build passed
+* [x] Backend unit tests passed — 116 tests
+* [x] PostgreSQL integration tests passed — 142 tests
+* [x] `flutter analyze` passed
+* [x] Flutter tests passed — 655 tests
+* [x] `git diff --check` passed
+* [x] Final Session 48 verdict: PASS WITH FOLLOW-UPS
+
+---
+
+### 🛠️ Work Done
+
+* Completed Session 48 Step 1 — Knockout architecture and contract audit:
+  * Reviewed the existing Session 47 registration transaction
+  * Reviewed tournament catalog persistence and database constraints
+  * Reviewed existing GP ledger and business idempotency infrastructure
+  * Reviewed authentication and persisted-session verification
+  * Reviewed current Fastify route composition
+  * Reviewed Flutter Knockout registration and read contracts
+  * Identified unstable tournament targeting across retries
+  * Identified historical GP balance projection risks
+  * Identified missing tournament provisioning and lifecycle ownership
+  * Identified missing authoritative Knockout reads
+  * Identified current-versus-upcoming tournament selection ambiguity
+  * Identified incomplete competitive execution dependencies
+  * Defined incremental implementation and testing boundaries
+
+* Implemented Session 48 Step 2 — Trusted tournament provisioning:
+  * Added `KnockoutTournamentCatalog`
+  * Added Europe/Lisbon tournament calendar utilities
+  * Introduced operator-controlled monthly tournament provisioning
+  * Required canonical first-of-month identity in `YYYY-MM-01` format
+  * Validated tournament start against the intended Lisbon calendar month
+  * Preserved absolute registration opening, closing and start timestamps
+  * Enforced `registrationOpensAt < registrationClosesAt < startsAt`
+  * Preserved the inclusive opening and exclusive closing convention
+  * Created new tournaments initially with `unavailable` status
+  * Returned the existing tournament UUID for identical provisioning requests
+  * Rejected conflicting metadata for existing tournament months
+  * Used PostgreSQL uniqueness to prevent duplicate monthly tournaments
+  * Preserved existing tournament identities after lifecycle changes
+  * Required trusted operator credentials for catalog mutations
+  * Did not expose catalog provisioning through public Fastify routes
+
+* Implemented limited Knockout lifecycle transitions:
+  * Added explicit operator-controlled transition validation
+  * Supported `unavailable → registrationOpen`
+  * Required authoritative PostgreSQL time within the registration window before opening
+  * Supported `registrationOpen → registrationClosed`
+  * Supported explicit early registration closure
+  * Treated repetition of an already reached supported target state as idempotent
+  * Rejected unsupported and backwards transitions
+  * Prevented premature transitions into `inProgress` or `completed`
+  * Reused the exclusive tournament advisory lock from the Session 47 protocol
+  * Serialized lifecycle updates against registration admission
+  * Preserved tournament-before-player lock ordering
+  * Kept operator lifecycle operations separate from GP mutations
+  * Documented unresolved trusted completion and scheduling requirements
+
+* Implemented safe tournament calendar behavior:
+  * Used Europe/Lisbon calendar identity rather than the host timezone
+  * Distinguished civil calendar arithmetic from adding 24 hours
+  * Supported month and year rollover
+  * Covered daylight-saving transitions and 23-/25-hour civil days
+  * Maintained absolute timestamp comparisons for registration eligibility
+  * Avoided introducing automatic tournament scheduling assumptions
+  * Required operator-supplied registration and start instants
+
+* Implemented Session 48 Step 3 — Stable registration target binding:
+  * Changed the future registration request body to contain `tournamentId`
+  * Required a canonical backend-issued tournament UUID
+  * Preserved the caller-owned idempotency key
+  * Ensured retries use the original tournament UUID and key
+  * Prevented Flutter from deriving registration targets from device-local month calculations
+  * Prevented a displayed tournament change from replacing a pending attempt
+  * Preserved the Session 47 server-side registration service as the only mutation boundary
+  * Tested retry behavior across tournament-month rollover
+  * Preserved fresh eligibility evaluation for a rolled-back original attempt
+  * Preserved historical outcome replay after successful COMMIT
+
+* Implemented durable Flutter pending registration recovery:
+  * Added `KnockoutRegistrationAttemptStore`
+  * Reused the existing secure key-value storage infrastructure
+  * Stored the original registration request and idempotency key
+  * Scoped attempts to a backend configuration and player identity
+  * Stored pending attempts before transmitting registration requests
+  * Reused stored attempts for explicit retries
+  * Prevented conflicting pending attempts from being replaced through the normal repository flow
+  * Protected overlapping submissions through per-scope in-process locking
+  * Preserved attempts after network failures and ambiguous results
+  * Preserved attempts after tournament closure or display changes
+  * Prevented new attempts when recovery storage is unreadable
+  * Tested repository recreation with retained storage
+  * Left physical-device process-restart validation for future end-to-end testing
+
+* Implemented Session 48 Step 4 — Authenticated registration HTTP adapter:
+  * Added `POST /api/v1/knockout/register`
+  * Required a verified bearer access token
+  * Required a matching valid persisted authentication session
+  * Derived the player UUID exclusively from authenticated backend state
+  * Required one valid `Idempotency-Key` header
+  * Required one canonical tournament UUID in the request body
+  * Rejected client-provided player identity overrides
+  * Rejected unknown request body fields
+  * Rejected duplicate JSON fields
+  * Rejected unexpected query parameters
+  * Rejected malformed and duplicate authority headers
+  * Restricted supported JSON content types and request sizes
+  * Added independent registration request rate limiting
+  * Reused `KnockoutRegistrationService.register`
+  * Introduced no independent registration or GP debit transaction
+  * Preserved deterministic registration identity
+  * Preserved durable accepted and rejected outcomes
+  * Preserved player-scoped idempotency conflicts
+  * Preserved PostgreSQL-authoritative admission checks
+  * Preserved tournament advisory locking and player row locking
+  * Preserved uncertain-COMMIT recovery requirements
+
+* Implemented authoritative registration response mapping:
+  * Added a dedicated registration response adapter
+  * Returned correlated player and tournament identifiers
+  * Returned a persisted registration receipt for accepted outcomes
+  * Distinguished newly accepted registration from accepted replay
+  * Returned semantic rejection reasons for rejected outcomes
+  * Preserved historical replay results
+  * Returned explicit idempotency conflict errors
+  * Returned retryable infrastructure and unknown-COMMIT errors
+  * Avoided presenting uncertain outcomes as definitive rejections
+  * Required persisted registration evidence before constructing an accepted receipt
+  * Retrieved a current authenticated profile after the registration transaction
+  * Returned `historicalRemainingGamePoints` separately from the current player profile
+  * Prevented historical registration balances from being applied as current GP
+  * Preserved the pending registration identity when definitive success could not be verified
+  * Did not fabricate tournament rounds, matches or competitive results
+
+* Implemented controlled registration HTTP feature gating:
+  * Added the `KNOCKOUT_REGISTRATION_HTTP` configuration
+  * Kept registration HTTP functionality disabled by default
+  * Restricted enabled registration tests to `NODE_ENV=test`
+  * Required a disposable loopback test database
+  * Prevented normal startup with the paid route enabled
+  * Returned `404` when the paid registration route was not mounted
+  * Preserved ordinary backend startup behavior
+  * Preserved the Flutter default mock runtime
+  * Did not activate public or production paid registration
+
+* Implemented Session 48 Step 5 — Authoritative tournament discovery:
+  * Added `KnockoutReadRepository`
+  * Added authenticated Knockout read routes
+  * Introduced separate `competition` and `registration` discovery slots
+  * Sampled PostgreSQL `clock_timestamp()` consistently for selection
+  * Used Europe/Lisbon to identify the current tournament month
+  * Prioritized a started `inProgress` competition
+  * Supported an eligible `completed` competition from the current Lisbon month
+  * Prioritized a tournament with an active registration window
+  * Selected upcoming catalog tournaments using persisted state and future start instants
+  * Preserved unavailable tournament status independently of calendar eligibility
+  * Rejected ambiguous winning selection candidates with HTTP `409`
+  * Returned nullable discovery slots when no relevant tournament exists
+  * Supported explicit UUID lookup for historical tournaments
+  * Did not automatically create tournaments during discovery
+
+* Implemented authoritative registration read endpoints:
+  * `GET /api/v1/knockout/tournament`
+  * `GET /api/v1/knockout/tournament?tournamentId=<UUID>`
+  * `GET /api/v1/knockout/entry?tournamentId=<UUID>`
+  * `GET /api/v1/knockout/status?tournamentId=<UUID>`
+  * Required authenticated and persisted-session identity for all reads
+  * Required explicit tournament UUIDs for player-specific registration reads
+  * Returned catalog metadata from trusted PostgreSQL rows
+  * Returned confirmed paid registration evidence or `null`
+  * Returned player registration state derived from trusted persistence
+  * Distinguished `notRegistered`, `registeredWaitingStart` and `registeredCompetitionUnavailable`
+  * Returned `404` for unknown explicit tournament UUIDs
+  * Validated read query parameters and player scope
+  * Performed no database writes from GET handlers
+
+* Implemented explicit unavailable competitive projections:
+  * `GET /api/v1/knockout/active-duel?tournamentId=<UUID>`
+  * `GET /api/v1/knockout/records`
+  * `GET /api/v1/knockout/history`
+  * `GET /api/v1/knockout/hall-of-fame`
+  * Returned HTTP `501 notImplemented` with reason `competitiveProjectionUnavailable`
+  * Did not fabricate duel snapshots, player records, tournament history or champions
+  * Did not treat a confirmed registration as evidence of competition participation
+  * Kept future competitive read implementation dependent on authoritative execution and settlement
+
+* Updated Flutter Knockout read compatibility:
+  * Added `KnockoutTournamentSelection`
+  * Supported separate registration and competition tournament selection
+  * Pinned player entry and status reads to the selected tournament UUID
+  * Validated player and tournament correlation in backend responses
+  * Detected inconsistent entry and status results
+  * Retained catalog information when nonessential registration reads fail
+  * Supported explicit unavailable registration-status presentation
+  * Avoided unsupported competitive and League achievement reads in backend mode
+  * Disabled new paid registration actions in authoritative backend mode
+  * Disabled unsupported competitive duel actions in backend mode
+  * Preserved pending registration retry access independently of current tournament discovery
+  * Preserved mock-mode tournament presentation and competition functionality
+
+* Completed final Session 48 security and compatibility audit:
+  * Reviewed tournament provisioning and lifecycle transitions
+  * Reviewed Europe/Lisbon calendar boundaries and selection behavior
+  * Reviewed PostgreSQL transaction and advisory-lock compatibility
+  * Reviewed registration financial integrity
+  * Reviewed registration HTTP authentication and authorization
+  * Reviewed idempotency and uncertain-COMMIT recovery
+  * Reviewed historical GP versus current-profile handling
+  * Reviewed authoritative tournament selection and scoped reads
+  * Reviewed Flutter registration persistence and recovery
+  * Reviewed production database permission assumptions
+  * Confirmed no Critical findings
+  * Identified one HIGH-severity test-route isolation defect
+  * Identified three safely deferred MEDIUM findings
+  * Identified one LOW-severity documentation inconsistency
+  * Initial final audit verdict: FAIL
+
+* Corrected the confirmed HIGH-severity injection-only isolation defect:
+  * Identified a direct `buildApp(...).listen()` path bypassing the normal startup guard
+  * Introduced an injection-only HTTP server through Fastify `serverFactory`
+  * Prevented the paid-registration test server from binding network sockets
+  * Preserved real Fastify route execution through `app.inject()`
+  * Verified Promise-based and callback-based listen attempts
+  * Verified alternate host, port and Unix-socket listen options
+  * Intercepted Node.js socket binding during regression tests
+  * Confirmed zero underlying socket-binding calls
+  * Confirmed the test server remained non-listening
+  * Confirmed injection remained usable after refused listen attempts
+  * Confirmed normal backend listening remained functional
+  * Confirmed graceful shutdown and database cleanup remained correct
+  * Confirmed no GP or registration transaction changes were required
+
+* Completed additional independent manual review:
+  * `backend/src/app.ts`
+  * `backend/test/knockout_registration_route.test.ts`
+  * `backend/src/knockout/knockout_registration_route.ts`
+  * `backend/src/knockout/knockout_registration_response.ts`
+  * `backend/src/knockout/knockout_read_repository.ts`
+  * `backend/src/knockout/knockout_read_routes.ts`
+  * `lib/features/knockout/data/backend/knockout_registration_attempt_store.dart`
+  * `lib/features/knockout/data/backend/backend_knockout_repository.dart`
+  * `lib/core/backend/idempotency_key.dart`
+  * `lib/features/knockout/data/dto/knockout_mutation_dtos.dart`
+  * `lib/features/knockout/presentation/screens/knockout_home_screen.dart`
+  * Confirmed `IdempotencyKey` implements value equality
+  * Confirmed normal repository flow rejects conflicting pending attempts
+  * Confirmed current profile GP is used for authoritative registration success
+  * Confirmed new paid registration remains disabled in normal backend mode
+  * Confirmed unsupported competitive gameplay remains unavailable
+  * No additional approval-blocking defect identified in the reviewed code
+
+* Preserved existing functionality and boundaries:
+  * No Flutter gameplay mechanics changed
+  * No Precision Points calculation rules changed
+  * No GP registration fee changes
+  * No League business logic changes
+  * No arbitrary GP mutation endpoint introduced
+  * No public paid Knockout registration enabled
+  * No production tournament automation enabled
+  * No bracket generation implemented
+  * No authoritative duel execution implemented
+  * No competitive run-validation backend activated
+  * No Knockout settlement or rewards implemented
+  * No fabricated records, champions or Hall of Fame data introduced
+  * Flutter mock runtime remains the default
+  * Existing authentication, transaction and GP ledger guarantees preserved
+
+---
+
+### 📁 Files Changed
+
+Backend Knockout production code:
+
+* `backend/src/knockout/knockout_tournament_calendar.ts`
+* `backend/src/knockout/knockout_tournament_catalog.ts`
+* `backend/src/knockout/knockout_registration_route.ts`
+* `backend/src/knockout/knockout_registration_response.ts`
+* `backend/src/knockout/knockout_read_repository.ts`
+* `backend/src/knockout/knockout_read_routes.ts`
+* `backend/src/knockout/knockout_registration_service.ts`
+
+Backend application and infrastructure:
+
+* `backend/src/app.ts`
+* `backend/src/config.ts`
+* `backend/src/lifecycle.ts`
+* `backend/src/api_error.ts`
+* `backend/src/request_rate_limiter.ts`
+* `backend/src/auth/auth_rate_limiter.ts`
+
+Backend unit tests:
+
+* `backend/test/knockout_tournament_catalog.test.ts`
+* `backend/test/knockout_registration_route.test.ts`
+* `backend/test/knockout_read_routes.test.ts`
+* `backend/test/config.test.ts`
+
+Backend PostgreSQL integration tests:
+
+* `backend/test/integration/knockout_tournament_catalog_cases.ts`
+* `backend/test/integration/knockout_registration_cases.ts`
+* `backend/test/integration/knockout_registration_http_cases.ts`
+* `backend/test/integration/knockout_read_cases.ts`
+* `backend/test/integration/gp_runtime_role_cases.ts`
+* `backend/test/integration/postgres.test.ts`
+* `backend/test/integration/http_shutdown.test.ts`
+
+Flutter production code:
+
+* `lib/core/backend/backend_api_client.dart`
+* `lib/core/backend/http_backend_api_client.dart`
+* `lib/core/repositories/repository_factory.dart`
+* `lib/features/knockout/data/backend/knockout_registration_attempt_store.dart`
+* `lib/features/knockout/data/backend/backend_knockout_repository.dart`
+* `lib/features/knockout/data/dto/knockout_mutation_dtos.dart`
+* `lib/features/knockout/data/dto/knockout_persistence_dtos.dart`
+* `lib/features/knockout/domain/models/knockout_registration_result.dart`
+* `lib/features/knockout/domain/models/knockout_tournament.dart`
+* `lib/features/knockout/domain/models/knockout_tournament_selection.dart`
+* `lib/features/knockout/domain/models/knockout_player_status.dart`
+* `lib/features/knockout/domain/repositories/knockout_repository.dart`
+* `lib/features/knockout/presentation/screens/knockout_home_screen.dart`
+
+Flutter tests:
+
+* `test/core/backend/http_backend_api_client_test.dart`
+* `test/features/knockout/data/backend/backend_knockout_repository_test.dart`
+* `test/features/knockout/data/dto/knockout_mutation_dtos_test.dart`
+* `test/features/knockout/presentation/screens/knockout_home_screen_test.dart`
+
+Project and backend documentation:
+
+* `backend/README.md`
+* `docs/API_Plan.md`
+* `docs/Backend_Plan.md`
+* `docs/Persistence_Map.md`
+* `docs/Anti_Cheat_Plan.md`
+
+Final status documentation:
+
+* `docs/App_Dev_Status.md`
+
+No new PostgreSQL migration was introduced.
+
+Migrations 001–004 remained unchanged, including their checksums.
+
+---
+
+### ⚠️ Notes / Decisions
+
+* Session 48 completes the trusted Knockout registration infrastructure and authoritative registration-read foundation within the agreed development scope.
+* The implementation is not a complete production-ready monthly Knockout competition.
+* Final Session 48 verdict: PASS WITH FOLLOW-UPS.
+* One HIGH-severity defect was identified and corrected before closure.
+* Three MEDIUM findings remain intentionally deferred behind the disabled paid-registration feature gate.
+* Public paid Knockout registration remains disabled by default.
+* Production paid Knockout registration activation is not authorized.
+* `KNOCKOUT_REGISTRATION_HTTP` is restricted to controlled test environments.
+* An enabled paid-registration test instance cannot open a network listener.
+* Fastify `app.inject()` remains available for controlled registration tests.
+* Normal backend instances retain standard HTTP listening.
+* Flutter mock remains the default runtime.
+* Backend mode remains opt-in.
+* Knockout registration costs exactly 25 GP.
+* The Session 47 registration service remains the sole authoritative registration mutation boundary.
+* Accepted registration and its 25 GP debit commit atomically.
+* Replayed accepted registrations do not charge GP again.
+* Rejected registrations do not create fee movements.
+* Durable financial and business idempotency remain enforced.
+* An accepted registration receipt requires persisted database evidence.
+* The registration request uses an explicit canonical tournament UUID.
+* The authenticated player identity cannot be selected by the client.
+* Flutter retains the original tournament UUID and idempotency key for retries.
+* The normal Flutter repository flow prevents replacing an unresolved attempt with a conflicting new attempt.
+* Pending attempts are saved before HTTP submission.
+* Network failures and uncertain outcomes preserve pending attempts.
+* Secure-storage read failures block unsafe creation of replacement attempts.
+* The application-level pending-attempt lock is not a substitute for backend idempotency.
+* The GP balance stored with a historical registration outcome is not the current wallet balance.
+* Accepted registration responses provide a separate authenticated current-profile snapshot.
+* A later concurrent GP movement can change the balance after that snapshot.
+* Flutter backend mode requires the current authoritative profile for a successful registration.
+* Tournament provisioning requires trusted operator credentials.
+* New tournament catalog rows begin in `unavailable` state.
+* Provisioning is idempotent for identical monthly tournament parameters.
+* Conflicting provisioning parameters are rejected.
+* Only limited registration lifecycle transitions are implemented.
+* Entering `inProgress` or `completed` requires future trusted competition execution.
+* Registration eligibility is evaluated against PostgreSQL-authoritative time.
+* Registration opening is inclusive and closing is exclusive.
+* The existing strict ordering `opens < closes < starts` remains enforced.
+* Exact registration scheduling relative to previous tournament completion remains unresolved.
+* A trusted previous-tournament completion source must be defined.
+* Current-versus-upcoming tournament discovery is now implemented.
+* Discovery does not create or advance tournaments automatically.
+* A tournament with an expired registration-only state may disappear from discovery while remaining accessible by explicit UUID.
+* Tournament-specific reads use explicit UUID correlation.
+* Player-specific reads use authenticated player identity.
+* No competitive result is inferred solely from an accepted paid registration.
+* Duel, records, history and Hall of Fame endpoints intentionally return `501 competitiveProjectionUnavailable`.
+* Backend Flutter mode does not enable unsupported competitive gameplay.
+* No real bracket, duel or settlement engine has been implemented.
+* No server-authoritative run validation has been implemented.
+* Existing client-submitted scores remain untrusted claims.
+* No real-backend gameplay GP rewards were activated.
+* No additional database migration was required.
+* Applied migrations 001–004 and their checksums remain unchanged.
+* Disposable PostgreSQL tests verified separate operator and restricted runtime roles.
+* Actual production PostgreSQL grants and credentials remain unverified.
+* Native secure-storage recovery across a physical application restart remains unverified.
+* Existing gameplay, League, economy and mock behavior were preserved.
+
+Remaining MEDIUM findings requiring resolution before paid-registration activation:
+
+1. **Server-side target binding after rollback:** A rolled-back attempt leaves no durable server-side association between the original idempotency key and tournament. Flutter preserves the intended UUID and key, but the server cannot reject a changed-target retry if no original operation committed. Decide whether separate durable server-side binding is required, and implement it if approved.
+2. **Canonical backend recovery identity:** Equivalent backend URLs can currently produce different secure-storage scope keys. Define canonical effective backend identity and preserve access to previously stored attempts when migrating the scope format.
+3. **Contradictory API envelopes:** A malformed response containing both successful registration data and an error can currently be interpreted as definitive success-data processing. Reject contradictory envelopes without clearing pending attempts.
+
+Additional pending requirements:
+
+* Correct outdated API overview descriptions distinguishing Flutter repository wiring from implemented backend routes.
+* Define the trusted source and timing of previous tournament completion.
+* Approve final monthly registration opening, closing and start conventions.
+* Define complete tournament handoff and lifecycle ownership.
+* Implement trusted transition into tournament execution.
+* Implement bracket generation and deterministic participant assignment.
+* Implement authoritative duel scheduling and progression.
+* Implement server-authoritative gameplay run identity, validation and scoring.
+* Implement persisted competitive results and round settlement.
+* Implement Knockout records, history and Hall of Fame projections.
+* Implement trusted championship and reward processing.
+* Verify production PostgreSQL roles, grants, credentials and deployment ordering.
+* Perform physical-device and mobile-to-backend end-to-end testing.
+* Complete a separate paid-registration activation security review before enabling real player registration.
+* Preserve Session 46 and Session 47 economy, transaction and financial evidence guarantees throughout future work.
+
+No real paid registration endpoint was exposed to public network traffic during the reported Session 48 implementation and audit.
+
+No commit or push was performed during the reported implementation and review.
+
+---
+
+### 🧪 Validation
+
+* [x] Session 47 registration infrastructure reviewed
+* [x] Knockout HTTP and Flutter contract audit completed
+* [x] Trusted tournament catalog implementation reviewed
+* [x] Canonical Europe/Lisbon month validation tested
+* [x] Month and year rollover tested
+* [x] Daylight-saving calendar boundaries tested
+* [x] Idempotent tournament provisioning tested
+* [x] Conflicting provisioning parameters tested
+* [x] Concurrent tournament provisioning tested
+* [x] Operator catalog grants tested
+* [x] Restricted runtime catalog-write denial tested
+* [x] Supported lifecycle transitions tested
+* [x] Unsupported lifecycle transitions rejected
+* [x] Registration-versus-closure lock serialization tested
+* [x] Uncertain provisioning COMMIT behavior tested
+* [x] Original registration UUID targeting preserved
+* [x] Original registration idempotency key preserved
+* [x] Month-rollover registration retry tested
+* [x] Persistent pending-attempt recovery tested
+* [x] Repository recreation with retained storage tested
+* [x] Storage failure handling tested
+* [x] Conflicting pending registration attempts rejected
+* [x] Concurrent local registration submission protection tested
+* [x] Registration request UUID validation tested
+* [x] Duplicate request field rejection tested
+* [x] Duplicate authorization and idempotency header rejection tested
+* [x] Invalid content-type rejection tested
+* [x] Oversized body rejection tested
+* [x] Authenticated and persisted-session registration tested
+* [x] Expired and revoked session rejection tested
+* [x] Registration rate limiting tested
+* [x] Player identity spoofing prevented
+* [x] Exactly one 25 GP debit on accepted registration tested
+* [x] No extra debit on accepted replay tested
+* [x] No debit on rejected registration tested
+* [x] Registration against competing GP debit tested
+* [x] Same-key concurrent HTTP registration tested
+* [x] Registration closure race tested
+* [x] Unknown-COMMIT recovery tested
+* [x] Post-COMMIT receipt-read failure recovery tested
+* [x] Historical registration replay after later GP movements tested
+* [x] Historical/current GP separation tested
+* [x] Feature-disabled registration endpoint tested
+* [x] Injection-only registration route tested
+* [x] Direct Fastify listening refusal tested
+* [x] Promise-based and callback-based listen refusal tested
+* [x] Alternate listening options rejected
+* [x] Underlying Node.js socket-binding call count verified as zero
+* [x] Injection remains functional after failed listen attempts
+* [x] Ordinary backend startup and shutdown regression tested
+* [x] Authoritative tournament discovery tested
+* [x] Current and upcoming tournament selection tested
+* [x] Ambiguous tournament selection tested
+* [x] Missing and unavailable tournament behavior tested
+* [x] Explicit UUID tournament reads tested
+* [x] Tournament-scoped player entry reads tested
+* [x] Tournament-scoped player status reads tested
+* [x] Player identity correlation tested
+* [x] Unsupported competitive projection responses tested
+* [x] No database writes from read endpoints verified
+* [x] Flutter tournament selection compatibility tested
+* [x] Flutter backend registration action disabled
+* [x] Flutter unsupported duel action disabled
+* [x] Flutter mock regression behavior preserved
+* [x] Final Session 48 security and integration audit completed
+* [x] Final HIGH-severity defect corrected
+* [x] Independent critical-file review completed
+* [x] Backend typecheck passed
+* [x] Backend build passed
+* [x] Backend unit tests passed — 116 tests
+* [x] PostgreSQL integration tests passed — 142 tests
+* [x] `flutter analyze` passed
+* [x] Full Flutter test suite passed — 655 tests
+* [x] `git diff --check` passed
+
+Final automated validation commands reported by Codex:
+
+```bash
+cd backend
+npm run typecheck
+npm run build
+npm test
+```
+
+PostgreSQL integration validation:
+
+```bash
+cd backend
+npm run test:integration
+```
+
+The PostgreSQL integration suite was executed against the established disposable local test database, not a production database.
+
+Flutter and repository validation:
+
+```bash
+flutter analyze
+flutter test
+git diff --check
+```
+
+Recorded automated validation results:
+
+* `npm run typecheck` — passed
+* `npm run build` — passed
+* Backend unit tests — **116 passed**
+* PostgreSQL integration tests — **142 passed**
+* `flutter analyze` — no issues
+* Flutter tests — **655 passed**
+* `git diff --check` — passed
+* Total primary automated test suites — **913 passed, 0 failed**
+* No regression failures reported
+* The paid-route isolation regression verified zero socket-binding calls
+* The ordinary backend shutdown test verified graceful draining
+* Financial registration and concurrency tests remained passing
+* Applied migrations were preserved unchanged
+* Production database permissions and deployment were not tested
+
+Manual validation:
+
+* Eleven implementation and test files were independently reviewed.
+* The Fastify injection-only isolation mechanism was reviewed.
+* The direct-listener security regression tests were reviewed.
+* The registration HTTP authentication and validation were reviewed.
+* The registration response and GP projection contracts were reviewed.
+* The authoritative tournament selection repository was reviewed.
+* The authenticated Knockout read routes were reviewed.
+* The Flutter pending-registration storage implementation was reviewed.
+* The Flutter backend registration repository was reviewed.
+* The value-based `IdempotencyKey` equality implementation was reviewed.
+* The Knockout registration mutation DTOs were reviewed.
+* The Knockout home screen's backend/mock behavior was reviewed.
+* No further Critical or High defect was identified in the inspected code.
+* The three previously identified MEDIUM findings remain documented and gated.
+* Session 48 accepted as technically complete within its agreed scope.
+
+Final audit outcome:
+
+**PASS WITH FOLLOW-UPS**
+
+---
+
+### 📌 Next Session
+
+**Proposed:** Session 49 — Authoritative Knockout Execution Design
+
+Planned focus (to confirm when opening the next session):
+
+* [ ] Review the completed Session 48 tournament and registration architecture
+* [ ] Review existing Knockout competition rules in `Game_Rules.md`
+* [ ] Define the trusted monthly tournament completion source
+* [ ] Approve definitive Europe/Lisbon tournament opening, closing and start policy
+* [ ] Define tournament handoff between consecutive months
+* [ ] Define trusted tournament transition into competition execution
+* [ ] Design the authoritative bracket and participant assignment model
+* [ ] Define opening elimination and bye assignment requirements
+* [ ] Define deterministic round and duel identities
+* [ ] Define authoritative one-day duel windows and settlement boundaries
+* [ ] Define player eligibility and match ownership
+* [ ] Define server-authoritative run initiation and validation requirements
+* [ ] Define how submitted runs become accepted competitive evidence
+* [ ] Define best-runs-block duel scoring on the server
+* [ ] Define tie-breakers and repechage behavior
+* [ ] Define immutable round settlement and advancement outcomes
+* [ ] Define champion persistence and historical record requirements
+* [ ] Define required PostgreSQL schema additions and migration sequencing
+* [ ] Define background execution, reconciliation and idempotent settlement ownership
+* [ ] Prepare incremental implementation steps and adversarial tests
+* [ ] Keep public paid registration disabled
+* [ ] Preserve existing mock gameplay and competition behavior
+* [ ] Preserve the Session 47 financial registration guarantees
+* [ ] Preserve Session 48 tournament identity and authentication contracts
+
+Session boundary:
+
+* Session 49 must not assume that paid Knockout registration is ready for production.
+* Do not enable paid registration without resolving the deferred MEDIUM findings and completing a separate activation review.
+* Do not trust client-submitted scores, timestamps or duel assignments as authoritative.
+* Do not create champions or settle rounds without trusted competitive evidence.
+* Preserve the existing GP ledger, transaction and registration financial attribution guarantees.
+* Preserve explicit retry identity and uncertain-COMMIT recovery.
+* Require durable and replay-safe competition state transitions.
+* Preserve Europe/Lisbon month and calendar semantics.
+* Keep PostgreSQL migrations append-only and checksum-protected.
+* Maintain restricted runtime permissions and operator ownership boundaries.
+* Keep Flutter mock as the default until the real competition backend is complete.
+
+---
+
+### 📊 Progress Update
+
+* ✅ Sessions 1–45 — Completed, including intermediate refinement sessions and superseded functionality
+* ✅ Session 46 — Backend Player Profile + Game Points Persistence Foundation
+* ✅ Session 47 — Backend GP Business Integration Readiness + Authoritative Run Validation Planning
+* ✅ Session 48 — Backend Knockout Tournament Lifecycle and Registration API Readiness
+* ⏳ Session 49 — Authoritative Knockout Execution Design (proposed)
+
+---
+
+### 🧭 Current State
+
+Last completed session: **Session 48 — Backend Knockout Tournament Lifecycle and Registration API Readiness**
+
+Status: **Completed ✅ — PASS WITH FOLLOW-UPS**
+
+Next proposed session: **Session 49 — Authoritative Knockout Execution Design**
+
+Current backend state:
+
+* Node.js 24, TypeScript and Fastify backend foundation implemented
+* PostgreSQL connectivity and transactional migration infrastructure implemented
+* Health and readiness endpoints implemented
+* PostgreSQL authentication and player account persistence implemented
+* Registration, login, refresh and authenticated profile endpoints implemented
+* Argon2id password hashing implemented
+* EdDSA JWT signing and verification implemented
+* Persisted-session validation and refresh-token replay protection implemented
+* Server-authoritative authenticated player identity implemented
+* PostgreSQL transaction and connection lifecycle safeguards implemented
+* PostgreSQL GP economy schema introduced through migration 003
+* Immutable GP ledger and durable financial mutation records implemented
+* Opening GP snapshots implemented
+* New player registration starts with 5 GP
+* Transaction-bound GP executor implemented
+* Standalone GP service behavior preserved
+* Durable GP idempotency, fingerprinting and financial source integrity implemented
+* PostgreSQL Knockout schema introduced through migration 004
+* Trusted monthly Knockout tournament persistence implemented
+* Operator-only monthly tournament provisioning implemented
+* Europe/Lisbon tournament calendar utilities implemented
+* Idempotent provisioning and conflicting-parameter rejection implemented
+* Controlled registration opening and closure transitions implemented
+* Tournament catalog advisory-lock compatibility preserved
+* Persistent player Knockout registration and business outcome records implemented
+* Atomic 25 GP Knockout registration and financial evidence persistence implemented
+* Registration business-level idempotency and historical replay implemented
+* Explicit tournament UUID registration request contract implemented
+* Flutter secure-storage-backed registration retry identity implemented
+* Pending registration attempt recovery implemented
+* Authenticated Knockout registration HTTP adapter implemented
+* Strict registration request validation and rate limiting implemented
+* Historical registration GP separated from current authenticated profile GP
+* Paid registration HTTP disabled by default
+* Paid registration test route restricted to injection-only execution
+* Direct network listening prohibited for paid registration test instances
+* Authoritative competition and registration tournament discovery implemented
+* PostgreSQL-authoritative tournament selection implemented
+* Authenticated tournament catalog reads implemented
+* Authenticated tournament-scoped player registration reads implemented
+* Authenticated tournament-scoped player status reads implemented
+* Unsupported competitive projections return explicit `501` responses
+* Flutter backend mode supports tournament discovery and registration-state reads
+* Flutter backend mode does not expose new paid registration or unsupported duels
+* Flutter mock runtime remains the default
+* Existing League and Knockout gameplay behavior preserved
+* Session 48 final audit completed with one HIGH correction
+* Session 48 final verdict: PASS WITH FOLLOW-UPS
+* Three deferred MEDIUM issues remain mandatory before paid activation
+* Server-side first-target binding after rollback remains undecided
+* Canonical backend recovery identity and storage migration remain pending
+* Contradictory HTTP envelope rejection remains pending
+* Previous tournament completion source remains undefined
+* Definitive monthly tournament handoff and timing remain pending
+* Automatic tournament scheduling remains unimplemented
+* Trusted transition into actual Knockout competition remains unimplemented
+* Bracket generation and duel scheduling remain unimplemented
+* Authoritative Knockout match and round settlement remain unimplemented
+* Server-authoritative run validation and scoring remain unimplemented
+* Server-side gameplay GP reward integration remains unimplemented
+* Daily and warmup GP reward integration remains unimplemented
+* League entry and re-entry financial execution remains unimplemented
+* GP purchase verification and fulfillment remain pending
+* Rewarded-ad verification and ads-removal integration remain pending
+* Knockout player records, history and Hall of Fame persistence remain pending
+* Physical-device and mobile-to-backend end-to-end validation remain pending
+* Production PostgreSQL roles, grants and deployment ordering remain unverified
+* Production migration rollout and runtime configuration verification remain pending
+* Production paid-registration activation remains prohibited pending further review
+
+Future session policy:
+
+* Keep implementation sessions narrowly scoped and independently testable
+* Continue reviewing Codex changes before declaring sessions complete
+* Preserve Flutter gameplay, economy pricing and competitive rules
+* Keep competitive state and authenticated identity server-authoritative
+* Keep mock repositories as the default until real backend integration is ready
+* Reuse the Session 45 authentication infrastructure
+* Reuse the Session 46 GP ledger and persistence infrastructure
+* Reuse the Session 47 transaction-bound GP executor and Knockout registration service
+* Reuse the Session 48 tournament catalog, registration contracts and authoritative reads
+* Never trust client-supplied player identities, GP balances, fees, scores or competition status
+* Require trusted server-side evidence before financial rewards or competitive settlement
+* Preserve atomic GP movements and associated business persistence
+* Preserve durable business and financial idempotency
+* Preserve stable tournament targeting across retries
+* Resolve the three deferred MEDIUM findings before enabling paid registration
+* Preserve explicit uncertain-COMMIT recovery without automatic retries
+* Keep tournament provisioning and lifecycle mutations under trusted ownership
+* Require appropriate catalog advisory-lock coordination
+* Treat submitted competitive runs as untrusted claims until authoritative validation exists
+* Use Europe/Lisbon calendar identity and explicitly approved scheduling rules
+* Keep League and Knockout scoring and settlement server-authoritative
+* Introduce real Simulator and physical-device end-to-end tests when compatible endpoints exist
+* Keep migrations append-only and checksum-protected
+* Preserve transaction, connection and graceful-shutdown safeguards
+* Keep production runtime roles separate from operator and migration privileges
+* Verify production grants, opening snapshots and ledger integrity before deployment
+* Preserve JWT, persisted-session and refresh-token replay security
+* Maintain comprehensive backend unit, PostgreSQL integration and Flutter tests
+* Do not activate incomplete paid registration or competitive execution functionality
+* Do not introduce unapproved gameplay, economy or pricing redesigns

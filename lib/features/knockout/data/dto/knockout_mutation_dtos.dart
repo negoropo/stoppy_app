@@ -35,23 +35,33 @@ enum KnockoutRunSubmissionRejectionCode {
 enum KnockoutRunSubmissionMode { knockout }
 
 final class KnockoutRegistrationRequestDto {
-  const KnockoutRegistrationRequestDto();
-
-  factory KnockoutRegistrationRequestDto.fromJson(Object? json) {
-    final reader = JsonReader.fromObject(
-      json,
-      context: 'KnockoutRegistrationRequestDto',
-    );
-    if (reader.toMap().isNotEmpty) {
+  KnockoutRegistrationRequestDto({required this.tournamentId}) {
+    if (tournamentId.length != 36 || !_canonicalUuid.hasMatch(tournamentId)) {
       throw const FormatException(
-        'Knockout registration request body must be empty.',
+        'Knockout registration requires a canonical tournament UUID.',
       );
     }
-    return const KnockoutRegistrationRequestDto();
+  }
+
+  static final _canonicalUuid = RegExp(
+    r'^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$',
+  );
+
+  final String tournamentId;
+
+  factory KnockoutRegistrationRequestDto.fromJson(Object? json) {
+    if (json is! Map || json.length != 1 || json['tournamentId'] is! String) {
+      throw const FormatException(
+        'Knockout registration request must contain only tournamentId.',
+      );
+    }
+    return KnockoutRegistrationRequestDto(
+      tournamentId: json['tournamentId'] as String,
+    );
   }
 
   Map<String, Object?> toJson() {
-    return const <String, Object?>{};
+    return {'tournamentId': tournamentId};
   }
 }
 
@@ -59,18 +69,24 @@ final class KnockoutRegistrationResponseDto {
   const KnockoutRegistrationResponseDto({
     required this.status,
     required this.newlyPersisted,
-    required this.tournament,
+    required this.replayed,
+    required this.tournamentId,
+    required this.playerId,
+    this.tournament,
     this.playerEntry,
-    this.remainingGamePoints,
+    this.historicalRemainingGamePoints,
     this.playerProfile,
     this.rejectionCode,
   });
 
   final KnockoutMutationStatus status;
   final bool newlyPersisted;
-  final KnockoutTournamentDto tournament;
+  final bool replayed;
+  final String tournamentId;
+  final String playerId;
+  final KnockoutTournamentDto? tournament;
   final KnockoutPlayerEntryDto? playerEntry;
-  final int? remainingGamePoints;
+  final int? historicalRemainingGamePoints;
   final PlayerProfileDto? playerProfile;
   final KnockoutRegistrationRejectionCode? rejectionCode;
 
@@ -80,17 +96,33 @@ final class KnockoutRegistrationResponseDto {
       context: 'KnockoutRegistrationResponseDto',
     );
     final data = reader.toMap();
+    if (data.containsKey('remainingGamePoints')) {
+      throw const FormatException(
+        'Registration balance must be labeled historical.',
+      );
+    }
+    final rawProfile = data['playerProfile'];
+    if (rawProfile != null) {
+      // The general profile DTO permits legacy payloads without GP. A wallet
+      // projection on a registration receipt must carry an explicit balance.
+      JsonReader.fromObject(rawProfile).requiredNonNegativeInt('gamePoints');
+    }
 
     return KnockoutRegistrationResponseDto(
       status: _mutationStatusFromName(reader.requiredString('status')),
       newlyPersisted: reader.requiredBool('newlyPersisted'),
-      tournament: KnockoutTournamentDto.fromJson(data['tournament']),
+      replayed: reader.requiredBool('replayed'),
+      tournamentId: reader.requiredString('tournamentId'),
+      playerId: reader.requiredString('playerId'),
+      tournament: data['tournament'] == null
+          ? null
+          : KnockoutTournamentDto.fromRegistrationCatalog(data['tournament']),
       playerEntry: _optionalEntry(data['playerEntry']),
-      remainingGamePoints: _optionalNonNegativeInt(
+      historicalRemainingGamePoints: _optionalNonNegativeInt(
         reader,
-        'remainingGamePoints',
+        'historicalRemainingGamePoints',
       ),
-      playerProfile: _optionalPlayerProfile(data['playerProfile']),
+      playerProfile: _optionalPlayerProfile(rawProfile),
       rejectionCode: _optionalRegistrationRejectionCode(
         reader.optionalString('rejectionCode'),
       ),
@@ -101,39 +133,28 @@ final class KnockoutRegistrationResponseDto {
 
   KnockoutRegistrationResponseDto _validated() {
     if (accepted) {
-      if (playerEntry == null ||
-          remainingGamePoints == null ||
+      final isReplay = status == KnockoutMutationStatus.idempotentReplay;
+      if (tournament?.id != tournamentId ||
+          playerEntry?.tournamentId != tournamentId ||
+          playerEntry?.playerId != playerId ||
+          playerProfile?.id != playerId ||
+          historicalRemainingGamePoints == null ||
           rejectionCode != null ||
-          (status == KnockoutMutationStatus.accepted && !newlyPersisted) ||
-          (status == KnockoutMutationStatus.idempotentReplay &&
-              newlyPersisted)) {
+          replayed != isReplay ||
+          newlyPersisted == isReplay) {
         throw const FormatException(
           'Accepted Knockout registration response contains contradictory state.',
         );
       }
-
-      if (playerEntry!.tournamentId != tournament.id) {
-        throw const FormatException(
-          'Accepted Knockout registration entry must belong to the returned tournament.',
-        );
-      }
-
-      final profile = playerProfile;
-      if (profile != null && profile.gamePoints != remainingGamePoints) {
-        throw const FormatException(
-          'Accepted Knockout registration profile GP must match remaining GP.',
-        );
-      }
-    } else {
-      if (newlyPersisted ||
-          playerEntry != null ||
-          remainingGamePoints != null ||
-          playerProfile != null ||
-          rejectionCode == null) {
-        throw const FormatException(
-          'Rejected Knockout registration response contains contradictory state.',
-        );
-      }
+    } else if (newlyPersisted ||
+        tournament != null ||
+        playerEntry != null ||
+        historicalRemainingGamePoints != null ||
+        playerProfile != null ||
+        rejectionCode == null) {
+      throw const FormatException(
+        'Rejected Knockout registration response contains contradictory state.',
+      );
     }
 
     return this;
@@ -141,18 +162,17 @@ final class KnockoutRegistrationResponseDto {
 
   KnockoutRegistrationResult toDomain() {
     _validated();
-    final domainTournament = tournament.toDomain();
     if (accepted) {
       return KnockoutRegistrationResult.success(
-        tournament: domainTournament,
+        tournament: tournament!.toDomain(),
         playerEntry: playerEntry!.toDomain(),
-        remainingGamePoints: remainingGamePoints,
-        playerProfile: playerProfile?.toDomain(),
+        historicalRemainingGamePoints: historicalRemainingGamePoints,
+        playerProfile: playerProfile!.toDomain(),
       );
     }
 
     return KnockoutRegistrationResult.failure(
-      tournament: domainTournament,
+      tournamentId: tournamentId,
       failureReason: _domainRegistrationFailureReason(rejectionCode!),
       message: _registrationRejectionMessage(rejectionCode!),
     );
@@ -163,10 +183,14 @@ final class KnockoutRegistrationResponseDto {
     return {
       'status': status.name,
       'newlyPersisted': newlyPersisted,
-      'tournament': tournament.toJson(),
+      'replayed': replayed,
+      'tournamentId': tournamentId,
+      'playerId': playerId,
+      if (tournament != null)
+        'tournament': tournament!.toRegistrationCatalogJson(),
       if (playerEntry != null) 'playerEntry': playerEntry!.toJson(),
-      if (remainingGamePoints != null)
-        'remainingGamePoints': remainingGamePoints,
+      if (historicalRemainingGamePoints != null)
+        'historicalRemainingGamePoints': historicalRemainingGamePoints,
       if (playerProfile != null) 'playerProfile': playerProfile!.toJson(),
       if (rejectionCode != null) 'rejectionCode': rejectionCode!.name,
     };

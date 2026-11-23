@@ -12,7 +12,24 @@ test('configuration applies explicit development defaults and is immutable', () 
   assert.equal(config.host, '127.0.0.1');
   assert.equal(config.port, 3000);
   assert.equal(config.databaseSsl, 'disable');
+  assert.equal(config.knockoutRegistrationHttp, false);
   assert.ok(Object.isFrozen(config));
+});
+
+test('Knockout HTTP gate requires explicit test mode and a loopback disposable database', () => {
+  const enabled = { NODE_ENV: 'test', DATABASE_URL: 'postgresql://localhost/stoppy_test',
+    KNOCKOUT_REGISTRATION_HTTP: 'enabled' };
+  assert.equal(loadConfig(enabled).knockoutRegistrationHttp, true);
+  for (const overrides of [
+    { NODE_ENV: 'development' },
+    { NODE_ENV: 'production', DATABASE_SSL: 'verify-full', ...productionAuth },
+    { KNOCKOUT_REGISTRATION_HTTP: 'true' },
+    { DATABASE_URL: 'postgresql://localhost/stoppy' },
+    { DATABASE_URL: 'postgresql://remote.example/stoppy_test' },
+    { DATABASE_URL: 'postgresql://localhost/stoppy_test?host=remote.example' },
+  ]) {
+    assert.throws(() => loadConfig({ ...enabled, ...overrides }), /KNOCKOUT_REGISTRATION_HTTP/);
+  }
 });
 
 test('configuration rejects malformed inputs without echoing credentials', () => {

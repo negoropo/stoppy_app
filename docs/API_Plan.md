@@ -577,49 +577,78 @@ tournament registration, Session 42 connected the read projections, and Session
 43 connected Knockout run submission. Server-only lifecycle mutations remain
 disconnected.
 
+### Knockout read authentication and scope
+
+All Knockout GETs require a bearer token with a matching, unexpired and
+non-revoked persisted session. Player-specific reads use that player's identity.
+The only accepted query field is a single canonical lowercase `tournamentId`
+on routes that support a tournament scope. Other or repeated parameters return
+400 `validationFailed`. Invalid sessions return 401 `unauthenticated`.
+Unknown explicitly requested tournaments return 404 `notFound`.
+
 ### GET /api/v1/knockout/tournament
 
-Returns the current monthly Knockout tournament projection.
+Discovery without a query returns HTTP 200 with
+`{"success":true,"data":{"competition":null,"registration":null}}` when neither
+slot applies. Each non-null slot contains a catalog object with `id`, `name`,
+`status`, `tournamentMonth` (Lisbon `YYYY-MM-01`), `entryCostGamePoints`,
+`registrationOpensAt`, `registrationClosesAt`, `startsAt` and
+`registrationWindowOpen`. The object represents catalog metadata and includes
+no roster, player GP, rounds or results.
 
-Server responsibilities:
+Discovery samples PostgreSQL time once for both slots.
 
-- resolve the current tournament
-- return authoritative lifecycle state
-- return authoritative registered entries, rounds, byes, eliminations, and
-  champion state where available
+- **Competition** selects the sole persisted `inProgress` tournament whose
+  start has elapsed, including one from an earlier month. Otherwise it selects a
+  started `completed` tournament labeled with the current Europe/Lisbon month.
+- **Registration** selects the sole persisted `registrationOpen` tournament
+  whose inclusive-open, exclusive-close window contains that instant. Otherwise
+  it selects the earliest future start among `registrationOpen` and
+  `registrationClosed` rows. If neither applies, it selects the earliest future
+  start among `unavailable` rows as unavailable catalog metadata.
+- More than one candidate at the winning priority and sort position returns
+  HTTP 409 `conflict` with `details.reason: ambiguousTournamentSelection` and
+  the conflicting `details.slot`. Dates never promote a persisted lifecycle
+  status. The separate window flag is false outside an open and eligible window.
+
+With `?tournamentId=<UUID>`, returns `data: {"tournament": {...}}` for that
+catalog row, including historical or unavailable rows. This lookup does not
+rerun discovery selection or substitute an ID.
 
 ### GET /api/v1/knockout/entry
 
-Returns the authenticated player's current Knockout entry, or no entry.
-
-Server responsibilities:
-
-- derive player identity from authentication
-- return the current player's entry projection when registered
-- return a valid no-entry response when not registered
-
-Client responsibilities:
-
-- never submit player identity as authority for this read
+Requires `?tournamentId=<UUID>`. HTTP 200 contains
+`data: {tournamentId, playerId, playerEntry}`, where `playerEntry` is null or
+the authenticated player's persisted paid entry for the requested tournament.
+A non-null entry has `playerId`, `tournamentId`, `username`,
+`accountCreatedAt`, `registeredAt` and `entryCostGamePoints`. No balance or
+other player's registration is included.
 
 ### POST /api/v1/knockout/register
 
-Registers the authenticated player for the current monthly knockout.
+Registers the authenticated player for one explicit Knockout tournament in
+isolated Fastify injection tests. The gate defaults to disabled. Application
+startup refuses to listen with the gate enabled, and development and production
+configuration cannot enable it.
 
 Request headers:
 
+- `Authorization: Bearer <access token>`
 - `Idempotency-Key`
 
 Request body:
 
 ```json
-{}
+{ "tournamentId": "cd30c422-9ea3-4b11-b621-93a9ffcd10b8" }
 ```
 
 Server responsibilities:
 
-- derive player identity from authentication
-- resolve the current monthly tournament
+- derive player identity from the verified bearer and its persisted session
+- accept only the canonical lowercase catalog UUID in the body and use it
+  as the explicit registration target
+- pass the original target and key to the Session 47 registration service,
+  including when that tournament is closed or absent from the current display
 - validate registration window
 - validate GP availability
 - deduct 25 GP entry cost
@@ -629,66 +658,92 @@ Server responsibilities:
 
 Client responsibilities:
 
-- provide only the idempotency key and empty request body
+- take the UUID from a trusted backend tournament representation and send it
+  unchanged with the caller-owned key on the first request and each explicit retry
 - never submit player id, GP balance, registration eligibility, tournament
   state, or registration cost as authority
 
+Flutter persists the target and key before sending, scoped to the backend and
+player. Navigation, restart, a changed display or a closed window leave that
+attempt available for manual retry. A validated semantic response for the
+same target and, where supplied, player clears the attempt. Transport and HTTP
+errors leave it pending. There is no automatic retry or target selection.
+The adapter permits JSON UTF-8 and rejects query parameters, extra or duplicate
+body fields, ambiguous headers and noncanonical UUIDs. A separate fixed-window
+limiter applies 30 requests per minute per IP and 12 per minute per authenticated
+player within each process.
+
+Business outcomes use HTTP 200 and `{"success":true,"data":{...}}`. Every outcome
+contains the authenticated `playerId`, explicit `tournamentId`, `status`,
+`newlyPersisted` and `replayed`.
+
+| Outcome | `status` | `newlyPersisted` | `replayed` | Additional fields |
+|---|---|---|---|---|
+| Accepted | `accepted` | true | false | `tournament`, `playerEntry`, `historicalRemainingGamePoints`, `playerProfile` |
+| Accepted replay | `idempotentReplay` | false | true | Same fields as accepted |
+| Rejected | `rejected` | false | false | `rejectionCode` |
+| Rejected replay | `rejected` | false | true | `rejectionCode` |
+
+The accepted `tournament` is catalog metadata with `id`, `name`, `status`,
+`tournamentMonth` (Lisbon `YYYY-MM-01`), `entryCostGamePoints`,
+`registrationOpensAt`, `registrationClosesAt` and `startsAt`. It carries no
+competition projection. The accepted `playerEntry` contains `playerId`,
+`tournamentId`, `username`, `accountCreatedAt`, `registeredAt` and
+`entryCostGamePoints`. The entry timestamp and fee come from the persisted
+registration. The profile is read through authenticated profile lookup after the
+registration transaction returns. Flutter uses `playerProfile.gamePoints` as
+its current wallet sample. Later concurrent GP writes can change that value.
+`historicalRemainingGamePoints` stays fixed across replay.
+
+Definitive rejection codes are `duplicateRegistration`, `insufficientGp`,
+`registrationClosed`, `tournamentAlreadyStarted` and `tournamentUnavailable`.
+An absent target uses `tournamentUnavailable` and returns its original ID for
+correlation. A rejection omits catalog, entry, profile and balance fields.
+Settlement-specific outcomes await a trusted settlement producer.
+
+Errors use `{"success":false,"error":{"code":...,"message":...}}` with a
+sanitized `details.reason` when listed below.
+
+| HTTP | Code | Reason or use |
+|---|---|---|
+| 400, 413, 415 | `validationFailed` | Invalid request, body too large or unsupported media type |
+| 401 | `unauthenticated` | Credentials or persisted session invalid, or player missing |
+| 404 | `notFound` | Route disabled |
+| 409 | `conflict` | `idempotencyConflict` |
+| 429 | `rateLimited` | Route rate limit |
+| 503 | `serverError` | `infrastructureFailure` or `commitOutcomeUnknown` |
+
+These errors leave pending identity intact. An accepted operation whose
+post-commit receipt cannot be read is recovered by explicit same-target,
+same-key retry.
+
 ### GET /api/v1/knockout/status
 
-Returns tournament status for the authenticated player.
+Requires `?tournamentId=<UUID>`. HTTP 200 contains
+`data: {tournamentId, playerId, tournamentStatus, registrationWindowOpen, state}`.
+The states are `notRegistered` when the paid entry is absent,
+`registeredWaitingStart` for a paid entry before the scheduled start while the
+catalog is in a registration state, and `registeredCompetitionUnavailable`
+for a confirmed entry outside those states. Starting time alone cannot supply a
+duel, elimination or result. Separate GETs can observe a transition, so Flutter
+checks the returned IDs, incorporates the status read's catalog flags and
+treats inconsistent entry presence as unavailable.
 
-Server responsibilities:
+### Unavailable competitive projections
 
-- return registration state
-- return active duel or bye state
-- return eliminated/champion/completed state
+`GET /api/v1/knockout/active-duel?tournamentId=<UUID>`,
+`GET /api/v1/knockout/records`, `GET /api/v1/knockout/history` and
+`GET /api/v1/knockout/hall-of-fame` return HTTP 501 for an authenticated,
+valid request, with code `notImplemented` and
+`details.reason: competitiveProjectionUnavailable`. Active-duel returns 404
+for an unknown UUID. These projections require authoritative competition
+execution and result persistence.
 
-### GET /api/v1/knockout/active-duel
-
-Returns the authenticated player's current active duel projection, or no active
-duel.
-
-Server responsibilities:
-
-- derive player identity from authentication
-- return authoritative match, round, opponent, score, run-count, and end-time
-  data
-- return no active duel when the player is not currently assigned to a playable
-  duel
-
-### GET /api/v1/knockout/history
-
-Returns player knockout tournament history.
-
-Server responsibilities:
-
-- return completed tournament outcomes
-- exclude tournaments the player did not enter
-- preserve final round/result history
-
-
-### GET /api/v1/knockout/records
-
-Returns player knockout records and achievements.
-
-Server responsibilities:
-
-- return tournaments participated
-- return tournaments won
-- return best round reached
-- return duel win percentage
-- derive statistics from trusted tournament history
-
-### GET /api/v1/knockout/hall-of-fame
-
-Returns champion-only Hall of Fame data.
-
-Server responsibilities:
-
-- aggregate tournament champions
-- return title counts
-- return tournament month/year wins
-- exclude non-champions
+The backend-mode Knockout screen loads discovery, entry and registration
+status. It skips unavailable competitive and League achievement reads and
+displays their availability explicitly. It offers no new paid registration or
+duel action. An existing pending attempt remains bound to its stored UUID and
+key across discovery, selection and refresh. The POST remains test-only.
 
 ## Gameplay
 

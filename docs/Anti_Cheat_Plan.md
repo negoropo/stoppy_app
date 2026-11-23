@@ -143,7 +143,8 @@ Knockout mutations.
 Knockout tournament registration validation must:
 
 - derive player identity from authentication
-- resolve the current monthly tournament on the backend
+- validate the explicit tournament UUID against the trusted backend catalog
+- keep the original UUID and caller-owned idempotency key across retries
 - validate the registration window and tournament lifecycle
 - prevent duplicate registration with idempotent replay support
 - atomically deduct the 25 GP entry cost only when registration succeeds
@@ -158,10 +159,17 @@ Knockout run submission validation must:
   original claim
 - update duel score projections only from accepted validated runs
 
-Knockout registration is now connected from Flutter backend runtime using an
-authenticated empty request body and caller-owned `Idempotency-Key`. Knockout
-run submission remains disconnected, but will also require caller-owned
-idempotency when activated. Round settlement, bracket advancement, repechage,
+Flutter's Knockout registration contract uses an explicit catalog UUID and
+caller-owned `Idempotency-Key`. Fastify mounts the adapter for isolated test
+injection only. The adapter verifies the bearer and persisted session, rejects
+client authority fields and rate-limits by IP and authenticated player. Only
+the existing internal service can persist the registration and fee.
+Knockout catalog and registration reads also require a verified persisted
+session. Player identifiers and target overrides are rejected. Scoped reads
+verify the requested catalog UUID and use only the authenticated player's
+paid entry. Unsupported competitive projections return an explicit error.
+Flutter also prepares a separate run submission claim with caller-owned
+idempotency. Round settlement, bracket advancement, repechage,
 tournament completion, champion persistence, records, and Hall of Fame updates
 remain trusted backend/internal responsibilities and must never be driven by
 ordinary client mutation payloads.

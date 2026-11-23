@@ -9,6 +9,7 @@ import '../models/knockout_player_status.dart';
 import '../models/knockout_run.dart';
 import '../models/knockout_tournament.dart';
 import '../models/knockout_tournament_history_entry.dart';
+import '../models/knockout_tournament_selection.dart';
 
 abstract class KnockoutRepository {
   Future<KnockoutTournament> fetchCurrentTournament();
@@ -55,3 +56,16 @@ abstract class KnockoutRepository {
 }
 
 abstract interface class ServerAuthoritativeKnockoutRegistrationRepository {}
+
+abstract interface class AuthoritativeKnockoutReadRepository {
+  Future<KnockoutTournamentSelection> discoverTournaments();
+  Future<KnockoutTournament> fetchTournament(String tournamentId);
+}
+
+abstract interface class KnockoutRegistrationRecoveryRepository {
+  Future<bool> hasPendingRegistration(String playerId);
+
+  Future<KnockoutRegistrationResult> retryRegistration({
+    required PlayerProfile playerProfile,
+  });
+}

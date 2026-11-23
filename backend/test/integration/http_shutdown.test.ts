@@ -2,23 +2,24 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { get } from 'node:http';
 import { setImmediate as nextTurn } from 'node:timers/promises';
-import { buildApp } from '../../src/app.js';
+import { startApplication } from '../../src/lifecycle.js';
 import { FakeDatabase, testConfig } from '../fakes.js';
 
 test('real HTTP shutdown drains an in-flight request before closing the database pool', async () => {
   const database = new FakeDatabase();
-  const app = buildApp(testConfig, database);
   let enter!: () => void;
   let finish!: () => void;
   const entered = new Promise<void>((resolve) => { enter = resolve; });
   const gate = new Promise<void>((resolve) => { finish = resolve; });
-  app.get('/test-in-flight', async () => {
-    enter();
-    await gate;
-    return { success: true, data: {} };
+  const app = await startApplication(testConfig, database, async (instance) => {
+    instance.get('/test-in-flight', async () => {
+      enter();
+      await gate;
+      return { success: true, data: {} };
+    });
+    await instance.listen({ host: '127.0.0.1', port: 0 });
   });
   try {
-    await app.listen({ host: '127.0.0.1', port: 0 });
     const address = app.server.address();
     assert.ok(address && typeof address === 'object');
     // Injection does not open a server socket and cannot test Node's drain

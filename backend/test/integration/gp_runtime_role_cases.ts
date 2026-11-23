@@ -12,6 +12,8 @@ import { GpExecutor } from '../../src/economy/gp_executor.js';
 import { inTransaction } from '../../src/transaction.js';
 import { insertOperationFixture, insertRegistrationFixture } from './knockout_schema_cases.js';
 import { KnockoutRegistrationService } from '../../src/knockout/knockout_registration_service.js';
+import { KnockoutTournamentCatalog } from '../../src/knockout/knockout_tournament_catalog.js';
+import { buildApp } from '../../src/app.js';
 
 const permissionDenied = (error: unknown) => error instanceof Error && 'code' in error && error.code === '42501';
 
@@ -151,7 +153,7 @@ export async function testGpRuntimeRole(t: TestContext, provisioner: Database, c
     });
 
     await t.test('restricted runtime writes linked Knockout persistence fixtures but cannot provision tournaments or rewrite evidence', async () => {
-      // Only the schema-owner fixture provisions this catalog row; no runtime provisioning service exists.
+      // The catalog owner supplies this fixture. Player-facing credentials are read-only on the catalog.
       const tournamentId = (await provisioner.query(`INSERT INTO stoppy_knockout.tournaments
         (tournament_month, name, registration_opens_at, registration_closes_at, starts_at, status)
         VALUES ('2040-01-01', 'Restricted fixture', '2039-12-01T00:00:00Z', '2039-12-31T23:59:00Z',
@@ -186,6 +188,16 @@ export async function testGpRuntimeRole(t: TestContext, provisioner: Database, c
         (tournament_month, name, registration_opens_at, registration_closes_at, starts_at, status)
         VALUES ('2040-02-01', 'Not trusted', '2040-01-01T00:00:00Z', '2040-01-31T23:59:00Z',
           '2040-02-01T00:00:00Z', 'registrationOpen')`), permissionDenied);
+      const catalog = new KnockoutTournamentCatalog(db);
+      await assert.rejects(catalog.provision({
+        tournamentMonth: '2040-02-01', name: 'Unauthorized fixture',
+        registrationOpensAt: new Date('2040-01-01T00:00:00Z'),
+        registrationClosesAt: new Date('2040-01-31T23:59:00Z'),
+        startsAt: new Date('2040-02-01T00:00:00Z'),
+      }), { code: 'infrastructureFailure' });
+      await assert.rejects(catalog.transition(tournamentId, 'registrationClosed'), { code: 'infrastructureFailure' });
+      assert.equal((await db.query('SELECT status FROM stoppy_knockout.tournaments WHERE id = $1',
+        [tournamentId])).rows[0]!.status, 'registrationOpen');
       await assert.rejects(db.query('CREATE TABLE stoppy_knockout.unauthorized_probe (id integer)'), permissionDenied);
     });
 
@@ -208,6 +220,19 @@ export async function testGpRuntimeRole(t: TestContext, provisioner: Database, c
       assert.deepEqual(replay.outcome, first.outcome);
       assert.equal((await db.query('SELECT id FROM stoppy_knockout.registrations WHERE player_id = $1', [playerId])).rows.length, 1);
       assert.equal((await auth.profile('Bearer ' + account.session.accessToken)).gamePoints, 5);
+      const app = buildApp(config, { ...db, close: async () => {} }, { auth });
+      try {
+        const headers = { authorization: 'Bearer ' + account.session.accessToken };
+        const metadata = await app.inject({ url: `/api/v1/knockout/tournament?tournamentId=${tournamentId}`, headers });
+        assert.equal(metadata.statusCode, 200);
+        assert.equal(metadata.json().data.tournament.id, tournamentId);
+        const entry = await app.inject({ url: `/api/v1/knockout/entry?tournamentId=${tournamentId}`, headers });
+        assert.equal(entry.statusCode, 200);
+        assert.equal(entry.json().data.playerEntry.playerId, playerId);
+        const status = await app.inject({ url: `/api/v1/knockout/status?tournamentId=${tournamentId}`, headers });
+        assert.equal(status.statusCode, 200);
+        assert.equal(status.json().data.state, 'registeredWaitingStart');
+      } finally { await app.close(); }
     });
   } finally {
     try { await runtime?.close(); }

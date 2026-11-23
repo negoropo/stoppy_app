@@ -11,6 +11,44 @@ import 'package:stoppy_app/core/backend/http_transport.dart';
 
 void main() {
   group('HttpBackendApiClient', () {
+    test('player-bound POST checks the bearer used by transport', () async {
+      final transport = _FakeTransport.success();
+      final store = InMemoryAuthSessionStore();
+      final client = _client(transport: transport, sessionStore: store);
+      String tokenFor(String playerId) {
+        final payload = base64Url.encode(
+          utf8.encode(jsonEncode({'sub': playerId})),
+        );
+        return 'header.$payload.signature';
+      }
+
+      await store.save(
+        _validSession().copyWith(accessToken: tokenFor('player-b')),
+      );
+      final blocked = await client.postForPlayer(
+        ApiContract.knockoutRegistration,
+        playerId: 'player-a',
+        body: const {'tournamentId': 'cd30c422-9ea3-4b11-b621-93a9ffcd10b8'},
+        headers: const {'Idempotency-Key': 'pending-a'},
+      );
+      expect(blocked.error?.code, ApiErrorCode.unauthenticated);
+      expect(transport.requests, isEmpty);
+
+      final originalBearer = tokenFor('player-a');
+      await store.save(_validSession().copyWith(accessToken: originalBearer));
+      final permitted = await client.postForPlayer(
+        ApiContract.knockoutRegistration,
+        playerId: 'player-a',
+        body: const {'tournamentId': 'cd30c422-9ea3-4b11-b621-93a9ffcd10b8'},
+        headers: const {'Idempotency-Key': 'pending-a'},
+      );
+      expect(permitted.isSuccess, isTrue);
+      expect(
+        transport.requests.single.headers[ApiContract.authorizationHeader],
+        'Bearer $originalBearer',
+      );
+      expect(transport.requests.single.uri.query, isEmpty);
+    });
 
     test(
       'never sends authorization to public authentication endpoints',

@@ -8,6 +8,7 @@ export interface Config {
   readonly logLevel: 'silent' | 'error' | 'warn' | 'info' | 'debug';
   readonly databaseUrl: string;
   readonly databaseSsl: 'disable' | 'verify-full';
+  readonly knockoutRegistrationHttp: boolean;
 }
 
 function choice<T extends string>(value: string, values: readonly T[], name: string): T {
@@ -29,6 +30,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     throw new Error('Production DATABASE_SSL must be verify-full.');
   }
   const databaseUrl = env.DATABASE_URL;
+  const knockoutRegistrationHttp = choice(env.KNOCKOUT_REGISTRATION_HTTP ?? 'disabled',
+    ['disabled', 'enabled'], 'KNOCKOUT_REGISTRATION_HTTP') === 'enabled';
+  let disposableDatabase = false;
   try {
     if (!databaseUrl || databaseUrl !== databaseUrl.trim()) throw new Error();
     const url = new URL(databaseUrl);
@@ -37,14 +41,19 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     }
     // Connection-string TLS overrides could silently bypass the explicit policy.
     if ([...url.searchParams.keys()].some((key) => key.toLowerCase().startsWith('ssl'))) throw new Error();
+    disposableDatabase = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+      && /^\/[a-zA-Z0-9_]+_test$/.test(url.pathname) && url.search === '' && url.hash === '';
   } catch {
     // Configuration errors must never echo URLs containing credentials.
     throw new Error('DATABASE_URL must be a PostgreSQL URL with a database name and no SSL overrides.');
   }
+  if (knockoutRegistrationHttp && (environment !== 'test' || !disposableDatabase)) {
+    throw new Error('KNOCKOUT_REGISTRATION_HTTP requires test mode and a loopback *_test database.');
+  }
   return Object.freeze({
     auth: loadAuthConfig(env, environment === 'production'),
     environment, host, port, databaseUrl,
-    databaseSsl,
+    databaseSsl, knockoutRegistrationHttp,
     logLevel: choice(env.LOG_LEVEL ?? 'info', ['silent', 'error', 'warn', 'info', 'debug'], 'LOG_LEVEL'),
   });
 }

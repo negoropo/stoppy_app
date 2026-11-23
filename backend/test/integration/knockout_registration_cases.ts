@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { setImmediate } from 'node:timers/promises';
 import type { Database, TransactionConnection } from '../../src/database.js';
 import { KnockoutRegistrationService, KnockoutRegistrationFailure, type KnockoutRegistrationResult } from '../../src/knockout/knockout_registration_service.js';
+import { KnockoutTournamentCatalog } from '../../src/knockout/knockout_tournament_catalog.js';
 import { GpService } from '../../src/economy/gp_service.js';
 
 function completed(result: KnockoutRegistrationResult) {
@@ -24,8 +25,8 @@ export async function testKnockoutRegistration(t: TestContext, database: Databas
       ? c.query(s.replace('clock_timestamp()', '$2::timestamptz'), [v![0], time]) : c.query(s, v) }));
   const service = new KnockoutRegistrationService(db);
   let month = 2;
-  const tournament = async (status = 'registrationOpen', id = randomUUID()) => {
-    const label = new Date(Date.UTC(2100, month++, 1)).toISOString().slice(0, 10);
+  const tournament = async (status = 'registrationOpen', id = randomUUID(),
+    label = new Date(Date.UTC(2100, month++, 1)).toISOString().slice(0, 10)) => {
     return (await database.query(`INSERT INTO stoppy_knockout.tournaments
       (id, tournament_month, name, registration_opens_at, registration_closes_at, starts_at, status)
       VALUES ($1, $2, 'Service fixture', '2030-02-01T00:00:00Z', '2030-02-28T23:59:00Z', '2030-03-01T00:00:00Z', $3) RETURNING id`, [id, label, status])).rows[0]!.id as string;
@@ -247,6 +248,39 @@ export async function testKnockoutRegistration(t: TestContext, database: Databas
     });
   }
 
+  await t.test('rolled-back registration on the original target rechecks eligibility after month rollover', async () => {
+    const input = { playerId: await player(), tournamentId: await tournament('registrationOpen', randomUUID(), '2030-03-01'),
+      idempotencyKey: randomUUID() };
+    const before = await state(input.playerId);
+    const uncertain = intercept(db, (connection) => ({
+      release: (discard) => connection.release(discard),
+      query: (sql, values) => sql === 'COMMIT'
+        ? Promise.reject(new Error('COMMIT was not sent.'))
+        : connection.query(sql, values),
+    }));
+    await assert.rejects(new KnockoutRegistrationService(uncertain).register(input), { code: 'commitOutcomeUnknown' });
+    await new KnockoutTournamentCatalog(database).transition(input.tournamentId, 'registrationClosed');
+    const upcoming = (await database.query(`INSERT INTO stoppy_knockout.tournaments
+      (tournament_month, name, registration_opens_at, registration_closes_at, starts_at, status)
+      VALUES ('2030-04-01', 'April fixture', '2030-03-02T00:00:00Z', '2030-03-31T22:59:00Z',
+        '2030-03-31T23:00:00Z', 'registrationOpen') RETURNING id`)).rows[0]!.id as string;
+
+    time = new Date('2030-03-15T12:00:00Z');
+    try {
+      const retry = completed(await new KnockoutRegistrationService(db).register(input));
+      assert.equal(retry.replayed, false);
+      assert.deepEqual(retry.outcome, { status: 'rejected', reason: 'tournamentAlreadyStarted',
+        tournamentId: input.tournamentId, remainingGamePoints: before.balance });
+      assert.deepEqual(await service.register({ ...input, tournamentId: upcoming }), { status: 'idempotencyConflict' });
+      const after = await state(input.playerId);
+      assert.deepEqual(after, { ...before, operations: after.operations });
+      assert.equal(after.operations.length, 1);
+      assert.equal(after.operations[0]!.tournament_id, input.tournamentId);
+    } finally {
+      time = new Date('2030-02-15T12:00:00Z');
+    }
+  });
+
   for (const sameKey of [true, false]) {
     await t.test(`overlapping ${sameKey ? 'same-key' : 'different-key'} registrations serialize and charge once`, async () => {
       const input = { playerId: await player(), tournamentId: await tournament(), idempotencyKey: randomUUID() };
@@ -326,24 +360,27 @@ export async function testKnockoutRegistration(t: TestContext, database: Databas
 
   await t.test('closure holding the exclusive catalog lock blocks admission until closed state is visible', async () => {
     const input = { playerId: await player(), tournamentId: await tournament(), idempotencyKey: randomUUID() };
-    const closure = await database.connect();
-    await closure.query('BEGIN');
-    try {
-      await closure.query("SELECT pg_advisory_xact_lock(hashtextextended('stoppy.knockout.tournament:' || $1::text, 0))", [input.tournamentId]);
-      await closure.query("UPDATE stoppy_knockout.tournaments SET status = 'registrationClosed' WHERE id = $1", [input.tournamentId]);
-      const attempted = gate(); let pid = 0;
-      const waiting = intercept(db, (c) => ({ release: (d) => c.release(d), query: async (s, v) => {
-        if (s.includes('pg_advisory_xact_lock_shared')) { pid = (await c.query('SELECT pg_backend_pid() AS pid')).rows[0]!.pid as number; attempted.open(); }
-        return c.query(s, v);
-      } }));
-      const pending = new KnockoutRegistrationService(waiting).register(input);
-      await attempted.wait; await waitForBlocker(database, pid);
-      await closure.query('COMMIT');
-      const result = completed(await pending);
-      assert.ok(result.outcome.status === 'rejected'); assert.equal(result.outcome.reason, 'registrationClosed');
-      const rows = await state(input.playerId); assert.equal(rows.balance, 50); assert.equal(rows.ledger.length, 1);
-    } catch (error) { await closure.query('ROLLBACK'); throw error; }
-    finally { closure.release(); }
+    const holding = gate(); const release = gate();
+    const paused = intercept(db, (c) => ({ release: (d) => c.release(d), query: async (s, v) => {
+      const result = await c.query(s, v);
+      if (s.startsWith('UPDATE stoppy_knockout.tournaments')) { holding.open(); await release.wait; }
+      return result;
+    } }));
+    const closure = new KnockoutTournamentCatalog(paused).transition(input.tournamentId, 'registrationClosed');
+    await Promise.race([holding.wait, closure.then(() => assert.fail('Expected closure to pause before COMMIT.'))]);
+    const attempted = gate(); let pid = 0;
+    const waiting = intercept(db, (c) => ({ release: (d) => c.release(d), query: async (s, v) => {
+      if (s.includes('pg_advisory_xact_lock_shared')) { pid = (await c.query('SELECT pg_backend_pid() AS pid')).rows[0]!.pid as number; attempted.open(); }
+      return c.query(s, v);
+    } }));
+    const pending = new KnockoutRegistrationService(waiting).register(input);
+    const both = Promise.all([closure, pending]);
+    try { await attempted.wait; await waitForBlocker(database, pid); }
+    finally { release.open(); }
+    const [, registration] = await both;
+    const result = completed(registration);
+    assert.ok(result.outcome.status === 'rejected'); assert.equal(result.outcome.reason, 'registrationClosed');
+    const rows = await state(input.playerId); assert.equal(rows.balance, 50); assert.equal(rows.ledger.length, 1);
   });
 
   await t.test('registration holding the shared catalog lock completes before a concurrent closure can change state', async () => {
@@ -356,22 +393,20 @@ export async function testKnockoutRegistration(t: TestContext, database: Databas
     } }));
     const registration = new KnockoutRegistrationService(paused).register(input);
     await holding.wait;
-    const closure = await database.connect();
-    await closure.query('BEGIN');
+    const attempted = gate(); let pid = 0;
+    const waiting = intercept(db, (c) => ({ release: (d) => c.release(d), query: async (s, v) => {
+      if (s.includes('pg_advisory_xact_lock(')) { pid = (await c.query('SELECT pg_backend_pid() AS pid')).rows[0]!.pid as number; attempted.open(); }
+      return c.query(s, v);
+    } }));
+    const closure = new KnockoutTournamentCatalog(waiting).transition(input.tournamentId, 'registrationClosed');
+    const both = Promise.all([registration, closure]);
     try {
-      const pid = (await closure.query('SELECT pg_backend_pid() AS pid')).rows[0]!.pid as number;
-      const change = (async () => {
-        await closure.query("SELECT pg_advisory_xact_lock(hashtextextended('stoppy.knockout.tournament:' || $1::text, 0))", [input.tournamentId]);
-        await closure.query("UPDATE stoppy_knockout.tournaments SET status = 'registrationClosed' WHERE id = $1", [input.tournamentId]);
-        await closure.query('COMMIT');
-      })();
-      const both = Promise.all([registration, change]);
-      try { await waitForBlocker(database, pid); } finally { release.open(); }
-      const [result] = await both;
-      assert.equal(completed(result).outcome.status, 'accepted');
-      assert.equal((await database.query('SELECT status FROM stoppy_knockout.tournaments WHERE id = $1', [input.tournamentId])).rows[0]!.status, 'registrationClosed');
-    } catch (error) { await closure.query('ROLLBACK'); throw error; }
-    finally { release.open(); closure.release(); }
+      await Promise.race([attempted.wait, closure.then(() => assert.fail('Expected the closure to acquire a catalog lock.'))]);
+      await waitForBlocker(database, pid);
+    } finally { release.open(); }
+    const [result, closed] = await both;
+    assert.equal(completed(result).outcome.status, 'accepted');
+    assert.deepEqual(closed, { id: input.tournamentId, status: 'registrationClosed' });
   });
 
   await t.test('admission samples fresh database time after waiting, so a newly closed window cannot charge', async () => {

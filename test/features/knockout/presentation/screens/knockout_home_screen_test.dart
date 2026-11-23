@@ -129,7 +129,7 @@ void main() {
         _registrationSuccess(
           tournament: _registrationTournamentWithEntry(),
           playerProfile: authoritativeProfile,
-          remainingGamePoints: 80,
+          historicalRemainingGamePoints: 80,
         ),
       ],
     );
@@ -161,57 +161,53 @@ void main() {
     );
   });
 
-  testWidgets('backend registration uses remaining GP without profile', (
-    WidgetTester tester,
-  ) async {
-    PlayerProfile? updatedProfile;
-    final playerProfile = PlayerProfile(
-      id: 'player-id',
-      username: 'Tester',
-      createdAt: DateTime(2026),
-      gamePoints: 100,
-    );
-    final repository = _ServerAuthoritativeKnockoutScreenRepository(
-      initialTournament: _registrationTournament(),
-      registrationOutcomes: [
-        _registrationSuccess(
-          tournament: _registrationTournamentWithEntry(),
-          playerProfile: null,
-          remainingGamePoints: 75,
+  testWidgets(
+    'backend registration never applies historical GP without a current profile',
+    (WidgetTester tester) async {
+      PlayerProfile? updatedProfile;
+      final playerProfile = PlayerProfile(
+        id: 'player-id',
+        username: 'Tester',
+        createdAt: DateTime(2026),
+        gamePoints: 100,
+      );
+      final repository = _ServerAuthoritativeKnockoutScreenRepository(
+        initialTournament: _registrationTournament(),
+        registrationOutcomes: [
+          _registrationSuccess(
+            tournament: _registrationTournamentWithEntry(),
+            playerProfile: null,
+            historicalRemainingGamePoints: 75,
+          ),
+        ],
+      );
+      final authRepository = _UpdatingAuthRepository(playerProfile);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: KnockoutHomeScreen(
+            playerProfile: playerProfile,
+            authRepository: authRepository,
+            knockoutRepository: repository,
+            onPlayerProfileUpdated: (profile) {
+              updatedProfile = profile;
+            },
+          ),
         ),
-      ],
-    );
-    final authRepository = _UpdatingAuthRepository(playerProfile);
+      );
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: KnockoutHomeScreen(
-          playerProfile: playerProfile,
-          authRepository: authRepository,
-          knockoutRepository: repository,
-          onPlayerProfileUpdated: (profile) {
-            updatedProfile = profile;
-          },
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Register for Knockout'));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Register for Knockout'));
-    await tester.pumpAndSettle();
-
-    expect(updatedProfile?.gamePoints, 75);
-    expect(authRepository.updateCalls, 0);
-    expect(find.text('Your GP: 75'), findsOneWidget);
-    expect(
-      find.text('You are registered for this monthly Knockout.'),
-      findsOneWidget,
-    );
-    expect(find.text('Registered'), findsOneWidget);
-  });
+      expect(updatedProfile, isNull);
+      expect(authRepository.updateCalls, 0);
+      expect(find.text('Your GP: 100'), findsOneWidget);
+    },
+  );
 
   for (final balance in [1000000, 2147483647]) {
-    testWidgets('backend fallback preserves authoritative $balance GP', (
+    testWidgets('backend profile preserves authoritative $balance GP', (
       WidgetTester tester,
     ) async {
       PlayerProfile? updatedProfile;
@@ -226,8 +222,8 @@ void main() {
         registrationOutcomes: [
           _registrationSuccess(
             tournament: _registrationTournamentWithEntry(),
-            playerProfile: null,
-            remainingGamePoints: balance,
+            playerProfile: playerProfile.copyWith(gamePoints: balance),
+            historicalRemainingGamePoints: 75,
           ),
         ],
       );
@@ -277,7 +273,7 @@ void main() {
         _registrationSuccess(
           tournament: _registrationTournamentWithEntry(),
           playerProfile: playerProfile.copyWith(gamePoints: 75),
-          remainingGamePoints: 75,
+          historicalRemainingGamePoints: 75,
         ),
       ],
     );
@@ -334,7 +330,7 @@ void main() {
         _registrationSuccess(
           tournament: _registrationTournamentWithEntry(),
           playerProfile: playerProfile.copyWith(gamePoints: 75),
-          remainingGamePoints: 75,
+          historicalRemainingGamePoints: 75,
         ),
       ],
     );
@@ -391,7 +387,7 @@ void main() {
         _registrationSuccess(
           tournament: _registrationTournamentWithEntry(),
           playerProfile: playerProfile.copyWith(gamePoints: 75),
-          remainingGamePoints: 75,
+          historicalRemainingGamePoints: 75,
         ),
       ],
     );
@@ -448,7 +444,7 @@ void main() {
         _registrationSuccess(
           tournament: _registrationTournamentWithEntry(),
           playerProfile: playerProfile.copyWith(gamePoints: 75),
-          remainingGamePoints: 75,
+          historicalRemainingGamePoints: 75,
         ),
       ],
     );
@@ -520,7 +516,7 @@ void main() {
       _registrationSuccess(
         tournament: _registrationTournamentWithEntry(),
         playerProfile: playerProfile.copyWith(gamePoints: 75),
-        remainingGamePoints: 75,
+        historicalRemainingGamePoints: 75,
       ),
     );
     await tester.pumpAndSettle();
@@ -1266,7 +1262,7 @@ class _ServerAuthoritativeKnockoutScreenRepository
   ) {
     if (result.isSuccess && result.playerEntry != null) {
       _entry = result.playerEntry;
-      _tournament = result.tournament;
+      _tournament = result.tournament!;
     }
     return result;
   }
@@ -1337,12 +1333,12 @@ final class _AsynchronousRegistrationFailure {
 KnockoutRegistrationResult _registrationSuccess({
   required KnockoutTournament tournament,
   required PlayerProfile? playerProfile,
-  required int remainingGamePoints,
+  required int historicalRemainingGamePoints,
 }) {
   return KnockoutRegistrationResult.success(
     tournament: tournament,
     playerEntry: tournament.entries.single,
-    remainingGamePoints: remainingGamePoints,
+    historicalRemainingGamePoints: historicalRemainingGamePoints,
     playerProfile: playerProfile,
   );
 }

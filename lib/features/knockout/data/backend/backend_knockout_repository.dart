@@ -16,19 +16,26 @@ import 'package:stoppy_app/features/knockout/domain/models/knockout_player_statu
 import 'package:stoppy_app/features/knockout/domain/models/knockout_registration_result.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_run.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament.dart';
+import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_selection.dart';
 import 'package:stoppy_app/features/knockout/domain/models/knockout_tournament_history_entry.dart';
 import 'package:stoppy_app/features/knockout/domain/repositories/knockout_repository.dart';
+
+import 'knockout_registration_attempt_store.dart';
 
 final class BackendKnockoutRepository
     implements
         KnockoutRepository,
-        ServerAuthoritativeKnockoutRegistrationRepository {
-  const BackendKnockoutRepository({
+        AuthoritativeKnockoutReadRepository,
+        ServerAuthoritativeKnockoutRegistrationRepository,
+        KnockoutRegistrationRecoveryRepository {
+  BackendKnockoutRepository({
     required this.apiClient,
+    this.registrationAttemptStore,
     DomainErrorMapper errorMapper = const DomainErrorMapper(),
   }) : _errorMapper = errorMapper;
 
   final BackendApiClient apiClient;
+  final KnockoutRegistrationAttemptStore? registrationAttemptStore;
   final DomainErrorMapper _errorMapper;
 
   static const tournamentPath = ApiContract.knockoutTournament;
@@ -42,11 +49,55 @@ final class BackendKnockoutRepository
   static const runSubmissionPath = ApiContract.knockoutRunSubmission;
 
   @override
-  Future<KnockoutTournament> fetchCurrentTournament() {
+  Future<KnockoutTournament> fetchCurrentTournament() async {
+    final selection = await discoverTournaments();
+    return selection.competition ??
+        selection.registration ??
+        (throw const RepositoryDomainException(
+          'No relevant Knockout tournament is available.',
+          code: ApiErrorCode.notFound,
+        ));
+  }
+
+  @override
+  Future<KnockoutTournamentSelection> discoverTournaments() {
     return _get(
       tournamentPath,
       queryParameters: const {},
-      decode: (data) => KnockoutTournamentDto.fromJson(data).toDomain(),
+      decode: (data) {
+        if (!data.containsKey('competition') ||
+            !data.containsKey('registration')) {
+          throw const FormatException(
+            'Knockout discovery is missing selection slots.',
+          );
+        }
+        KnockoutTournament? decodeSlot(Object? json) => json == null
+            ? null
+            : KnockoutTournamentDto.fromReadCatalog(json).toDomain();
+        return KnockoutTournamentSelection(
+          competition: decodeSlot(data['competition']),
+          registration: decodeSlot(data['registration']),
+        );
+      },
+    );
+  }
+
+  @override
+  Future<KnockoutTournament> fetchTournament(String tournamentId) {
+    return _get(
+      tournamentPath,
+      queryParameters: {'tournamentId': tournamentId},
+      decode: (data) {
+        final tournament = KnockoutTournamentDto.fromReadCatalog(
+          data['tournament'],
+        ).toDomain();
+        if (tournament.id != tournamentId) {
+          throw const FormatException(
+            'Knockout catalog target does not match the request.',
+          );
+        }
+        return tournament;
+      },
     );
   }
 
@@ -55,14 +106,26 @@ final class BackendKnockoutRepository
     required String tournamentId,
     required String playerId,
   }) {
-    // Backend runtime reads the authenticated player's entry projection. The
-    // method parameters remain for mock compatibility, but are not identity
-    // authority for backend requests.
     return _get(
       currentEntryPath,
-      queryParameters: const {},
-      decode: (data) =>
-          KnockoutCurrentEntryResponseDto.fromJson(data).toDomain(),
+      queryParameters: {'tournamentId': tournamentId},
+      decode: (data) {
+        _verifyReadScope(data, tournamentId, playerId);
+        if (!data.containsKey('playerEntry')) {
+          throw const FormatException(
+            'Knockout entry response is missing playerEntry.',
+          );
+        }
+        final entry = KnockoutCurrentEntryResponseDto.fromJson(data).toDomain();
+        if (entry != null &&
+            (entry.tournamentId != tournamentId ||
+                entry.playerId != playerId)) {
+          throw const FormatException(
+            'Knockout entry does not match the request.',
+          );
+        }
+        return entry;
+      },
     );
   }
 
@@ -79,16 +142,86 @@ final class BackendKnockoutRepository
       );
     }
 
-    // The backend owns authenticated identity, current tournament selection,
-    // registration eligibility, duplicate detection, and GP deduction. The
-    // client sends an empty claim plus caller-owned idempotency.
-    return _post(
-      registerPath,
-      body: const KnockoutRegistrationRequestDto().toJson(),
-      headers: key.toHeader(),
-      decode: (data) =>
-          KnockoutRegistrationResponseDto.fromJson(data).toDomain(),
-    );
+    try {
+      return _submitRegistration(
+        playerProfile.id,
+        requested: KnockoutRegistrationAttempt(
+          target: KnockoutRegistrationRequestDto(tournamentId: tournament.id),
+          key: key,
+        ),
+      );
+    } on FormatException catch (exception) {
+      throw _malformedPayload(exception.message);
+    }
+  }
+
+  KnockoutRegistrationAttemptStore get _attemptStore =>
+      registrationAttemptStore ??
+      (throw KnockoutRegistrationAttemptStore.unavailable);
+
+  @override
+  Future<bool> hasPendingRegistration(String playerId) async =>
+      await _attemptStore.read(playerId) != null;
+
+  @override
+  Future<KnockoutRegistrationResult> retryRegistration({
+    required PlayerProfile playerProfile,
+  }) => _submitRegistration(playerProfile.id);
+
+  Future<KnockoutRegistrationResult> _submitRegistration(
+    String playerId, {
+    KnockoutRegistrationAttempt? requested,
+  }) async {
+    final client = apiClient;
+    if (client is! PlayerBoundBackendApiClient) {
+      throw const RepositoryDomainException(
+        'The backend client cannot verify the registration account.',
+        code: ApiErrorCode.invalidConfiguration,
+      );
+    }
+    final store = _attemptStore;
+    return store.whileSubmitting(playerId, () async {
+      final pending = await store.read(playerId);
+      if (pending != null &&
+          requested != null &&
+          (pending.target.tournamentId != requested.target.tournamentId ||
+              pending.key != requested.key)) {
+        throw const RepositoryDomainException(
+          'Retry the pending Knockout registration before starting another.',
+          code: ApiErrorCode.conflict,
+        );
+      }
+      final attempt = pending ?? requested;
+      if (attempt == null) {
+        throw const RepositoryDomainException(
+          'There is no pending Knockout registration to retry.',
+          code: ApiErrorCode.notFound,
+        );
+      }
+      // Persist before transport so navigation, a lost response, or a restart
+      // can never reconstruct this operation from the newly displayed month.
+      if (pending == null) await store.save(playerId, attempt);
+      final result = await _post(
+        registerPath,
+        body: attempt.target.toJson(),
+        headers: attempt.key.toHeader(),
+        player: (client: client, id: playerId),
+        decode: (data) {
+          final response = KnockoutRegistrationResponseDto.fromJson(data);
+          if (response.tournamentId != attempt.target.tournamentId ||
+              response.playerId != playerId) {
+            throw const FormatException(
+              'Knockout registration response does not match the attempt.',
+            );
+          }
+          return response.toDomain();
+        },
+      );
+      // Only a verified semantic outcome resolves the pending operation.
+      // Transport and HTTP errors can occur after the original COMMIT.
+      await store.clear(playerId);
+      return result;
+    });
   }
 
   @override
@@ -111,8 +244,17 @@ final class BackendKnockoutRepository
   }) {
     return _get(
       activeDuelPath,
-      queryParameters: const {},
-      decode: (data) => KnockoutActiveDuelResponseDto.fromJson(data).toDomain(),
+      queryParameters: {'tournamentId': tournamentId},
+      decode: (data) {
+        final duel = KnockoutActiveDuelResponseDto.fromJson(data).toDomain();
+        if (duel != null &&
+            (duel.tournamentId != tournamentId || duel.playerId != playerId)) {
+          throw const FormatException(
+            'Knockout duel does not match the request.',
+          );
+        }
+        return duel;
+      },
     );
   }
 
@@ -123,9 +265,51 @@ final class BackendKnockoutRepository
   }) {
     return _get(
       statusPath,
-      queryParameters: const {},
-      decode: (data) => KnockoutPlayerStatusDto.fromJson(data).toDomain(),
+      queryParameters: {'tournamentId': tournamentId},
+      decode: (data) {
+        _verifyReadScope(data, tournamentId, playerId);
+        final status = KnockoutPlayerStatusDto.fromJson(data).toDomain();
+        final catalogStatus = data['tournamentStatus'];
+        final windowOpen = data['registrationWindowOpen'];
+        final duel = status.duelSnapshot;
+        if (catalogStatus is! String ||
+            windowOpen is! bool ||
+            (duel != null &&
+                (duel.tournamentId != tournamentId ||
+                    duel.playerId != playerId))) {
+          throw const FormatException(
+            'Knockout status does not match the request.',
+          );
+        }
+        final tournamentStatus = KnockoutTournamentStatus.values.byName(
+          catalogStatus,
+        );
+        if (windowOpen &&
+            tournamentStatus != KnockoutTournamentStatus.registrationOpen) {
+          throw const FormatException(
+            'An open Knockout window requires an open catalog state.',
+          );
+        }
+        return KnockoutPlayerStatus(
+          state: status.state,
+          duelSnapshot: duel,
+          tournamentStatus: tournamentStatus,
+          registrationWindowOpen: windowOpen,
+        );
+      },
     );
+  }
+
+  void _verifyReadScope(
+    Map<String, Object?> data,
+    String tournamentId,
+    String playerId,
+  ) {
+    if (data['tournamentId'] != tournamentId || data['playerId'] != playerId) {
+      throw const FormatException(
+        'Knockout read response does not match the request.',
+      );
+    }
   }
 
   @override
@@ -267,9 +451,17 @@ final class BackendKnockoutRepository
     required Map<String, Object?> body,
     required Map<String, String> headers,
     required T Function(Map<String, Object?> data) decode,
+    ({PlayerBoundBackendApiClient client, String id})? player,
   }) async {
     try {
-      final response = await apiClient.post(path, body: body, headers: headers);
+      final response = await (player != null
+          ? player.client.postForPlayer(
+              path,
+              playerId: player.id,
+              body: body,
+              headers: headers,
+            )
+          : apiClient.post(path, body: body, headers: headers));
 
       if (!response.isSuccess) {
         throw _errorMapper.toRepositoryException(response.requireError());
